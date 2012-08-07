@@ -56,12 +56,6 @@ public:
 
     void train(bool last=false); ///< Call the training of N features (Iterations)
 
-    /// DBP stands for Direct Backward Prunning. See C. Zang and P. Viola 2007
-    static void toSoftCascadeDBP(const LabeledData::shared_ptr data,
-                                 const std::string inputModelFileName,
-                                 const std::string softCascadeFileName,
-                                 const  TrainingData::point_t  &modelWindow, const TrainingData::rectangle_t &objectWindow);
-
     int _verbose;
 
     void setNumIterations(const int i);
@@ -71,13 +65,6 @@ public:
 
     std::string getOuputModelFileName() const;
 
-    void trainOcclusionClassifier(std::vector<WeakDiscreteTree> &classifier, double C_value, std::vector<double> old_weights);
-    void learn_weights_via_svm(std::vector<WeakDiscreteTree> & classifier, double C_value, string saveName="");
-    void trainONGivenClassifier(std::vector<WeakDiscreteTree> &classifier);
-    void train_naive_OcclusionClassifier(std::vector<WeakDiscreteTree> &classifier);
-    void trainOcclusionClassifier_fill_in(std::vector<WeakDiscreteTree> &classifier, double C_value, std::vector<double> old_weights);
-    void train_real(bool last);
-    double classify_real(const std::vector<WeakDiscreteTree> &classifier);
 protected:
 
     int getFeatResponse(const integral_channels_t &integralImage, const Feature &feat);
@@ -104,9 +91,6 @@ protected:
 };
 void calcMinMaxFeatureResponses(TrainingData::shared_ptr trainData, MinOrMaxFeaturesResponsesSharedPointer minvs,
                                                                  MinOrMaxFeaturesResponsesSharedPointer maxvs);
-
-size_t filterFeatures(const Features & featuresConfigurations, std::vector<bool> &validFeatures,const TrainingData::point_t& modelWindow, size_t maxFeatures =0);
-
 
 } // end of namespace boosted_learning
 

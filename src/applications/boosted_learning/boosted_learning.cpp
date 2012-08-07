@@ -251,116 +251,6 @@ void getImageFileNames(
 } // end of getImageFileNames
 
 
-int detect(int verbose)
-{
-    throw std::runtime_error("Detect task is not implemented. "
-                             "You can use doppia objects_detection application instead");
-
-    return 0;
-}
-
-std::string getSoftCascadeFileName(std::string outputModelFileName = std::string())
-{
-    if (outputModelFileName.empty()){
-        using namespace boost::posix_time;
-        const ptime current_time(second_clock::local_time());
-
-        boost::filesystem::path outputModelPath = Parameters::getParameter<string>("train.outputModelFileName");
-        outputModelFileName =
-                (outputModelPath.parent_path() /
-                 boost::str( boost::format("%i_%02i_%02i_%i_%s")
-                             % current_time.date().year()
-                             % current_time.date().month().as_number()
-                             % current_time.date().day()
-                             % current_time.time_of_day().total_seconds()
-                     #if BOOST_VERSION <= 104400
-                             % outputModelPath.filename()
-                     #else
-                             % outputModelPath.filename().string()
-                     #endif
-                             )).string();
-    }
-    const boost::filesystem::path
-            outputModelPath(outputModelFileName),
-        #if BOOST_VERSION <= 104400
-            softCascadeFilePath =
-            outputModelPath.parent_path() / (outputModelPath.stem() + ".softcascade" + outputModelPath.extension());
-#else
-            softCascadeFilePath =
-            outputModelPath.parent_path() / (outputModelPath.stem().string() + ".softcascade" + outputModelPath.extension().string());
-#endif
-
-
-    return softCascadeFilePath.string();
-}
-
-void toSoftCascade(const int verbose, std::string inputModelFileName = std::string(), std::string softCascadeFileName= std::string())
-{
-    if(inputModelFileName.empty())
-    {
-        // if the input is empty, then we use the best guess
-        inputModelFileName = Parameters::getParameter<string>("train.outputModelFileName");
-    }
-
-    if (softCascadeFileName.empty())
-    {
-        softCascadeFileName = getSoftCascadeFileName();
-    }
-
-    //read files for training
-    const std::string
-            trainSetPath = Parameters::getParameter<std::string>("train.trainSet");
-
-    const int backgroundClassLabel = Parameters::getParameter<int>("backgroundClassLabel");
-
-    ModelIO modelReader;
-    modelReader.readModel(inputModelFileName);
-
-
-    const TrainingData::point_t
-            modelWindowSize = getModelWindowSize(),
-            modelWindowSizeFromModel = modelReader.getModelWindowSize(),
-            trainDataOffset = getTrainingDataOffset();
-    const TrainingData::rectangle_t
-            objectWindow = getObjectWindow(),
-            objectWindowFromModel = modelReader.getObjectWindow();
-
-
-    if(modelWindowSize != modelWindowSizeFromModel)
-    {
-        std::cerr<< " model window size from model: : " << modelWindowSizeFromModel.x() << " " << modelWindowSizeFromModel.y() << std::endl;
-        throw std::invalid_argument("The modelWindowSize specified in the .ini file does not match the model content");
-    }
-
-    if(objectWindow != objectWindowFromModel)
-    {
-        std::cerr<< " object window size from model: " << objectWindowFromModel.min_corner().x() << " " << objectWindowFromModel.min_corner().y() <<
-                    objectWindowFromModel.max_corner().x() << " " << objectWindowFromModel.max_corner().y()<< std::endl;
-        throw std::invalid_argument("The modelWindowSize specified in the .ini file does not match the model content");
-    }
-
-    printf("Starting computing the soft cascade.\n");
-
-    std::vector<std::string> filenamesPositives, filenamesBackground;
-    getImageFileNames(trainSetPath, backgroundClassLabel, filenamesPositives, filenamesBackground);
-
-    LabeledData::shared_ptr labeledTrainData(new LabeledData(verbose, backgroundClassLabel));
-    labeledTrainData->createIntegralImages(filenamesPositives, filenamesBackground,
-                                           modelWindowSize, trainDataOffset.x(), trainDataOffset.y());
-
-
-    // computed all feature configurations available for training.
-    AdaboostLearner::toSoftCascadeDBP(labeledTrainData,
-                                      inputModelFileName, softCascadeFileName,
-                                      modelWindowSize, objectWindow);
-
-    printf("Finished computing the softcascade.\n"
-           "Final soft cascade model saved at %s\n",
-           softCascadeFileName.c_str());
-
-    return;
-}
-
 
 int printModel()
 {
@@ -434,35 +324,6 @@ void test(const int verbose)
     return;
 }
 
-/*
-int bootstrap(int verbose)
-{
-
-    //read files for training
-    const std::string
-            trainSetPath = Parameters::getParameter<std::string>("train.trainSet"),
-            bootStrapLearnerFile = Parameters::getParameter<std::string>("train.bootStrapLearnerFile");
-
-    const int
-            backgroundClassLabel = Parameters::getParameter<int>("backgroundClassLabel");
-
-    TrainingData::point_t modelWindow = getModelWindow();
-    TrainingData::rectangle_t objectWindow = getObjectWindow();
-
-    LabeledData labeledData(verbose, modelWindow, objectWindow, backgroundClassLabel);
-
-    std::vector<std::string> filenames;
-    std::vector<std::string> filenamesBG;
-    labeledData.getImageFileNames(trainSetPath, filenames, filenamesBG);
-    //filenamesBG.clear();
-    //filenamesBG.push_back("/esat/kochab/mmathias/INRIAPerson/train_64x128_H96/neg/00000382a.png");
-
-    int maxNr = 200;
-    labeledData.bootstrap(bootStrapLearnerFile, maxNr, -1, filenamesBG);
-
-    return 0;
-}
-*/
 
 
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
@@ -521,7 +382,7 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
     const std::string
             trainSetPath = Parameters::getParameter<std::string>("train.trainSet"),
             testSetPath = Parameters::getParameter<std::string>("train.testSet");
-    //bootStrapLearnerFile = Parameters::getParameter<std::string>("train.bootStrapLearnerFile");
+
 
     const int
             backgroundClassLabel = Parameters::getParameter<int>("backgroundClassLabel"),
@@ -551,7 +412,7 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
     const TrainingData::point_t
             modelWindowSize = getModelWindowSize(),
             trainDataOffset = getTrainingDataOffset();
-    const int shrinking_factor = bootstrapping::integral_channels_computer_t::get_shrinking_factor();
+
     const TrainingData::rectangle_t objectWindow = getObjectWindow();
 
     std::vector<std::string> filenamesPositives, filenamesBackground;
@@ -561,7 +422,7 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
 
     size_t maxNumExamples = filenamesPositives.size() + trainNumNegativeSamples;
     if(stages.size() > 1)
-    { // thus doBootstrap == true
+    {
         maxNumExamples += numBootstrappingSamples*(stages.size() - 1);
     }
 
@@ -578,59 +439,9 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
     //first basic feature pool
     computeRandomFeaturesConfigurations(modelWindowSize, featuresPoolSize,  *featuresConfigurations);
 
-    bool extendFeaturePool=Parameters::getParameter<bool>("train.extendFeaturePool");
-
-    if (Parameters::getParameter<bool>("train.enableFrankenClassifier")){
-        //check pushup values
-        const string frankenType = Parameters::getParameter<std::string>("train.frankenType");
-        if (frankenType == "up"){
-            //generate model windows
-            for (int k = 1; k< (1+((modelWindowSize.y()/shrinking_factor)/2)); ++k){
-                const TrainingData::point_t this_model_window(
-                            modelWindowSize.x(),
-                            modelWindowSize.y()-(k*shrinking_factor));
-                std::vector<bool> dummy_vector;
-                size_t unused_features = filterFeatures(*featuresConfigurations, dummy_vector, this_model_window);
-                size_t samplesize_new_features = featuresPoolSize - (featuresConfigurations->size()-unused_features);
-
-                if (extendFeaturePool)
-                    computeRandomFeaturesConfigurations(this_model_window, samplesize_new_features, *featuresConfigurations);
-
-
-            }
-        }
-        else if (frankenType =="left")
-        {
-            //generate model windows
-            for (int k = 1; k< (1+((modelWindowSize.x()/shrinking_factor)/2)); ++k){
-                const TrainingData::point_t this_model_window(
-                            modelWindowSize.x()-(k*shrinking_factor),
-                            modelWindowSize.y());
-                std::vector<bool> dummy_vector;
-                size_t unused_features = filterFeatures(*featuresConfigurations, dummy_vector, this_model_window);
-                size_t samplesize_new_features = featuresPoolSize - (featuresConfigurations->size()-unused_features);
-
-                if (extendFeaturePool)
-                    computeRandomFeaturesConfigurations(this_model_window, samplesize_new_features, *featuresConfigurations);
-
-
-
-            }
-
-
-        }
-        else
-        {
-            throw std::runtime_error("train.FrankenType must be eighter \"up\" or \"left\"");
-        }
-
-
-
-
-
-    }
-    std::vector<bool> valid_features(featuresConfigurations->size(),false);
-    fill (valid_features.begin(),valid_features.begin()+featuresPoolSize,true);
+    //all features are valid for this setup
+    std::vector<bool> valid_features(featuresConfigurations->size(),true);
+    //fill (valid_features.begin(),valid_features.begin()+featuresPoolSize,true);
 
 
 
@@ -641,6 +452,7 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
 
     if (!initialBootstrapFileName.empty())
     {
+        //for a weak model it should be avoided to sample all hard negatives from a single image
         const int maxFalsePositivesPerImage = 5;
         trainingData->addBootstrappingSamples(initialBootstrapFileName, filenamesBackground,
                                               modelWindowSize, trainDataOffset,
@@ -719,247 +531,10 @@ void bootstrapTrain(const int verbose, const bool doBootstrap = true)
            baseOuputModelFilename.c_str());
 
 
-    const bool computeSoftcascade = true; // FIXME should be an option
-    if(computeSoftcascade)
-    {
-        toSoftCascade(verbose, baseOuputModelFilename, getSoftCascadeFileName(baseOuputModelFilename));
-    }
-
     return;
 }
 
 
-void bootstrapTrainResume(const int verbose, const bool doBootstrap = true)
-{
-
-    //read files for training
-    const std::string
-            trainSetPath = Parameters::getParameter<std::string>("train.trainSet"),
-            testSetPath = Parameters::getParameter<std::string>("train.testSet");
-    //bootStrapLearnerFile = Parameters::getParameter<std::string>("train.bootStrapLearnerFile");
-
-    const int
-            backgroundClassLabel = Parameters::getParameter<int>("backgroundClassLabel"),
-            numBootstrappingSamples = Parameters::getParameter<int>("bootstrapTrain.numBootstrappingSamples");
-
-    std::vector<int> stages, maxNumSamplesPerImage;
-
-    if(doBootstrap)
-    {
-        stages = Parameters::getParameter<std::vector<int> >("bootstrapTrain.classifiersPerStage");
-        maxNumSamplesPerImage = Parameters::getParameter<std::vector<int> >("bootstrapTrain.maxNumSamplesPerImage");
-    }
-    else
-    {
-        const int numIterations = Parameters::getParameter<int>("train.numIterations");
-        stages.push_back(numIterations);
-        maxNumSamplesPerImage.push_back(-1);
-    }
-
-
-    if (stages.size() != maxNumSamplesPerImage.size())
-    {
-        throw runtime_error("Size miss match between the vectors classifiersperStage and maxNumSamplesPerImage");
-    }
-
-
-    const TrainingData::point_t
-            modelWindowSize = getModelWindowSize(),
-            trainDataOffset = getTrainingDataOffset();
-    const int shrinking_factor = bootstrapping::integral_channels_computer_t::get_shrinking_factor();
-    const TrainingData::rectangle_t objectWindow = getObjectWindow();
-
-    std::vector<std::string> filenamesPositives, filenamesBackground;
-    getImageFileNames(trainSetPath, backgroundClassLabel, filenamesPositives, filenamesBackground);
-
-    const int trainNumNegativeSamples = Parameters::getParameter<int>("train.numNegativeSamples");
-
-    size_t maxNumExamples = filenamesPositives.size() + trainNumNegativeSamples;
-    if(stages.size() > 1)
-    { // thus doBootstrap == true
-        maxNumExamples += numBootstrappingSamples*(stages.size() - 1);
-    }
-
-    const std::string initialBootstrapFileName = Parameters::getParameter<std::string>("train.bootStrapLearnerFile");
-    if (!initialBootstrapFileName.empty())
-    {
-        maxNumExamples += numBootstrappingSamples;
-    }
-
-
-    // computed all feature configurations available for training.
-    const size_t featuresPoolSize = Parameters::getParameter<int>("train.featuresPoolSize");
-    FeaturesSharedPointer featuresConfigurations(new Features());
-    //first basic feature pool
-    computeRandomFeaturesConfigurations(modelWindowSize, featuresPoolSize,  *featuresConfigurations);
-
-    const bool extendFeaturePool=false;
-
-    if (Parameters::getParameter<bool>("train.enableFrankenClassifier")){
-        //check pushup values
-        const string frankenType = Parameters::getParameter<std::string>("train.frankenType");
-        if (frankenType == "up"){
-            //generate model windows
-            for (int k = 1; k< (1+((modelWindowSize.y()/shrinking_factor)/2)); ++k){
-                const TrainingData::point_t this_model_window(
-                            modelWindowSize.x(),
-                            modelWindowSize.y()-(k*shrinking_factor));
-                std::vector<bool> dummy_vector;
-                size_t unused_features = filterFeatures(*featuresConfigurations, dummy_vector, this_model_window);
-                size_t samplesize_new_features = featuresPoolSize - (featuresConfigurations->size()-unused_features);
-
-                if (extendFeaturePool)
-                    computeRandomFeaturesConfigurations(this_model_window, samplesize_new_features, *featuresConfigurations);
-
-
-            }
-        }
-        else if (frankenType =="left")
-        {
-            //generate model windows
-            for (int k = 1; k< (1+((modelWindowSize.x()/shrinking_factor)/2)); ++k){
-                const TrainingData::point_t this_model_window(
-                            modelWindowSize.x()-(k*shrinking_factor),
-                            modelWindowSize.y());
-                std::vector<bool> dummy_vector;
-                size_t unused_features = filterFeatures(*featuresConfigurations, dummy_vector, this_model_window);
-                size_t samplesize_new_features = featuresPoolSize - (featuresConfigurations->size()-unused_features);
-
-                if (extendFeaturePool)
-                    computeRandomFeaturesConfigurations(this_model_window, samplesize_new_features, *featuresConfigurations);
-
-
-
-            }
-
-
-        }
-        else
-        {
-            throw std::runtime_error("train.FrankenType must be eighter \"up\" or \"left\"");
-        }
-
-
-
-
-
-    }
-    std::vector<bool> valid_features(featuresConfigurations->size(),false);
-    fill (valid_features.begin(),valid_features.begin()+featuresPoolSize,true);
-
-
-
-    TrainingData::shared_ptr trainingData(new TrainingData(featuresConfigurations, valid_features, maxNumExamples,
-                                                           modelWindowSize, objectWindow));
-    trainingData->addPositiveSamples(filenamesPositives, modelWindowSize, trainDataOffset);
-    trainingData->addNegativeSamples(filenamesBackground, modelWindowSize, trainDataOffset, trainNumNegativeSamples);
-
-    if (!initialBootstrapFileName.empty())
-    {
-        const int maxFalsePositivesPerImage = 5;
-        trainingData->addBootstrappingSamples(initialBootstrapFileName, filenamesBackground,
-                                              modelWindowSize, trainDataOffset,
-                                              numBootstrappingSamples, maxFalsePositivesPerImage);
-    }
-
-    const bool check_boostrapping = false; // for debugging only
-    if(check_boostrapping)
-    {
-        ModelIO modelReader;
-        modelReader.readModel(initialBootstrapFileName);
-        StrongClassifier classifier = modelReader.read();
-
-        int tp, fp, fn, tn;
-        classifier.classify(*trainingData, tp, fp, fn, tn);
-        std::cout << "Classification Results (TestData): " << std::endl;
-        std::cout << "Detection Rate: " << double(tp + tn) / (tp + tn + fp + fn) * 100 << " %" <<  std::endl;
-        std::cout << "Error Rate: " << double(fp + fn) / (tp + tn + fp + fn) * 100 << " %" <<  std::endl;
-        std::cout << "Error Positives: " <<  double(fn) / (tp + fn) * 100 << " %" <<  std::endl;
-        std::cout << "Error Negatives: " <<  double(fp) / (tn + fp) * 100 << " %" <<  std::endl;
-        std::cout << std::endl;
-        throw std::runtime_error("End of game, just doing a mini-test");
-    }
-
-    AdaboostLearner Learner(verbose, trainingData);
-
-    if (not testSetPath.empty())
-    {
-        // FIXME test data should use TrainingData class instead of the deprecated LabeledData class
-        const TrainingData::point_t testDataOffset = getTestingDataOffset();
-
-        std::vector<std::string> filenamesPositives, filenamesBackground;
-        getImageFileNames(testSetPath, backgroundClassLabel, filenamesPositives, filenamesBackground);
-
-        printf("\nCollecting test data...\n");
-        LabeledData::shared_ptr labeledTestData(new LabeledData(verbose, backgroundClassLabel));
-        //printf("testDataOffsets: %i, %i\n", testDataOffset.x(), testDataOffset.y() );
-        labeledTestData->createIntegralImages(filenamesPositives, filenamesBackground,
-                                              modelWindowSize, testDataOffset.x(), testDataOffset.y());
-        Learner.setTestData(labeledTestData);
-    }
-
-    const std::string baseOuputModelFilename = Learner.getOuputModelFileName();
-
-    for (size_t k = 0; k < stages.size(); ++k)
-    {
-        // bootstrap new negatives
-        if (k != 0)
-        {
-            if (k==1){
-                const std::string bootstrapFile = "/users/visics/mmathias/devel/doppia/src/applications/boosted_learning/22222Seed/2012_04_23_67017_size_full_model_seed22222_Pushup0.05_franken_noSVM_updateBeta.bootstrap0";
-
-
-                // sample new (hard) negatives using bootstrapping
-                trainingData->addBootstrappingSamples(bootstrapFile, filenamesBackground,
-                                                      modelWindowSize, trainDataOffset,
-                                                      numBootstrappingSamples, maxNumSamplesPerImage[k]);
-
-
-            }
-            if (k==2){
-                const std::string bootstrapFile = "/users/visics/mmathias/devel/doppia/src/applications/boosted_learning/22222Seed/2012_04_23_67017_size_full_model_seed22222_Pushup0.05_franken_noSVM_updateBeta.bootstrap1";
-
-
-                // sample new (hard) negatives using bootstrapping
-                trainingData->addBootstrappingSamples(bootstrapFile, filenamesBackground,
-                                                      modelWindowSize, trainDataOffset,
-                                                      numBootstrappingSamples, maxNumSamplesPerImage[k]);
-
-
-            }
-
-        }
-
-        Learner.setNumIterations(stages[k]);
-        Learner.setOutputModelFileName(boost::str(boost::format("%s.bootstrap%i") % baseOuputModelFilename % (k)));
-
-       if (k == stages.size()-1)
-            Learner.train(true);
-        //else
-        //    Learner.train(false);
-    } // end of "for each stage"
-    // evaluate with test data
-
-
-    boost::filesystem::copy_file(Learner.getOuputModelFileName(), baseOuputModelFilename);
-
-    printf("Finished the %zi bootstrapping stages. Model was trained over %zi samples (%zi positives, %zi negatives).\n"
-           "Final model saved at %s\n",
-           stages.size(),
-           trainingData->getNumExamples(),
-           trainingData->getNumPositiveExamples(), trainingData->getNumNegativeExamples(),
-           //Learner.getOuputModelFileName().c_str()
-           baseOuputModelFilename.c_str());
-
-
-    const bool computeSoftcascade = false; // FIXME should be an option
-    if(computeSoftcascade)
-    {
-        toSoftCascade(verbose, baseOuputModelFilename, getSoftCascadeFileName(baseOuputModelFilename));
-    }
-
-    return;
-}
 
 
 void train(const int verbose)
@@ -1010,11 +585,7 @@ void boosted_learning_main(int argc, char *argv[])
 
     std::cout << "Task: " << task << std::endl;
 
-    /*  if (task == "detect")
-    {
-        detect(verboseLevel);
-    }
-    else */if (task == "train")
+    if (task == "train")
     {
         train(verboseLevel);
     }
@@ -1022,21 +593,9 @@ void boosted_learning_main(int argc, char *argv[])
     {
         test(verboseLevel);
     }
-    /*    else if (task == "bootstrap")
-    {
-        bootstrap(verboseLevel);
-    }*/
-    else if (task == "toSoftCascade")
-    {
-        toSoftCascade(verboseLevel);
-    }
     else if (task == "bootstrapTrain")
     {
         bootstrapTrain(verboseLevel);
-    }
-    else if (task == "bootstrapTrainResume")
-    {
-        bootstrapTrainResume(verboseLevel);
     }
     else if (task == "printModel")
     {

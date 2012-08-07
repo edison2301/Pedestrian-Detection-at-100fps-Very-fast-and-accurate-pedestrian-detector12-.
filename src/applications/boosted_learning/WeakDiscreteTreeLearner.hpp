@@ -32,9 +32,7 @@ public:
                             ConstMinOrMaxFeaturesResponsesSharedPointer maxs);
 
     double buildBalancedTree(const weights_t &weights);
-    void setPushBias(double value);
 
-    double buildBalancedTree_real(const weights_t &weights);
 protected:
 
     int findThreshold(
@@ -42,36 +40,20 @@ protected:
             const indices_t& sortedIndices, const size_t featureIndex,
             double &errormin, int &thrmin, int &alphamin, int &splitIndex) const;
 
-    int findThreshold_real(
-            const weights_t &weights,
-            const indices_t& sortedIndices, const size_t featureIndex,
-            double &errormin, int &thrmin, int &alphamin, int &splitIndex) const;
 
 
     int getErrorEstimate(
             const weights_t &weights,
             const indices_t& indices, const size_t featureIndex,
             int binsize , const int minv, const int maxv, double &error) const;
-    int getErrorEstimate_real(
-            const weights_t &weights,
-            const indices_t& indices, const size_t featureIndex,
-            int binsize , const int minv, const int maxv, double &error) const;
 
-    int createNode_slow(
-            const weights_t &weights,
-            const indices_t& indices, const size_t start, const size_t end,
-            TreeNode::shared_ptr &node, double &minerror, const bool isLeft) const;
 
     int createNode(
             const weights_t &weights,
             const indices_t& indices, const size_t start, const size_t end,
             TreeNode::shared_ptr &node, double &minerror,
             const bool isLeft, const int root_node_bottom_height = 0, const int root_node_left_width=0) const;
-    int createNode_real(
-            const weights_t &weights,
-            const indices_t& indices, const size_t start, const size_t end,
-            TreeNode_v2 &node, const int root_node_bottom_height = 0,
-            const int root_node_left_width = 0) const;
+
 
     //double calcError(jhb::MemMappedFile<int>::shared_ptr featureResp, const std::vector<double> & weights);
     //std::vector<int> getSortedIndexVector(jhb::MemMappedFile<int> & data, int start, int size);
@@ -85,9 +67,7 @@ protected:
     ConstMinOrMaxFeaturesResponsesSharedPointer _mins, _maxs;
 
     const std::vector<int> _classes;
-    double _pushUpBias;
-    double _pushLeftBias;
-    double _pushBias;
+
 };
 
 } // end of namespace boosted_learning
