@@ -127,15 +127,12 @@ const TrainingData::shared_ptr AdaboostLearner::getTrainData() const
 {
     return _trainData;
 
-
 }
 
 
 
 void AdaboostLearner::train(bool last)
 {
-
-
     const int decisionTreeDepth = Parameters::getParameter<int>("train.decisionTreeDepth");
 
     ModelIO modelWriter(_verbose);

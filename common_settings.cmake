@@ -83,6 +83,7 @@ if(HOSTED_AT_VISICS GREATER -1)
   set(liblinear_INCLUDE_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
   set(liblinear_LIBRARY_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
 
+ add_definitions("-Dint_p_NULL=((int*)0)")
 
 elseif(${HOSTNAME} STREQUAL  "rodrigob-laptop")
   message(STATUS "Using rodrigob-laptop optimisation options")

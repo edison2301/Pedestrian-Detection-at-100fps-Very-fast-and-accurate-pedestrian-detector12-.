@@ -582,6 +582,6 @@ int WeakDiscreteTreeLearner::findThreshold(
 
     return 0;
 }
-
+}
 
 

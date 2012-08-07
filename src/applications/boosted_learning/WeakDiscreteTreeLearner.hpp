@@ -3,7 +3,7 @@
 
 #include "TrainingData.hpp"
 #include "Feature.hpp"
-#include "MemMappedFile.hpp"
+//#include "MemMappedFile.hpp"
 #include "IntegralChannelsForPedestrians.hpp"
 
 #include "TreeNode.hpp"

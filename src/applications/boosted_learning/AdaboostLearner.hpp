@@ -4,7 +4,6 @@
 
 #include "TrainingData.hpp"
 #include "Feature.hpp"
-#include "MemMappedFile.hpp"
 #include "WeakDiscreteTreeLearner.hpp"
 
 #include "bootstrapping_lib.hpp"
