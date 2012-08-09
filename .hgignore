@@ -92,7 +92,7 @@ src/applications/linear_svm_learning/inria_model*.txt
 opencv.pc
 
 *.proto.data
-*.proto
+#*.proto
 *.proto.bin
 *.bin
 *.data_sequence
