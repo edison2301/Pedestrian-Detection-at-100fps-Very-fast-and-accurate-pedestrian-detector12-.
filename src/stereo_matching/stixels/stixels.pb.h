@@ -24,7 +24,7 @@
 #include <google/protobuf/extension_set.h>
 #include <google/protobuf/generated_message_reflection.h>
 #include "ground_top_and_bottom.pb.h"
-#include "plane3d.pb.h"
+#include "../ground_plane/plane3d.pb.h"
 // @@protoc_insertion_point(includes)
 
 namespace doppia_protobuf {
