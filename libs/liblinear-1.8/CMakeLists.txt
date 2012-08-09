@@ -10,14 +10,14 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-set(biclop_root "../../")
+set(doppia_root "../../")
 
 include(FindPkgConfig)
 project (LibLinear)
 
 # ----------------------------------------------------------------------
 # Site specific configurations
-include(${biclop_root}/common_settings.cmake)
+include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
 set(local_INCLUDE_DIRS 

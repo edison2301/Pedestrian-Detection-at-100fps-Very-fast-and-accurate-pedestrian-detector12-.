@@ -159,8 +159,8 @@ void protobuf_AddDesc_detections_2eproto() {
     "s\022\007\n\003Car\020\002\022\016\n\nPedestrian\020\003\022\010\n\004Bike\020\005\022\r\n\t"
     "Motorbike\020\006\022\007\n\003Bus\020\007\022\010\n\004Tram\020\010\022\020\n\014Static"
     "Object\020\004\022\013\n\007Unknown\020\000\"P\n\nDetections\022\022\n\ni"
-    "mage_name\030\001 \001(\t\022.\n\ndetections\030\002 \003(\0132\032.bi"
-    "clop_protobuf.Detection", 503);
+    "mage_name\030\001 \001(\t\022.\n\ndetections\030\002 \003(\0132\032.do"
+    "ppia_protobuf.Detection", 503);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "detections.proto", &protobuf_RegisterTypes);
   Point2d::default_instance_ = new Point2d();

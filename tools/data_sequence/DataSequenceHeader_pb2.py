@@ -11,7 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='DataSequenceHeader.proto',
   package='doppia_protobuf',
-  serialized_pb='\n\x18\x44\x61taSequenceHeader.proto\x12\x0f\x62iclop_protobuf\"4\n\x15\x44\x61taSequenceAttribute\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"P\n\x12\x44\x61taSequenceHeader\x12:\n\nattributes\x18\x03 \x03(\x0b\x32&.doppia_protobuf.DataSequenceAttribute')
+  serialized_pb='\n\x18\x44\x61taSequenceHeader.proto\x12\x0f\x64oppia_protobuf\"4\n\x15\x44\x61taSequenceAttribute\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"P\n\x12\x44\x61taSequenceHeader\x12:\n\nattributes\x18\x03 \x03(\x0b\x32&.doppia_protobuf.DataSequenceAttribute')
 
 
 

@@ -2,7 +2,7 @@
 // This data format is ment to be used together with the DataSequence<> class
 // for more details see http://code.google.com/p/protobuf and DataSequence.hpp
 
-package biclop_protobuf;
+package doppia_protobuf;
 
 message Point2d
 {

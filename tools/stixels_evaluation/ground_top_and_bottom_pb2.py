@@ -11,7 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='ground_top_and_bottom.proto',
   package='doppia_protobuf',
-  serialized_pb='\n\x1bground_top_and_bottom.proto\x12\x0f\x62iclop_protobuf\"/\n\x0cTopAndBottom\x12\r\n\x05top_y\x18\x01 \x02(\r\x12\x10\n\x08\x62ottom_y\x18\x02 \x02(\r\"K\n\x12GroundTopAndBottom\x12\x35\n\x0etop_and_bottom\x18\x01 \x03(\x0b\x32\x1d.doppia_protobuf.TopAndBottom')
+  serialized_pb='\n\x1bground_top_and_bottom.proto\x12\x0f\x64oppia_protobuf\"/\n\x0cTopAndBottom\x12\r\n\x05top_y\x18\x01 \x02(\r\x12\x10\n\x08\x62ottom_y\x18\x02 \x02(\r\"K\n\x12GroundTopAndBottom\x12\x35\n\x0etop_and_bottom\x18\x01 \x03(\x0b\x32\x1d.doppia_protobuf.TopAndBottom')
 
 
 

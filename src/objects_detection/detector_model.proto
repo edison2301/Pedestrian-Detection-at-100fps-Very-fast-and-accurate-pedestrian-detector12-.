@@ -2,7 +2,7 @@
 // we store in one file multiple kinds of detectors.
 // for more details see http://code.google.com/p/protobuf
 
-package biclop_protobuf;
+package doppia_protobuf;
 
 import "detections.proto"; // will use Point2d and Box
 

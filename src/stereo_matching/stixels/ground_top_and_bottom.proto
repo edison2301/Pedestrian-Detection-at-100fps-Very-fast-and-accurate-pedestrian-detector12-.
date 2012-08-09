@@ -3,7 +3,7 @@
 // This data format is ment to be used together with the stixels.proto file.
 // for more details see http://code.google.com/p/protobuf and stixels.proto
 
-package biclop_protobuf;
+package doppia_protobuf;
 
 message TopAndBottom {
 

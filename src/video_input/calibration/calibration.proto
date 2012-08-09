@@ -1,7 +1,7 @@
 // This file describes the calibration parameters of stereo and monocular cameras
 // see http://code.google.com/p/protobuf/ for more details
 
-package biclop_protobuf;
+package doppia_protobuf;
 
 // all units in SI. Distances are in meters.
 
