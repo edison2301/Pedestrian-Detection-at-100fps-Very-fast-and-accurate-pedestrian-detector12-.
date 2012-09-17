@@ -155,7 +155,7 @@ void read_protobuf_model_impl(const string &filename, boost::shared_ptr<ProtoBuf
     // try parsing in binary format
     if(detector_model_p == false)
     {
-        fstream input_stream(filename.c_str(), ios::in /*| ios::text*/);
+        fstream input_stream(filename.c_str(), ios::in | ios::binary);
         detector_model_p.reset(new ProtoBufferModelType());
         io::ZeroCopyInputStream *zci_stream_p = new io::IstreamInputStream(&input_stream);
         const bool success = detector_model_p->ParseFromZeroCopyStream(zci_stream_p);
@@ -175,7 +175,7 @@ void read_protobuf_model_impl(const string &filename, boost::shared_ptr<ProtoBuf
     // try parsing in Text Format
     if(detector_model_p == false)
     {
-        fstream input_stream(filename.c_str(), ios::in /*| ios::text*/);
+        fstream input_stream(filename.c_str(), ios::in); // text is default stream format
         detector_model_p.reset(new ProtoBufferModelType());
         io::ZeroCopyInputStream *zci_stream_p = new io::IstreamInputStream(&input_stream);
         const bool success = TextFormat::Parse(zci_stream_p, detector_model_p.get());
