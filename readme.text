@@ -57,7 +57,7 @@ Requirements
 
 * Linux (the code can in theory compile and run on windows, but practice has shown this to be a bad idea).
 * C++ and CUDA compilation environments properly set.
-* A GPU with CUDA capability 2.0 or higher (only for objects detection code, stixels code is CPU only).
+* A GPU with CUDA capability 2.0 or higher (only for objects detection code, stixels code is CPU only), and ~200 Mb of free memory (for images of 640x480 pixels).
 * All boost libraries.
 * Google protocol buffer.
 * OpenCv installed (2.4, but code also work with older versions).  
@@ -207,6 +207,8 @@ When using the detector(s) on new datasets the properly setting `objects_detecto
 
 For more details of the content of the trained models please consult `doppia/src/objects_detection/detector_model.proto`, notice that not all the options considered on the files and currently handled.
 
+When gui.disable = false, the user interface will present images such as the one above. 
+The more colorful a window is, the higher the confidence on the detection; inversely, the darker the window the lower the detection score (the closer to objects_detector.score_threshold).
 
 `boosted_learning`
 --------------------
