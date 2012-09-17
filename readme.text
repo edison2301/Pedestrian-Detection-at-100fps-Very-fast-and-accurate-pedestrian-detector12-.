@@ -190,8 +190,11 @@ Protocol buffer files can be read and manipulated by most programming languages.
 You can use scripts such as `doppia/tools/objects_detection/detections_to_caltech.py` to convert the detections into another format of predilection.
 
 Possibly the most relevant option is `objects_detector.method`. We provide CPU and GPU implementations of the following papers:
+
 * P. Dollar et al. 2009 Integral Channel Features
+
 * P. Dollar et al. 2010 Fastest pedestrian detector in the West
+
 * Benenson et al. 2012 Pedestrian detection at 100 frames per second   
 
 please notice that the CPU versions are **not** identical to the GPU versions.
@@ -207,8 +210,8 @@ When using the detector(s) on new datasets the properly setting `objects_detecto
 
 For more details of the content of the trained models please consult `doppia/src/objects_detection/detector_model.proto`, notice that not all the options considered on the files and currently handled.
 
-When gui.disable = false, the user interface will present images such as the one above. 
-The more colorful a window is, the higher the confidence on the detection; inversely, the darker the window the lower the detection score (the closer to objects_detector.score_threshold).
+When `gui.disable = false`, the user interface will present images such as the one above. 
+The more colorful a window is, the higher the confidence on the detection; inversely, the darker the window the lower the detection score (the closer to `objects_detector.score_threshold`).
 
 `boosted_learning`
 --------------------
