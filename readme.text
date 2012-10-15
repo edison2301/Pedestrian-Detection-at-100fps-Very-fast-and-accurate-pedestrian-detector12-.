@@ -56,7 +56,7 @@ Requirements
 ============
 
 * Linux (the code can in theory compile and run on windows, but practice has shown this to be a bad idea).
-* C++ and CUDA compilation environments properly set.
+* C++ and CUDA compilation environments properly set. Only gcc 4.5 or superior [are supported](https://bitbucket.org/rodrigob/doppia/issue/2/stixel_world-building-fix-of-building#comment-1842139).
 * A GPU with CUDA capability 2.0 or higher (only for objects detection code, stixels code is CPU only), and ~200 Mb of free memory (for images of 640x480 pixels).
 * All boost libraries.
 * Google protocol buffer.
