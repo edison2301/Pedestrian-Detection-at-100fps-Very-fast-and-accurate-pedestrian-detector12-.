@@ -14,7 +14,7 @@
 
 #include "helpers/get_option_value.hpp"
 #include "helpers/Log.hpp"
-#include "helpers/replace_europa_home_prefix.hpp"
+#include "helpers/replace_environment_variables.hpp"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/program_options.hpp>
@@ -174,8 +174,7 @@ void init_stixel_world(const boost::program_options::variables_map input_options
     boost::filesystem::path calibration_filename =
             get_option_value<std::string>(input_options, "video_input.calibration_filename");
 
-    // EUROPA specific mini-hack
-    replace_europa_home_prefix(calibration_filename);
+    calibration_filename = replace_environment_variables(calibration_filename);
 
     stereo_calibration_p.reset(new StereoCameraCalibration(calibration_filename.string()));
 

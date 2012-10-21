@@ -135,7 +135,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/Log.cpp"
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
-  "${doppia_src}/helpers/replace_europa_home_prefix.cpp"
+  "${doppia_src}/helpers/replace_environment_variables.cpp"
 
 )
 

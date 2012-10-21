@@ -14,6 +14,7 @@
 #include "stereo_matching/stixels/FastStixelsEstimator.hpp"
 #include "stereo_matching/stixels/StixelsEstimatorWithHeightEstimation.hpp"
 #include "stereo_matching/stixels/FastStixelsEstimatorWithHeightEstimation.hpp"
+#include "stereo_matching/stixels/ImagePlaneStixelsEstimator.hpp"
 
 #include "drawing/gil/colors.hpp"
 
@@ -445,8 +446,26 @@ void StixelWorldLibGui::draw_stixels_estimation()
     }
     else if(the_fast_stixel_world_estimator_p != NULL)
     {
-        doppia::draw_stixels_estimation(*(the_fast_stixel_world_estimator_p->stixels_estimator_p),
-                                        input_left_view, screen_left_view, screen_right_view);
+        const FastStixelsEstimator *fast_estimator_p = \
+                dynamic_cast<FastStixelsEstimator *>(the_fast_stixel_world_estimator_p->stixels_estimator_p.get());
+
+        const ImagePlaneStixelsEstimator *uv_estimator_p = \
+                dynamic_cast<ImagePlaneStixelsEstimator *>(the_fast_stixel_world_estimator_p->stixels_estimator_p.get());
+
+        if(fast_estimator_p)
+        {
+            doppia::draw_stixels_estimation(*fast_estimator_p,
+                                            input_left_view, screen_left_view, screen_right_view);
+        }
+        else if(uv_estimator_p)
+        {
+            doppia::draw_stixels_estimation(*uv_estimator_p,
+                                            input_left_view, screen_left_view, screen_right_view);
+        }
+        else
+        {
+            // simply freeze the screen
+        }
     }
     else
     { // the_stixel_world_estimator_p == NULL
