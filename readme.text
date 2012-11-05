@@ -284,4 +284,28 @@ OpenCv 2.4.2 defined `cv::gpu::CudaMem` but by default does not install the corr
 Copy `/OpenCV-2.4.2/modules/gpu/include/opencv2/gpu/gpu.hpp` into `your_system_include/opencv2/gpu/gpu.hpp` and things will go better.
 
 
+What is this nvcc-4.4.sh file? Where do I find it?
+--------------------------------------------------
+
+`nvcc.sh` is just a small work around we use to make cuda work when you
+have "too new" gcc installed.
+
+Its content is
+   #!/bin/bash
+   /usr/local/cuda/bin/nvcc --compiler-bindir /home/rodrigob/code/references/cuda/gcc-4.4 $@
+
+and the gcc-4.4 folder contains
+   $ ls -lh /home/rodrigob/code/references/cuda/gcc-4.4
+   total 4.0K
+   lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 g++ -> /usr/bin/g++-4.4
+   lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 gcc -> /usr/bin/gcc-4.4
+   -rwxr-xr-x 1 rodrigob rodrigob 102 2011-11-17 19:26 nvcc-4.4.sh
+
+using this, `nvcc` knows it should use gcc-4.4 to compile (instead of the
+system default, more up to date gcc, with which cuda 4 is not compatible). 
+I think cuda 5 fixes this issue (but not sure).
+
+
+
+
 
