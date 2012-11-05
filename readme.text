@@ -273,7 +273,7 @@ Before filling a bug report make sure you have tested the latest version of the 
 
 When running `cmake . && make` to compile `boosted_learning` you may encounter the following error
 
-   error: identifier "atomicAdd" is undefined
+    error: identifier "atomicAdd" is undefined
 
 then run `cmake . && make` again (sorry could not figure out the proper cmake fix, so I used this "run it twice" workaround).
 
@@ -293,16 +293,16 @@ have "too new" gcc installed.
 
 Its content is
 
-   #!/bin/bash
-   /usr/local/cuda/bin/nvcc --compiler-bindir /home/rodrigob/code/references/cuda/gcc-4.4 $@
+    #!/bin/bash
+    /usr/local/cuda/bin/nvcc --compiler-bindir /home/rodrigob/code/references/cuda/gcc-4.4 $@
 
 and the gcc-4.4 folder contains
 
-   $ ls -lh /home/rodrigob/code/references/cuda/gcc-4.4
-   total 4.0K
-   lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 g++ -> /usr/bin/g++-4.4
-   lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 gcc -> /usr/bin/gcc-4.4
-   -rwxr-xr-x 1 rodrigob rodrigob 102 2011-11-17 19:26 nvcc-4.4.sh
+    $ ls -lh /home/rodrigob/code/references/cuda/gcc-4.4
+    total 4.0K
+    lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 g++ -> /usr/bin/g++-4.4
+    lrwxrwxrwx 1 rodrigob rodrigob  16 2011-08-11 15:42 gcc -> /usr/bin/gcc-4.4
+    -rwxr-xr-x 1 rodrigob rodrigob 102 2011-11-17 19:26 nvcc-4.4.sh
 
 using this, `nvcc` knows it should use gcc-4.4 to compile (instead of the
 system default, more up to date gcc, with which cuda 4 is not compatible). 
