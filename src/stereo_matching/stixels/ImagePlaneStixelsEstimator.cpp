@@ -438,7 +438,7 @@ void ImagePlaneStixelsEstimator::set_fix_stixels_bottom_candidates()
         {
             const size_t max_row_at_current_step = horizon_row + static_cast<size_t>(row_step_index*row_step_size);
 
-            assert(max_dy_row < input_left_view.height());
+            assert(max_row_at_current_step < input_left_view.height());
             row_given_stixel_and_row_step[stixel_index][row_step_index] = max_row_at_current_step;
             disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity_given_v[max_row_at_current_step];
         } // end of "for each row step"
