@@ -131,6 +131,56 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
   set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
   set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
 
+elseif(${HOSTNAME} STREQUAL  "lap-12-31")
+  message(STATUS "Using lap-12-31 optimisation options")
+
+  set(CMAKE_CXX_COMPILER "/usr/bin/g++-4.7")
+  set(CMAKE_C_COMPILER "/usr/bin/g++-4.7")
+  # since gcc 4.6 -Ofast is faster than -O3
+  set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+
+  set(CUDA_PROPAGATE_HOST_FLAGS "OFF") # since nvcc does not handle -Ofast
+  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -DNDEBUG")
+  set(CUDA_NVCC_FLAGS_RELWITHDEBINFO "-O3 -DNDEBUG")
+
+  # add local compiled opencv trunk in the pkg-config paths
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
+  #set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
+
+  set(opencv_INCLUDE_DIRS "/usr/local/include/opencv2")
+  set(opencv_LIBRARY_DIRS "/usr/local/lib")
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+
+  # work around to use gcc-4.4 instead of 4.5
+  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_30)
+
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/local/cuda/lib64")
+  set(cuda_LIBS "")
+  #set(cutil_LIB "cutil")
+  set(cutil_LIB "") # no cutil
+
+  # faster malloc, and a good profiler via http://google-perftools.googlecode.com
+  set(google_perftools_LIBS tcmalloc profiler)
+  set(EUROPA_SVN "/home/rodrigob/code/europa_svn/code")
+
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+
+  include_directories(
+   # "/home/rodrigob/code/references/libwebp-0.3.0-linux-x86-64/include"
+  )
+
+  link_directories(
+   # "/home/rodrigob/code/references/libwebp-0.3.0-linux-x86-64/lib"
+  )
+
 else ()
   message(FATAL_ERROR, "Unknown machine, please add your configuration inside biclop/common_settings.cmake")
   

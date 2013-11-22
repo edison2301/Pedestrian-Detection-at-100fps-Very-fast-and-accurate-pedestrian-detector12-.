@@ -56,6 +56,7 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
+__device__
 DecisionStumpWithWeights::DecisionStumpWithWeights()
 {
     // default constructor does nothing
@@ -113,6 +114,7 @@ public:
 
 /// defined in the header to make CUDA happy
 inline
+__device__
 SoftCascadeOverIntegralChannelsFastStage::SoftCascadeOverIntegralChannelsFastStage()
 {
     // default constructor does nothing

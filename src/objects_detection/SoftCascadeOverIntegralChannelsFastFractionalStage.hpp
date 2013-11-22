@@ -35,6 +35,7 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
+__device__
 IntegralChannelsFractionalFeature::IntegralChannelsFractionalFeature()
 {
     // nothing to do here
@@ -82,6 +83,7 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
+__device__
 FractionalDecisionStumpWithWeights::FractionalDecisionStumpWithWeights()
 {
     // default constructor does nothing
@@ -128,6 +130,7 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
+__device__
 SoftCascadeOverIntegralChannelsFastFractionalStage::SoftCascadeOverIntegralChannelsFastFractionalStage()
 {
     // default constructor does nothing

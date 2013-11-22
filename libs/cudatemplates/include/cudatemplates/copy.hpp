@@ -66,27 +66,32 @@ typedef enum {
 template<class Type1, class Type2, unsigned Dim>
 static void
 check_bounds(const Layout<Type1, Dim> &dst, const Layout<Type2, Dim> &src,
-	     const Size<Dim> &dst_ofs, const Size<Dim> &src_ofs, const Size<Dim> &size)
+             const Size<Dim> &dst_ofs, const Size<Dim> &src_ofs, const Size<Dim> &size)
 {
-  for(size_t i = Dim; i--;) {
-    if((dst_ofs[i] >= dst.size[i]) ||
-       (dst_ofs[i] + size[i] > dst.size[i]) ||
-       (src_ofs[i] >= src.size[i]) ||
-       (src_ofs[i] + size[i] > src.size[i]))
-      {
-	CUDA_ERROR("out of bounds:");
-	printf(" dimension: %lu"
-	       " copy size: %lu\n"
-	       "  src size: %lu\n"
-	       "  src offs: %lu\n"
-	       "  dst size: %lu\n"
-	       "  dst offs: %lu\n",
-	       i,
-	       size[i],
-	       src.size[i], src_ofs[i],
-	       dst.size[i], dst_ofs[i]);
-      }
-  }
+    for(size_t i = Dim; i--;) {
+        if((dst_ofs[i] >= dst.size[i]) ||
+                (dst_ofs[i] + size[i] > dst.size[i]) ||
+                (src_ofs[i] >= src.size[i]) ||
+                (src_ofs[i] + size[i] > src.size[i]))
+        {
+            if(false)
+            {
+                printf(" dimension: %lu"
+                       " copy size: %lu\n"
+                       "  src size: %lu\n"
+                       "  src offs: %lu\n"
+                       "  dst size: %lu\n"
+                       "  dst offs: %lu\n",
+                       i,
+                       size[i],
+                       src.size[i], src_ofs[i],
+                       dst.size[i], dst_ofs[i]);
+            }
+            CUDA_ERROR("out of bounds:");
+        }
+    }
+
+    return;
 }
 
 /**

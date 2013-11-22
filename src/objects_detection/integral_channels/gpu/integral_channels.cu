@@ -64,6 +64,33 @@ dim3 get_block_dimensions(const int width, const int height)
     return block_dimensions;
 }
 
+
+/// This is a dangerous class that will not free the allocated GPU memory
+/// Should only be used for global variables.
+/// For global variables CUDA will free the global data before the object destructor is called.
+/// When calling the destructor over already free data, an "unload of CUDA runtime failed" error is generated.
+/// Using DeviceMemoryLinear1DNoFree avoid having this double allocation. Use with extreme care.
+template <class Type>
+class DeviceMemoryLinear1DNoFree: public Cuda::DeviceMemoryLinear1D<Type>
+{
+public:
+
+    // Default constructor
+    inline DeviceMemoryLinear1DNoFree()
+    {
+
+    }
+
+    inline ~DeviceMemoryLinear1DNoFree()
+    {
+        // by setting the buffer to NULL, this disable any deallocation
+        this->buffer = NULL;
+        return;
+    }
+
+};
+
+
 } // end of anonymous namespace
 
 namespace doppia {
@@ -81,7 +108,7 @@ const int num_angles_bin = 6;
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 /// GPU version of AngleBinComputer
 /// @see AngleBinComputer
-typedef Cuda::DeviceMemoryLinear1D<float2> angle_bins_vectors_t;
+typedef DeviceMemoryLinear1DNoFree<float2> angle_bins_vectors_t;
 angle_bins_vectors_t angle_bins_vectors;
 __constant__ float2 const_angle_bins_vectors[num_angles_bin];
 
@@ -382,8 +409,12 @@ float fast_cube_root(const float d)
 
 //const size_t cube_root_table_size = 512;
 const size_t cube_root_table_size = 2048;
-typedef Cuda::DeviceMemoryLinear1D<float> cube_root_table_t;
+
+//typedef Cuda::DeviceMemoryLinear1D<float> cube_root_table_t;
+typedef DeviceMemoryLinear1DNoFree<float>  cube_root_table_t;
 cube_root_table_t cube_root_table;
+bool cube_root_table_is_initialized = false;
+
 
 typedef cube_root_table_t::Texture cube_root_table_texture_t;
 cube_root_table_texture_t cube_root_table_texture;
@@ -511,29 +542,35 @@ void compute_luv_channels_kernel(
 
 void lazy_init_cube_root_table()
 {
-    if(cube_root_table.getBuffer() != NULL)
+
+    if(cube_root_table_is_initialized)
     {
         // already initialized
         return;
     }
     else
     { // first call
+
         cube_root_table.alloc(cube_root_table_size);
+
         Cuda::HostMemoryHeap1D<float> lookup_table(cube_root_table_size);
         const int max_i = cube_root_table_size - 1;
         for(int i=0; i < static_cast<int>(cube_root_table_size); i+=1)
         {
-            const float x = static_cast<float>(i)/max_i;
-            lookup_table[i] = pow(x, 1.0f/3.0f);
+            const float x = static_cast<float>(i) / max_i;
+            lookup_table[i] = pow(x, 1.0f / 3.0f);
         }
 
         Cuda::Symbol<float, 1> const_cube_root_table_symbol(Cuda::Size<1>(cube_root_table_size), const_cube_root_table);
         Cuda::copy(cube_root_table, lookup_table);
         Cuda::copy(const_cube_root_table_symbol, lookup_table);
+
+        cube_root_table_is_initialized = true;
     }
 
     return;
 }
+
 
 void compute_luv_channels(const cv::gpu::DevMem2D& input_rgb_image, gpu_channels_t &feature_channels)
 {
