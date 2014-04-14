@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2008-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -15,10 +20,9 @@
 #include <boost/mpl/assert.hpp>
 #include <boost/mpl/equal_to.hpp>
 #include <boost/static_assert.hpp>
-#include <boost/type_traits/remove_const.hpp>
 
-#include <boost/geometry/core/coordinate_dimension.hpp>
 #include <boost/geometry/core/point_type.hpp>
+#include <boost/geometry/util/bare_type.hpp>
 
 namespace boost { namespace geometry
 {
@@ -54,59 +58,62 @@ template <typename T, typename G>
 struct dimension : dimension<point_tag, typename point_type<T, G>::type> {};
 
 template <typename P>
-struct dimension<point_tag, P> : traits::dimension<P> {};
+struct dimension<point_tag, P> : traits::dimension<typename geometry::util::bare_type<P>::type> {};
 
 } // namespace core_dispatch
 #endif
 
 /*!
-    \brief Meta-function which defines coordinate dimensions, i.e. the number of axes of any geometry
-    \ingroup core
+\brief \brief_meta{value, number of coordinates (the number of axes of any geometry), \meta_point_type}
+\tparam Geometry \tparam_geometry
+\ingroup core
+
+\qbk{[include reference/core/coordinate_dimension.qbk]}
 */
-template <typename G>
+template <typename Geometry>
 struct dimension
     : core_dispatch::dimension
         <
-            typename tag<G>::type,
-            typename boost::remove_const<G>::type
+            typename tag<Geometry>::type,
+			typename geometry::util::bare_type<Geometry>::type
         >
 {};
 
 /*!
-    \brief assert_dimension, enables compile-time checking if coordinate dimensions are as expected
-    \ingroup utility
+\brief assert_dimension, enables compile-time checking if coordinate dimensions are as expected
+\ingroup utility
 */
-template <typename G, int D>
+template <typename Geometry, int Dimensions>
 inline void assert_dimension()
 {
     BOOST_STATIC_ASSERT((
         boost::mpl::equal_to
         <
-            geometry::dimension<G>,
-            boost::mpl::int_<D>
+            geometry::dimension<Geometry>,
+            boost::mpl::int_<Dimensions>
         >::type::value
         ));
 }
 
 /*!
-    \brief assert_dimension, enables compile-time checking if coordinate dimensions are as expected
-    \ingroup utility
+\brief assert_dimension, enables compile-time checking if coordinate dimensions are as expected
+\ingroup utility
 */
-template <typename G, int D>
+template <typename Geometry, int Dimensions>
 inline void assert_dimension_less_equal()
 {
-    BOOST_STATIC_ASSERT(( dimension<G>::type::value <= D ));
+    BOOST_STATIC_ASSERT(( dimension<Geometry>::type::value <= Dimensions ));
 }
 
-template <typename G, int D>
+template <typename Geometry, int Dimensions>
 inline void assert_dimension_greater_equal()
 {
-    BOOST_STATIC_ASSERT(( dimension<G>::type::value >= D ));
+    BOOST_STATIC_ASSERT(( dimension<Geometry>::type::value >= Dimensions ));
 }
 
 /*!
-    \brief assert_dimension_equal, enables compile-time checking if coordinate dimensions of two geometries are equal
-    \ingroup utility
+\brief assert_dimension_equal, enables compile-time checking if coordinate dimensions of two geometries are equal
+\ingroup utility
 */
 template <typename G1, typename G2>
 inline void assert_dimension_equal()

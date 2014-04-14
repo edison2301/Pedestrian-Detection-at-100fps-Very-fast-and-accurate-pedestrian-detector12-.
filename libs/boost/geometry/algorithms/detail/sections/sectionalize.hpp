@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -53,7 +58,6 @@ struct section
 {
     typedef Box box_type;
 
-    // unique ID used in get_turns to mark section-pairs already handled.
     int id; // might be obsolete now, BSG 14-03-2011 TODO decide about this
 
     int directions[DimensionCount];
@@ -185,11 +189,12 @@ struct check_duplicate_loop
 
     static inline bool apply(Segment const& seg)
     {
-        coordinate_type const diff =
-            geometry::get<1, Dimension>(seg) - geometry::get<0, Dimension>(seg);
-
-        coordinate_type const zero = 0;
-        if (! geometry::math::equals(diff, zero))
+        if (! geometry::math::equals
+                (
+                    geometry::get<0, Dimension>(seg), 
+                    geometry::get<1, Dimension>(seg)
+                )
+            )
         {
             return false;
         }
@@ -249,7 +254,7 @@ struct sectionalize_part
                 Range const& range,
                 ring_identifier ring_id)
     {
-        if (boost::size(range) <= index)
+        if (int(boost::size(range)) <= index)
         {
             return;
         }
@@ -457,8 +462,10 @@ struct sectionalize_box
         // (or polygon would be a helper-type).
         // Therefore we mimic a linestring/std::vector of 5 points
 
+        // TODO: might be replaced by assign_box_corners_oriented 
+        // or just "convert"
         point_type ll, lr, ul, ur;
-        assign_box_corners(box, ll, lr, ul, ur);
+        geometry::detail::assign_box_corners(box, ll, lr, ul, ur);
 
         std::vector<point_type> points;
         points.push_back(ll);
@@ -614,8 +621,9 @@ inline void sectionalize(Geometry const& geometry, Sections& sections, int sourc
 {
     concept::check<Geometry const>();
 
+    // TODO: review use of this constant (see below) as causing problems with GCC 4.6 --mloskot
     // A maximum of 10 segments per section seems to give the fastest results
-    static std::size_t const max_segments_per_section = 10;
+    //static std::size_t const max_segments_per_section = 10;
     typedef dispatch::sectionalize
         <
             typename tag<Geometry>::type,
@@ -623,7 +631,7 @@ inline void sectionalize(Geometry const& geometry, Sections& sections, int sourc
             Reverse,
             Sections,
             Sections::value,
-            max_segments_per_section
+            10 // TODO: max_segments_per_section
         > sectionalizer_type;
 
     sections.clear();

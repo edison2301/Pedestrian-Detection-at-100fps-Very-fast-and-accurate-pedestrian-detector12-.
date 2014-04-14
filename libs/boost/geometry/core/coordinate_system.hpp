@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2008-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -11,8 +16,9 @@
 
 
 #include <boost/mpl/assert.hpp>
-#include <boost/type_traits/remove_const.hpp>
+
 #include <boost/geometry/core/point_type.hpp>
+#include <boost/geometry/util/bare_type.hpp>
 
 
 namespace boost { namespace geometry
@@ -56,10 +62,13 @@ namespace core_dispatch
     };
 
 
-    template <typename P>
-    struct coordinate_system<point_tag, P>
+    template <typename Point>
+    struct coordinate_system<point_tag, Point>
     {
-        typedef typename traits::coordinate_system<P>::type type;
+        typedef typename traits::coordinate_system
+			<
+			    typename geometry::util::bare_type<Point>::type
+			>::type type;
     };
 
 
@@ -68,17 +77,19 @@ namespace core_dispatch
 
 
 /*!
-    \brief Meta-function which defines coordinate system for any geometry
-    \ingroup core
+\brief \brief_meta{type, coordinate system (cartesian\, spherical\, etc), \meta_point_type}
+\tparam Geometry \tparam_geometry
+\ingroup core
+
+\qbk{[include reference/core/coordinate_system.qbk]}
 */
-template <typename G>
+template <typename Geometry>
 struct coordinate_system
 {
-    typedef typename boost::remove_const<G>::type ncg;
     typedef typename core_dispatch::coordinate_system
         <
-            typename tag<G>::type,
-            ncg
+            typename tag<Geometry>::type,
+			typename geometry::util::bare_type<Geometry>::type
         >::type type;
 };
 

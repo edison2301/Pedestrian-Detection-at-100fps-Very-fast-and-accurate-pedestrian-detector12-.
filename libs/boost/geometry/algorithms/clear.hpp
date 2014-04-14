@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -74,7 +79,11 @@ struct no_action
 namespace dispatch
 {
 
-template <typename Tag, typename Geometry>
+template
+<
+    typename Geometry,
+    typename Tag = typename tag_cast<typename tag<Geometry>::type, multi_tag>::type
+>
 struct clear
 {
     BOOST_MPL_ASSERT_MSG
@@ -86,34 +95,34 @@ struct clear
 
 // Point/box/segment do not have clear. So specialize to do nothing.
 template <typename Geometry>
-struct clear<point_tag, Geometry>
+struct clear<Geometry, point_tag>
     : detail::clear::no_action<Geometry>
 {};
 
 template <typename Geometry>
-struct clear<box_tag, Geometry>
+struct clear<Geometry, box_tag>
     : detail::clear::no_action<Geometry>
 {};
 
 template <typename Geometry>
-struct clear<segment_tag, Geometry>
+struct clear<Geometry, segment_tag>
     : detail::clear::no_action<Geometry>
 {};
 
 template <typename Geometry>
-struct clear<linestring_tag, Geometry>
+struct clear<Geometry, linestring_tag>
     : detail::clear::collection_clear<Geometry>
 {};
 
 template <typename Geometry>
-struct clear<ring_tag, Geometry>
+struct clear<Geometry, ring_tag>
     : detail::clear::collection_clear<Geometry>
 {};
 
 
 // Polygon can (indirectly) use std for clear
 template <typename Polygon>
-struct clear<polygon_tag, Polygon>
+struct clear<Polygon, polygon_tag>
     : detail::clear::polygon_clear<Polygon>
 {};
 
@@ -123,21 +132,24 @@ struct clear<polygon_tag, Polygon>
 
 
 /*!
-\brief Clears a linestring, linear ring or polygon (exterior+interiors) or multi*
-\details Generic function to clear a geometry
+\brief Clears a linestring, ring or polygon (exterior+interiors) or multi*
+\details Generic function to clear a geometry. All points will be removed from the collection or collections
+    making up the geometry. In most cases this is equivalent to the .clear() method of a std::vector<...>. In
+    the case of a polygon, this clear functionality is automatically called for the exterior ring, and for the
+    interior ring collection. In the case of a point, boxes and segments, nothing will happen.
 \ingroup clear
+\tparam Geometry \tparam_geometry
+\param geometry \param_geometry which will be cleared
 \note points and boxes cannot be cleared, instead they can be set to zero by "assign_zero"
+
+\qbk{[include reference/algorithms/clear.qbk]}
 */
 template <typename Geometry>
 inline void clear(Geometry& geometry)
 {
     concept::check<Geometry>();
 
-    dispatch::clear
-        <
-            typename tag_cast<typename tag<Geometry>::type, multi_tag>::type,
-            Geometry
-        >::apply(geometry);
+    dispatch::clear<Geometry>::apply(geometry);
 }
 
 

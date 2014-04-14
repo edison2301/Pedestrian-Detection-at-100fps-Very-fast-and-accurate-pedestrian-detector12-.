@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -109,7 +114,7 @@ struct interior_type<polygon_tag, Polygon>
     typedef typename boost::remove_reference
         <
             typename interior_return_type<polygon_tag, Polygon>::type
-        > type;
+        >::type type;
 };
 
 
@@ -118,13 +123,16 @@ struct interior_type<polygon_tag, Polygon>
 
 
 /*!
-    \brief Meta-function defining container type
-        of inner rings of (multi)polygon geometriy
-    \details the interior rings should be organized as a container
-        (std::vector, std::deque, boost::array) with
-        boost range support. This meta function defines the type
-            of that container.
-    \ingroup core
+\brief \brief_meta{type, interior_type (container type
+    of inner rings), \meta_geometry_type}
+\details Interior rings should be organized as a container
+    (std::vector, std::deque, boost::array) with
+    Boost.Range support. This metafunction defines the type
+    of the container.
+\tparam Geometry A type fullfilling the Polygon or MultiPolygon concept.
+\ingroup core
+
+\qbk{[include reference/core/interior_type.qbk]}
 */
 template <typename Geometry>
 struct interior_type

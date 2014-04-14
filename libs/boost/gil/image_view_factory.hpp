@@ -494,7 +494,7 @@ namespace detail {
         template <typename P> kth_channel_deref_fn(const kth_channel_deref_fn<K,P>&) {}
 
         result_type operator()(argument_type srcP) const { 
-            return result_type(gil::at_c<K>(srcP)); 
+            return result_type(gil::at_c<K>(srcP));
         }
     };
 

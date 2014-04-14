@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -17,6 +22,7 @@
 #include <boost/geometry/core/ring_type.hpp>
 #include <boost/geometry/core/tag.hpp>
 #include <boost/geometry/core/tags.hpp>
+#include <boost/geometry/util/bare_type.hpp>
 
 namespace boost { namespace geometry
 {
@@ -69,7 +75,7 @@ struct point_type<point_tag, Point>
 };
 
 
-// Specializations for linestring/linear ring, via boost::range
+// Specializations for linestring/ring, via boost::range
 template <typename Linestring>
 struct point_type<linestring_tag, Linestring>
 {
@@ -101,17 +107,19 @@ struct point_type<polygon_tag, Polygon>
 
 
 /*!
-    \brief Meta-function which defines point type of any geometry
-    \ingroup core
+\brief \brief_meta{type, point_type, \meta_geometry_type}
+\tparam Geometry \tparam_geometry 
+\ingroup core
+
+\qbk{[include reference/core/point_type.qbk]}
 */
 template <typename Geometry>
 struct point_type
 {
-    typedef typename boost::remove_const<Geometry>::type ncg;
     typedef typename core_dispatch::point_type
         <
             typename tag<Geometry>::type,
-            ncg
+            typename boost::geometry::util::bare_type<Geometry>::type
         >::type type;
 };
 

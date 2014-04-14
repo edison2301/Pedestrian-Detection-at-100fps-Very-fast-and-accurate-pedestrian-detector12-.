@@ -155,15 +155,15 @@ public:
     homogeneous_color_base(Element v0, Element v1, Element v2) : _v0(v0), _v1(v1), _v2(v2) {}
 
     template <typename E2, typename L2> homogeneous_color_base(const homogeneous_color_base<E2,L2,3>& c) : 
-        _v0(boost::gil::at_c<mapping_transform<Layout,L2,0>::value>(c)), 
-        _v1(boost::gil::at_c<mapping_transform<Layout,L2,1>::value>(c)), 
-        _v2(boost::gil::at_c<mapping_transform<Layout,L2,2>::value>(c)) {}
+        _v0(gil::at_c<mapping_transform<Layout,L2,0>::value>(c)), 
+        _v1(gil::at_c<mapping_transform<Layout,L2,1>::value>(c)), 
+        _v2(gil::at_c<mapping_transform<Layout,L2,2>::value>(c)) {}
 
     // Support for l-value reference proxy copy construction
     template <typename E2, typename L2> homogeneous_color_base(      homogeneous_color_base<E2,L2,3>& c) : 
-        _v0(at_c<mapping_transform<Layout,L2,0>::value>(c)), 
-        _v1(at_c<mapping_transform<Layout,L2,1>::value>(c)), 
-        _v2(at_c<mapping_transform<Layout,L2,2>::value>(c)) {}
+        _v0(gil::at_c<mapping_transform<Layout,L2,0>::value>(c)), 
+        _v1(gil::at_c<mapping_transform<Layout,L2,1>::value>(c)), 
+        _v2(gil::at_c<mapping_transform<Layout,L2,2>::value>(c)) {}
 
     // Support for planar_pixel_iterator construction and dereferencing
     template <typename P> homogeneous_color_base(P* p,bool) : 
@@ -182,7 +182,7 @@ public:
           _v2(*memunit_advanced(semantic_at_c<2>(ptr),diff)) {}
 
     // Support for planar_pixel_reference operator[]
-	Element at_c_dynamic(std::size_t i) const {
+    Element at_c_dynamic(std::size_t i) const {
         switch (i) {
             case 0: return _v0;
             case 1: return _v1;
@@ -383,13 +383,13 @@ struct kth_element_const_reference_type<detail::homogeneous_color_base<Element,L
 /// \ingroup ColorBaseModelHomogeneous
 template <int K, typename E, typename L, int N> inline
 typename add_reference<E>::type
-at_c(      detail::homogeneous_color_base<E,L,N>& p) { return p.at(boost::mpl::int_<K>()); }
+at_c(      detail::homogeneous_color_base<E,L,N>& p) { return p.at(mpl::int_<K>()); }
 
 /// \brief Provides constant access to the K-th element, in physical order
 /// \ingroup ColorBaseModelHomogeneous
 template <int K, typename E, typename L, int N> inline
 typename add_reference<typename add_const<E>::type>::type
-at_c(const detail::homogeneous_color_base<E,L,N>& p) { return p.at(boost::mpl::int_<K>()); }
+at_c(const detail::homogeneous_color_base<E,L,N>& p) { return p.at(mpl::int_<K>()); }
 
 namespace detail {
     struct swap_fn {

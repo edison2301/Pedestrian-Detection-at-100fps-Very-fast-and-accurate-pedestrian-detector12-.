@@ -1,6 +1,10 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2009, Geodan, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -19,20 +23,13 @@
 #include <boost/geometry/core/point_type.hpp>
 #include <boost/geometry/strategies/convex_hull.hpp>
 
-#include <boost/geometry/iterators/range_type.hpp>
+#include <boost/geometry/views/detail/range_type.hpp>
 
 #include <boost/geometry/policies/compare.hpp>
 
 #include <boost/geometry/algorithms/detail/for_each_range.hpp>
 #include <boost/geometry/views/reversible_view.hpp>
 
-
-// Temporary, comparing sorting, this can be removed in the end
-//#define BOOST_GEOMETRY_USE_FLEX_SORT
-//#define BOOST_GEOMETRY_USE_FLEX_SORT2
-#if defined(BOOST_GEOMETRY_USE_FLEX_SORT)
-#  include <boost/algorithm/sorting/flex_sort.hpp>
-#endif
 
 namespace boost { namespace geometry
 {
@@ -63,12 +60,17 @@ struct get_extremes
     StrategyLess less;
     StrategyGreater greater;
 
-    get_extremes()
+    inline get_extremes()
         : first(true)
     {}
 
     inline void apply(InputRange const& range)
     {
+        if (boost::size(range) == 0)
+        {
+            return;
+        }
+
         // First iterate through this range
         // (this two-stage approach avoids many point copies,
         //  because iterators are kept in memory. Because iterators are
@@ -94,7 +96,7 @@ struct get_extremes
         }
 
         // Then compare with earlier
-        if (first && boost::size(range) > 0)
+        if (first)
         {
             // First time, assign left/right
             left = *left_it;
@@ -169,61 +171,14 @@ struct assign_range
     }
 };
 
-
 template <typename Range>
 static inline void sort(Range& range)
 {
     typedef typename boost::range_value<Range>::type point_type;
     typedef geometry::less<point_type> comparator;
 
-#if defined(GGL_USE_FLEX_SORT)
-
-    #if defined(GGL_USE_FLEX_SORT1)
-    typedef boost::detail::default_predicate
-        <
-            boost::sort_filter_cutoff
-            <
-                18,
-                boost::detail::insert_sort_core,
-                boost::sort_filter_ground
-                    <
-                        30,
-                        boost::detail::heap_sort_core,
-                        boost::detail::quick_sort_core
-                            <
-                                boost::pivot_median_of_three,
-                                boost::default_partitionner
-                            >
-                    >
-            >,
-            comparator> my_sort;
-    my_sort sort;
-    #elif defined(GGL_USE_FLEX_SORT2)
-
-    // 1, 5, 9, 18, 25: 0.75
-    // 50: 0.81
-
-    typedef boost::detail::default_predicate<boost::sort_filter_cutoff
-    <
-        35,
-        boost::detail::insert_sort_core,
-        boost::detail::quick_sort_core<boost::pivot_middle, boost::default_partitionner>
-    >, comparator
-    > barend_sort;
-
-    barend_sort sort;
-    #else
-    #error Define sub-flex-sort
-    #endif
-
-    sort(boost::begin(range), boost::end(range));
-
-#else
-    std::sort
-        (boost::begin(range), boost::end(range), comparator());
-#endif
+    std::sort(boost::begin(range), boost::end(range), comparator());
 }
-
 
 } // namespace detail
 #endif // DOXYGEN_NO_DETAIL
@@ -270,10 +225,17 @@ public:
     {
         // First pass.
         // Get min/max (in most cases left / right) points
-        // This makes use of the geometry::less/greater predicates with the optional
-        // direction template parameter to indicate x direction
+        // This makes use of the geometry::less/greater predicates
 
-        typedef typename range_type<InputGeometry>::type range_type;
+        // For the left boundary it is important that multiple points
+        // are sorted from bottom to top. Therefore the less predicate
+        // does not take the x-only template parameter (this fixes ticket #6019.
+        // For the right boundary it is not necessary (though also not harmful), 
+        // because points are sorted from bottom to top in a later stage.
+        // For symmetry and to get often more balanced lower/upper halves
+        // we keep it.
+
+        typedef typename geometry::detail::range_type<InputGeometry>::type range_type;
 
         typedef typename boost::range_iterator
             <
@@ -284,8 +246,8 @@ public:
             <
                 range_type,
                 range_iterator,
-                geometry::less<point_type, 0>,
-                geometry::greater<point_type, 0>
+                geometry::less<point_type>,
+                geometry::greater<point_type>
             > extremes;
         geometry::detail::for_each_range(geometry, extremes);
 
@@ -297,7 +259,7 @@ public:
                 range_type,
                 range_iterator,
                 container_type,
-                typename strategy_side<cs_tag>::type
+                typename strategy::side::services::default_strategy<cs_tag>::type
             > assigner(extremes.left, extremes.right);
 
         geometry::detail::for_each_range(geometry, assigner);
@@ -354,7 +316,7 @@ private:
     template <int Factor>
     static inline void add_to_hull(point_type const& p, container_type& output)
     {
-        typedef typename strategy_side<cs_tag>::type side;
+        typedef typename strategy::side::services::default_strategy<cs_tag>::type side;
 
         output.push_back(p);
         register std::size_t output_size = output.size();
@@ -410,7 +372,7 @@ private:
 
 #ifndef DOXYGEN_NO_STRATEGY_SPECIALIZATIONS
 template <typename InputGeometry, typename OutputPoint>
-struct strategy_convex_hull<cartesian_tag, InputGeometry, OutputPoint>
+struct strategy_convex_hull<InputGeometry, OutputPoint, cartesian_tag>
 {
     typedef strategy::convex_hull::graham_andrew<InputGeometry, OutputPoint> type;
 };

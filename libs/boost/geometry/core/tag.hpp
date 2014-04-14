@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -11,9 +16,9 @@
 
 
 #include <boost/mpl/assert.hpp>
-#include <boost/type_traits/remove_const.hpp>
 
 #include <boost/geometry/core/tags.hpp>
+#include <boost/geometry/util/bare_type.hpp>
 
 
 namespace boost { namespace geometry
@@ -42,19 +47,22 @@ struct tag
 } // namespace traits
 
 
+
 /*!
-\brief Meta-function to get the tag of any geometry type
-\details All geometries tell their geometry type (point, linestring, polygon, etc) by implementing
-  a tag traits class. This meta-function uses that traits class to retrieve the tag.
-\tparam Geometry geometry
+\brief \brief_meta{type, tag, \meta_geometry_type}
+\details With Boost.Geometry, tags are the driving force of the tag dispatching
+    mechanism. The tag metafunction is therefore used in every free function.
+\tparam Geometry \tparam_geometry 
 \ingroup core
+
+\qbk{[include reference/core/tag.qbk]}
 */
 template <typename Geometry>
 struct tag
 {
     typedef typename traits::tag
         <
-            typename boost::remove_const<Geometry>::type
+			typename geometry::util::bare_type<Geometry>::type
         >::type type;
 };
 

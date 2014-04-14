@@ -1,7 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -26,7 +26,7 @@
 #include <boost/geometry/util/math.hpp>
 
 #ifdef BOOST_GEOMETRY_DEBUG_CROSS_TRACK
-#  include <boost/geometry/util/write_dsv.hpp>
+#  include <boost/geometry/io/dsv/write.hpp>
 #endif
 
 
@@ -101,23 +101,56 @@ public :
     {
         // http://williams.best.vwh.net/avform.htm#XTE
         return_type d1 = m_strategy.apply(sp1, p);
+        return_type d3 = m_strategy.apply(sp1, sp2);
 
-        // Actually, calculation of d2 not necessary if we know that the projected point is on the great circle...
+        if (geometry::math::equals(d3, 0.0))
+        {
+            // "Degenerate" segment, return either d1 or d2
+            return d1;
+        }
+
         return_type d2 = m_strategy.apply(sp2, p);
 
         return_type crs_AD = course(sp1, p);
         return_type crs_AB = course(sp1, sp2);
-        return_type XTD = m_radius * geometry::math::abs(asin(sin(d1 / m_radius) * sin(crs_AD - crs_AB)));
+        return_type crs_BA = crs_AB - geometry::math::pi<return_type>();
+        return_type crs_BD = course(sp2, p);
+        return_type d_crs1 = crs_AD - crs_AB;
+        return_type d_crs2 = crs_BD - crs_BA;
+
+        // d1, d2, d3 are in principle not needed, only the sign matters
+        return_type projection1 = cos( d_crs1 ) * d1 / d3;
+        return_type projection2 = cos( d_crs2 ) * d2 / d3;
 
 #ifdef BOOST_GEOMETRY_DEBUG_CROSS_TRACK
-std::cout << "Course " << dsv(sp1) << " to " << dsv(p) << " " << crs_AD * geometry::math::r2d << std::endl;
-std::cout << "Course " << dsv(sp1) << " to " << dsv(sp2) << " " << crs_AB * geometry::math::r2d << std::endl;
-std::cout << "XTD: " << XTD << " d1: " <<  d1  << " d2: " <<  d2  << std::endl;
+        std::cout << "Course " << dsv(sp1) << " to " << dsv(p) << " " << crs_AD * geometry::math::r2d << std::endl;
+        std::cout << "Course " << dsv(sp1) << " to " << dsv(sp2) << " " << crs_AB * geometry::math::r2d << std::endl;
+        std::cout << "Course " << dsv(sp2) << " to " << dsv(p) << " " << crs_BD * geometry::math::r2d << std::endl;
+        std::cout << "Projection AD-AB " << projection1 << " : " << d_crs1 * geometry::math::r2d << std::endl;
+        std::cout << "Projection BD-BA " << projection2 << " : " << d_crs2 * geometry::math::r2d << std::endl;
 #endif
 
+        if(projection1 > 0.0 && projection2 > 0.0)
+        {
+            return_type XTD = m_radius * geometry::math::abs( asin( sin( d1 / m_radius ) * sin( d_crs1 ) ));
 
-        // Return shortest distance, either to projected point on segment sp1-sp2, or to sp1, or to sp2
-        return return_type((std::min)((std::min)(d1, d2), XTD));
+ #ifdef BOOST_GEOMETRY_DEBUG_CROSS_TRACK
+            std::cout << "Projection ON the segment" << std::endl;
+            std::cout << "XTD: " << XTD << " d1: " <<  d1  << " d2: " <<  d2  << std::endl;
+#endif
+
+            // Return shortest distance, projected point on segment sp1-sp2
+            return return_type(XTD);
+        }
+        else
+        {
+#ifdef BOOST_GEOMETRY_DEBUG_CROSS_TRACK
+            std::cout << "Projection OUTSIDE the segment" << std::endl;
+#endif
+
+            // Return shortest distance, project either on point sp1 or sp2
+            return return_type( (std::min)( d1 , d2 ) );
+        }
     }
 
     inline return_type radius() const { return m_radius; }
@@ -219,7 +252,12 @@ struct comparable_type<cross_track<Point, PointOfSegment, CalculationType, Strat
 };
 
 
-template <typename Point, typename PointOfSegment, typename CalculationType, typename Strategy>
+template 
+<
+    typename Point, typename PointOfSegment, 
+    typename CalculationType, 
+    typename Strategy
+>
 struct get_comparable<cross_track<Point, PointOfSegment, CalculationType, Strategy> >
 {
     typedef typename comparable_type
@@ -234,7 +272,12 @@ public :
 };
 
 
-template <typename Point, typename PointOfSegment, typename CalculationType, typename Strategy>
+template 
+<
+    typename Point, typename PointOfSegment, 
+    typename CalculationType, 
+    typename Strategy
+>
 struct result_from_distance<cross_track<Point, PointOfSegment, CalculationType, Strategy> >
 {
 private :
@@ -248,7 +291,12 @@ public :
 };
 
 
-template <typename Point, typename PointOfSegment, typename CalculationType, typename Strategy>
+template 
+<
+    typename Point, typename PointOfSegment, 
+    typename CalculationType, 
+    typename Strategy
+>
 struct strategy_point_point<cross_track<Point, PointOfSegment, CalculationType, Strategy> >
 {
     typedef Strategy type;
@@ -256,9 +304,17 @@ struct strategy_point_point<cross_track<Point, PointOfSegment, CalculationType, 
 
 
 
+/*
+
+TODO:  spherical polar coordinate system requires "get_as_radian_equatorial<>"
 
 template <typename Point, typename PointOfSegment, typename Strategy>
-struct default_strategy<segment_tag, Point, PointOfSegment, spherical_tag, spherical_tag, Strategy>
+struct default_strategy
+    <
+        segment_tag, Point, PointOfSegment, 
+        spherical_polar_tag, spherical_polar_tag, 
+        Strategy
+    >
 {
     typedef cross_track
         <
@@ -271,12 +327,40 @@ struct default_strategy<segment_tag, Point, PointOfSegment, spherical_tag, spher
                     typename default_strategy
                         <
                             point_tag, Point, PointOfSegment,
-                            spherical_tag, spherical_tag
+                            spherical_polar_tag, spherical_polar_tag
                         >::type,
                     Strategy
                 >::type
         > type;
 };
+*/
+
+template <typename Point, typename PointOfSegment, typename Strategy>
+struct default_strategy
+    <
+        segment_tag, Point, PointOfSegment, 
+        spherical_equatorial_tag, spherical_equatorial_tag, 
+        Strategy
+    >
+{
+    typedef cross_track
+        <
+            Point,
+            PointOfSegment,
+            void,
+            typename boost::mpl::if_
+                <
+                    boost::is_void<Strategy>,
+                    typename default_strategy
+                        <
+                            point_tag, Point, PointOfSegment,
+                            spherical_equatorial_tag, spherical_equatorial_tag
+                        >::type,
+                    Strategy
+                >::type
+        > type;
+};
+
 
 
 } // namespace services

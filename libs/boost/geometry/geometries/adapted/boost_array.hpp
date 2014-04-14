@@ -1,8 +1,8 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Alfredo Correa 2010
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2010 Alfredo Correa
+// Copyright (c) 2010-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -98,15 +98,23 @@ struct access<boost::array<CoordinateType, DimensionCount>, Dimension>
     }
 };
 
-// The library user has
-// 1) either to specify the coordinate system
-// 2) or include <boost/geometry/geometries/adapted/boost_array_@.hpp> where @=cartesian,geographic,...
 
 } // namespace traits
 #endif // DOXYGEN_NO_TRAITS_SPECIALIZATIONS
 
 
 }} // namespace boost::geometry
+
+
+#define BOOST_GEOMETRY_REGISTER_BOOST_ARRAY_CS(CoordinateSystem) \
+    namespace boost { namespace geometry { namespace traits { \
+    template <class T, std::size_t N> \
+    struct coordinate_system<boost::array<T, N> > \
+    { \
+        typedef CoordinateSystem type; \
+    }; \
+    }}}
+
 
 #endif // BOOST_GEOMETRY_GEOMETRIES_ADAPTED_BOOST_ARRAY_HPP
 

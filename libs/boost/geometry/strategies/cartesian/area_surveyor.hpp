@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -11,9 +16,11 @@
 
 
 #include <boost/mpl/if.hpp>
-#include <boost/type_traits.hpp>
 
-#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/arithmetic/determinant.hpp>
+#include <boost/geometry/core/coordinate_type.hpp>
+#include <boost/geometry/core/coordinate_dimension.hpp>
+#include <boost/geometry/util/select_most_precise.hpp>
 
 
 namespace boost { namespace geometry
@@ -77,7 +84,8 @@ private :
         inline return_type area() const
         {
             return_type result = sum;
-            result *= 0.5;
+            return_type const two = 2;
+            result /= two;
             return result;
         }
     };
@@ -91,7 +99,7 @@ public :
                 summation& state)
     {
         // SUM += x2 * y1 - x1 * y2;
-        state.sum += get<0>(p2) * get<1>(p1) - get<0>(p1) * get<1>(p2);
+        state.sum += detail::determinant<return_type>(p2, p1);
     }
 
     static inline return_type result(summation const& state)

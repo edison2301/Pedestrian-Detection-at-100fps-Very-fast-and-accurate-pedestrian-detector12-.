@@ -1,7 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -19,7 +19,6 @@
 
 #include <boost/geometry/strategies/distance.hpp>
 
-#include <boost/geometry/strategies/distance_result.hpp>
 
 
 namespace boost { namespace geometry
@@ -307,12 +306,15 @@ public :
 };
 
 
-// Register it as the default for point-types in a spherical coordinate system
+// Register it as the default for point-types 
+// in a spherical equatorial coordinate system
 template <typename Point1, typename Point2>
-struct default_strategy<point_tag, Point1, Point2, spherical_tag, spherical_tag>
+struct default_strategy<point_tag, Point1, Point2, spherical_equatorial_tag, spherical_equatorial_tag>
 {
     typedef strategy::distance::haversine<Point1, Point2> type;
 };
+
+// Note: spherical polar coordinate system requires "get_as_radian_equatorial"
 
 
 } // namespace services

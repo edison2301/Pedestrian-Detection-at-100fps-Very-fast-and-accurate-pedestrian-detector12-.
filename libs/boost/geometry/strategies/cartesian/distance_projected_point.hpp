@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2008-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -23,16 +28,13 @@
 
 #include <boost/geometry/strategies/tags.hpp>
 #include <boost/geometry/strategies/distance.hpp>
-#include <boost/geometry/strategies/distance_result.hpp>
+#include <boost/geometry/strategies/default_distance_result.hpp>
 #include <boost/geometry/strategies/cartesian/distance_pythagoras.hpp>
 
 #include <boost/geometry/util/select_coordinate_type.hpp>
 
-
-
-// Helper geometries
+// Helper geometry (projected point on line)
 #include <boost/geometry/geometries/point.hpp>
-#include <boost/geometry/geometries/segment.hpp>
 
 
 namespace boost { namespace geometry
@@ -73,23 +75,27 @@ template
 class projected_point
 {
 public :
-    typedef typename strategy::distance::services::return_type<Strategy>::type calculation_type;
-
-private :
-
     // The three typedefs below are necessary to calculate distances
     // from segments defined in integer coordinates.
 
     // Integer coordinates can still result in FP distances.
     // There is a division, which must be represented in FP.
     // So promote.
-    typedef typename promote_floating_point<calculation_type>::type fp_type;
+    typedef typename promote_floating_point
+        <
+            typename strategy::distance::services::return_type
+                <
+                    Strategy
+                >::type
+        >::type calculation_type;
+
+private :
 
     // A projected point of points in Integer coordinates must be able to be
     // represented in FP.
     typedef model::point
         <
-            fp_type,
+            calculation_type,
             dimension<PointOfSegment>::value,
             typename coordinate_system<PointOfSegment>::type
         > fp_point_type;
@@ -114,13 +120,14 @@ public :
     {
         assert_dimension_equal<Point, PointOfSegment>();
 
-        /* Algorithm
-        POINT v(x2 - x1, y2 - y1);
-        POINT w(px - x1, py - y1);
-        c1 = w . v
-        c2 = v . v
-        b = c1 / c2
-        RETURN POINT(x1 + b * vx, y1 + b * vy);
+        /* 
+            Algorithm [p1: (x1,y1), p2: (x2,y2), p: (px,py)]
+            VECTOR v(x2 - x1, y2 - y1)
+            VECTOR w(px - x1, py - y1)
+            c1 = w . v
+            c2 = v . v
+            b = c1 / c2
+            RETURN POINT(x1 + b * vx, y1 + b * vy)
         */
 
         // v is multiplied below with a (possibly) FP-value, so should be in FP
@@ -135,21 +142,20 @@ public :
         Strategy strategy;
         boost::ignore_unused_variable_warning(strategy);
 
-        calculation_type zero = calculation_type();
-        fp_type c1 = dot_product(w, v);
+        calculation_type const zero = calculation_type();
+        calculation_type const c1 = dot_product(w, v);
         if (c1 <= zero)
         {
             return strategy.apply(p, p1);
         }
-        fp_type c2 = dot_product(v, v);
+        calculation_type const c2 = dot_product(v, v);
         if (c2 <= c1)
         {
             return strategy.apply(p, p2);
         }
 
         // See above, c1 > 0 AND c2 > c1 so: c2 != 0
-        fp_type b = fp_type(c1) / fp_type(c2);
-
+        calculation_type const b = c1 / c2;
 
         fp_strategy_type fp_strategy
             = strategy::distance::services::get_similar
@@ -166,7 +172,6 @@ public :
 
         return fp_strategy.apply(p, projected);
     }
-
 };
 
 #ifndef DOXYGEN_NO_STRATEGY_SPECIALIZATIONS

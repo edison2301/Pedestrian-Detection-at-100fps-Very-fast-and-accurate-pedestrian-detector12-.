@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -8,8 +14,6 @@
 #ifndef BOOST_GEOMETRY_ALGORITHMS_DETAIL_EQUALS_COLLECT_VECTORS_HPP
 #define BOOST_GEOMETRY_ALGORITHMS_DETAIL_EQUALS_COLLECT_VECTORS_HPP
 
-#include <algorithm>
-#include <deque>
 
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/range.hpp>
@@ -20,9 +24,8 @@
 #include <boost/geometry/core/cs.hpp>
 #include <boost/geometry/core/interior_rings.hpp>
 #include <boost/geometry/geometries/concepts/check.hpp>
-#include <boost/geometry/strategies/side.hpp>
 
-#include <boost/geometry/util/select_most_precise.hpp>
+#include <boost/geometry/util/math.hpp>
 
 
 
@@ -35,10 +38,10 @@ struct collected_vector
 {
     typedef T type;
 
-    collected_vector()
+    inline collected_vector()
     {}
 
-    collected_vector(T const& px, T const& py,
+    inline collected_vector(T const& px, T const& py,
             T const& pdx, T const& pdy)
         : x(px)
         , y(py)
@@ -52,9 +55,8 @@ struct collected_vector
     T dx, dy;
     T dx_0, dy_0;
 
-    bool collinear;
-
-    bool operator<(collected_vector<T> const& other) const
+    // For sorting
+    inline bool operator<(collected_vector<T> const& other) const
     {
         if (math::equals(x, other.x))
         {
@@ -73,10 +75,15 @@ struct collected_vector
 
     inline bool same_direction(collected_vector<T> const& other) const
     {
-        return math::equals(dx, other.dx)
-            && math::equals(dy, other.dy);
+        // For high precision arithmetic, we have to be 
+        // more relaxed then using ==
+        // Because 2/sqrt( (0,0)<->(2,2) ) == 1/sqrt( (0,0)<->(1,1) ) 
+        // is not always true (at least, it is not for ttmath)
+        return math::equals_with_epsilon(dx, other.dx)
+            && math::equals_with_epsilon(dy, other.dy);
     }
 
+    // For std::equals
     inline bool operator==(collected_vector<T> const& other) const
     {
         return math::equals(x, other.x)
@@ -141,7 +148,13 @@ struct range_collect_vectors
                 first = false;
             }
         }
-        // TODO: if first one has same direction as last one, remove first one...
+
+        // If first one has same direction as last one, remove first one
+        if (boost::size(collection) > 1 
+            && collection.front().same_direction(collection.back()))
+        {
+            collection.erase(collection.begin());
+        }
     }
 };
 
@@ -158,7 +171,7 @@ struct box_collect_vectors
     {
         typename point_type<Box>::type lower_left, lower_right,
                 upper_left, upper_right;
-        assign_box_corners(box, lower_left, lower_right,
+        geometry::detail::assign_box_corners(box, lower_left, lower_right,
                 upper_left, upper_right);
 
         typedef typename boost::range_value<Collection>::type item;
