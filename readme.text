@@ -121,6 +121,7 @@ Before trying to compile anything you must edit the file `common_settings.cmake`
 
 You should also execute (once) `generate_protocol_buffer_files.sh` to make sure the protocol buffer files match the version installed in your system.
 
+
 Step 2: compile CPU only code
 ------------------------------
 
