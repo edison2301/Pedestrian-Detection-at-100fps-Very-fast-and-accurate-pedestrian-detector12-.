@@ -130,21 +130,25 @@ AbstractObjectsDetector::AbstractObjectsDetector(const variables_map &options)
     return;
 }
 
+
 AbstractObjectsDetector::~AbstractObjectsDetector()
 {
     // nothing to do here
     return;
 }
 
+
 const AbstractObjectsDetector::detections_t & AbstractObjectsDetector::get_detections()
 {
     return detections;
 }
 
+
 const AbstractObjectsDetector::detections_t &AbstractObjectsDetector::get_raw_detections() const
 {
     return detections;
 }
+
 
 void AbstractObjectsDetector::set_raw_detections(const AbstractObjectsDetector::detections_t &detections_)
 {
@@ -152,11 +156,13 @@ void AbstractObjectsDetector::set_raw_detections(const AbstractObjectsDetector::
     return;
 }
 
+
 void AbstractObjectsDetector::set_stixels(const stixels_t &/*stixels*/)
 {
     // default implementation simply disregards the estimated stixels
     return;
 }
+
 
 void AbstractObjectsDetector::set_ground_plane_corridor(const ground_plane_corridor_t &/*corridor*/)
 {
@@ -164,20 +170,11 @@ void AbstractObjectsDetector::set_ground_plane_corridor(const ground_plane_corri
     return;
 }
 
-/*void AbstractObjectsDetector::set_search_range(const detector_search_ranges_t &range)
-{
-    search_ranges = range; // simple copy
-    return;
-}*/
 
-
-void AbstractObjectsDetector::compute_search_ranges(
-        const boost::gil::rgb8c_view_t::point_t &input_dimensions,
-        const detection_window_size_t &detection_window_size,
-        detector_search_ranges_t &search_ranges) const
+void AbstractObjectsDetector::compute_search_ranges_meta_data(detector_search_ranges_data_t &search_ranges_data) const
 {
 
-    search_ranges.clear(); // remove previous ranges if they exist
+    search_ranges_data.clear(); // remove previous ranges if they exist
     float scale_logarithmic_step = 0;
     if(num_scales > 1)
     {
@@ -194,60 +191,29 @@ void AbstractObjectsDetector::compute_search_ranges(
         float ratio = min_detection_window_ratio;
         for(int ratios_index=0; ratios_index < num_ratios; ratios_index+=1)
         {
-            DetectorSearchRange range;
+            DetectorSearchRangeMetaData range_data;
 
             // min/max x/y are set in the original images coordinates
-            range.detection_window_scale = scale;
-            range.detection_window_ratio = ratio;
-            range.range_scaling = 1;
-            range.range_ratio = 1;
-            range.min_x = 0;
-            range.min_y = 0;
-            const float
-                    x_scale = scale*ratio, // we multiply so that (w/h)*current_h = new_w
-                    y_scale = scale;
-            range.max_x = std::max(0.0f, input_dimensions.x - (detection_window_size.x()*x_scale));
-            range.max_y = std::max(0.0f, input_dimensions.y - (detection_window_size.y()*y_scale));
+            range_data.detection_window_scale = scale;
+            range_data.detection_window_ratio = ratio;
+            range_data.range_scaling = 1;
+            range_data.range_ratio = 1;
 
-            assert(range.max_x <= input_dimensions.x);
-            assert(range.max_y <= input_dimensions.y);
+            // by default, no occlusion
+            range_data.detector_occlusion_type = SoftCascadeOverIntegralChannelsModel::NoOcclusion;
+            range_data.detector_occlusion_level = 0;
 
-#if defined(BOOTSTRAPPING_LIB)
-            const bool skip_empty_scales = true;
-#else
-            //const bool skip_empty_scales = true;
-            const bool skip_empty_scales = false;
-#endif
-            if((range.max_x == 0) or (range.max_y == 0))
-            {
-                if(skip_empty_scales)
-                {
-#if not defined(BOOTSTRAPPING_LIB)
-                    log_warning() << "Skipping scale " << scale << " (index " <<  scale_index << ") "
-                                  << "because the search range is empty" << std::endl;
-#endif
-                }
-                else
-                {
-                    log_warning() << "_Not_ skipping the scale " << scale << " (index " <<  scale_index << ") "
-                                  << "despite being empty" << std::endl;
-                    search_ranges.push_back(range);
-                }
-            }
-            else
-            {
-                // non-empty search range
-                search_ranges.push_back(range);
-            }
+            search_ranges_data.push_back(range_data);
 
-            scale = std::min(max_detection_window_scale, exp(log(scale) + scale_logarithmic_step));
             ratio += ratio_step;
         } // end of "for each ratio"
+
+	scale = std::min(max_detection_window_scale, exp(log(scale) + scale_logarithmic_step));
+
     } // end of "for each scale"
 
     return;
 }
-
 
 
 } // end of namespace doppia

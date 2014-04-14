@@ -22,7 +22,7 @@
 #include <stdexcept>
 #include <cstdio>
 #include <limits>
-
+#include <cstdlib> // for abs<int>
 
 namespace
 {
@@ -121,9 +121,31 @@ void ImagePlaneStixelsEstimator::set_rectified_images_pair(input_image_const_vie
     typedef input_image_const_view_t::point_t point_t;
     const point_t transposed_dimensions(left.height(), left.width());
 
-    if(transposed_left_image_p == false)
+    if(stixel_support_width == 1)
     {
-        transposed_left_image_p.reset(new AlignedImage(transposed_dimensions));
+        //const size_t num_stixels = left.width()/stixel_width;
+
+        // we use this size to match the gil::subsampled_view dimensions
+        const size_t slim_width = (left.width() + (stixel_width -1)) / stixel_width;
+
+        const point_t transposed_slim_dimensions(left.height(), slim_width); //num_stixels);
+
+        if(transposed_slim_left_image_p == false)
+        {
+            transposed_slim_left_image_p.reset(new AlignedImage(transposed_slim_dimensions));
+        }
+
+        assert(transposed_slim_left_image_p->dimensions() == transposed_slim_dimensions );
+    }
+    else
+    {
+        if(transposed_left_image_p == false)
+        {
+            transposed_left_image_p.reset(new AlignedImage(transposed_dimensions));
+        }
+
+        assert(transposed_left_image_p->dimensions() == transposed_dimensions );
+
     }
 
     if(transposed_right_image_p == false)
@@ -141,7 +163,6 @@ void ImagePlaneStixelsEstimator::set_rectified_images_pair(input_image_const_vie
         rectified_right_image_p.reset(new AlignedImage(right.dimensions()));
     }
 
-    assert(transposed_left_image_p->dimensions() == transposed_dimensions );
     assert(transposed_right_image_p->dimensions() == transposed_dimensions );
     assert(transposed_rectified_right_image_p->dimensions() == transposed_dimensions );
     assert(rectified_right_image_p->dimensions() == left.dimensions() );
@@ -235,12 +256,22 @@ void compute_y_derivative(cv::InputArray _src, cv::OutputArray _dst)
 void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates()
 {
     // copy the input data into the memory aligned data structures
-    copy_pixels(gil::transposed_view(input_left_view), transposed_left_image_p->get_view());
+
+    if(transposed_slim_left_image_p)
+    {
+        assert(stixel_support_width == 1);
+        copy_pixels(gil::transposed_view( gil::subsampled_view(input_left_view, stixel_width, 1) ),
+                    transposed_slim_left_image_p->get_view());
+    }
+    else
+    {
+        copy_pixels(gil::transposed_view(input_left_view), transposed_left_image_p->get_view());
+    }
 
     if(should_estimate_stixel_bottom)
     {
-    // v0 reaches 130 Hz, v1 reaches 148 Hz
-    //find_stixels_bottom_candidates_v0_baseline();
+        // v0 reaches 130 Hz, v1 reaches 148 Hz
+        //find_stixels_bottom_candidates_v0_baseline();
         find_stixels_bottom_candidates_v1_compute_only_what_is_used();
     }
     else
@@ -250,6 +281,7 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates()
 
     return;
 }
+
 
 void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v0_baseline()
 {
@@ -277,11 +309,12 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v0_baseline()
             input_width = input_left_view.width(),
             input_height = input_left_view.height();
 
-    if((row_given_stixel_and_row_step.shape()[0] != num_stixels) or
-       (row_given_stixel_and_row_step.shape()[1] != num_row_steps))
+    if((bottom_v_given_stixel_and_row_step.shape()[0] != num_stixels) or
+       (bottom_v_given_stixel_and_row_step.shape()[1] != num_row_steps))
     {
         // row_given_... and disparity_given... are kept together
-        row_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        bottom_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        top_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
         disparity_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
     }
 
@@ -298,7 +331,11 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v0_baseline()
 
             for(size_t delta_row=0; (delta_row < row_step_size) and (row < input_height); delta_row +=1, row +=1)
             {
-                const boost::int16_t dy_value = std::abs<boost::int16_t>(df_dy_mat.at<boost::int16_t>(row, column));
+#if GCC_VERSION > 40400
+	      const boost::int16_t dy_value = std::abs<boost::int16_t>(df_dy_mat.at<boost::int16_t>(row, column));
+#else
+	      const boost::int16_t dy_value = std::abs<float>(df_dy_mat.at<boost::int16_t>(row, column));
+#endif
                 if(dy_value > max_dy_value)
                 {
                     max_dy_value = dy_value;
@@ -307,8 +344,12 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v0_baseline()
             } // end of "for each row in the row step"
 
 
-            row_given_stixel_and_row_step[stixel_index][row_step_index] = max_dy_row;
-            disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity_given_v[max_dy_row];
+            bottom_v_given_stixel_and_row_step[stixel_index][row_step_index] = max_dy_row;
+            const int disparity = disparity_given_v[max_dy_row];
+            disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity + disparity_offset;
+            top_v_given_stixel_and_row_step[stixel_index][row_step_index] = \
+                    top_v_for_stixel_estimation_given_disparity[disparity];
+
         } // end of "for each row step"
 
     } // end of "for each stixel left column"
@@ -317,10 +358,71 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v0_baseline()
 }
 
 
+inline
+void find_stixels_bottom_candidates_v1(
+        const size_t left_u,
+        const size_t stixel_index,
+        const size_t num_row_steps,
+        const float row_step_size,
+        const int disparity_offset,
+        const size_t horizon_row,
+        const AlignedImage::const_view_t &transposed_left_view,
+        const std::vector<int> &disparity_given_v,
+        const std::vector<int> &top_v_for_stixel_estimation_given_disparity,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t &bottom_v_given_stixel_and_row_step,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t &top_v_given_stixel_and_row_step,
+        ImagePlaneStixelsEstimator::disparity_given_stixel_and_row_step_t &disparity_given_stixel_and_row_step)
+{
+
+    const AlignedImage::const_view_t::x_iterator
+            left_u_column_begin_it = transposed_left_view.row_begin(left_u),
+            left_u_column_end_it = transposed_left_view.row_end(left_u);
+
+    size_t row = std::max<size_t>(1, horizon_row);
+    const size_t previous_row = row - 1, next_row = row + 1;
+    AlignedImage::const_view_t::x_iterator
+            previous_row_it = left_u_column_begin_it + previous_row,
+            next_row_it = left_u_column_begin_it + next_row;
+
+    for(size_t row_step_index=0; row_step_index < num_row_steps; row_step_index +=1)
+    {
+        boost::uint16_t max_dy_value = 0;
+        size_t max_dy_row = previous_row + 1; // current row
+
+        const size_t max_row_at_current_step = horizon_row + static_cast<size_t>(row_step_index*row_step_size);
+
+        //for(size_t delta_row=0; (delta_row < row_step_size) and (next_row_it != left_u_column_end_it);
+        //    delta_row +=1, row+=1, ++previous_row_it, ++next_row_it)
+        for(; (row < max_row_at_current_step) and (next_row_it != left_u_column_end_it);
+            row+=1, ++previous_row_it, ++next_row_it)
+        {
+            //AlignedImage::const_view_t::value_type
+            const boost::gil::rgb8c_pixel_t &previous_pixel = *(previous_row_it), &next_pixel = *(next_row_it);
+            const boost::uint16_t dy_value = sad_cost_uint16(previous_pixel, next_pixel);
+
+            if(dy_value > max_dy_value)
+            {
+                max_dy_value = dy_value;
+                max_dy_row = row;
+            }
+        } // end of "for each row in the row step"
+
+        assert(max_dy_row < transposed_left_view.width());
+
+        bottom_v_given_stixel_and_row_step[stixel_index][row_step_index] = max_dy_row;
+        const int disparity = disparity_given_v[max_dy_row];
+        disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity + disparity_offset;
+        top_v_given_stixel_and_row_step[stixel_index][row_step_index] = \
+                top_v_for_stixel_estimation_given_disparity[disparity];
+
+    } // end of "for each row step"
+
+    return;
+}
+
+
 void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v1_compute_only_what_is_used()
 {
-    const AlignedImage::const_view_t &transposed_left_view = transposed_left_image_p->get_view();
-
 
     const size_t
             horizon_row = v_given_disparity[0],
@@ -333,70 +435,69 @@ void ImagePlaneStixelsEstimator::find_stixels_bottom_candidates_v1_compute_only_
     // needs to be float when num_row_steps is a high number
     const float row_step_size = stixels_rows / static_cast<float>(num_row_steps);
 
-    if((row_given_stixel_and_row_step.shape()[0] != num_stixels) or
-       (row_given_stixel_and_row_step.shape()[1] != num_row_steps))
+    if((bottom_v_given_stixel_and_row_step.shape()[0] != num_stixels) or
+       (bottom_v_given_stixel_and_row_step.shape()[1] != num_row_steps))
     {
         // row_given_... and disparity_given... are kept together
-        row_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        bottom_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        top_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
         disparity_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
     }
 
-    // guided schedule seeems to provide the best performance (better than default and static)
-#pragma omp parallel for schedule(guided)
-    for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
+    if(transposed_slim_left_image_p)
     {
-        // we use the left pixel of each stixel column to choose the height
-        // FIXME: should we use the most confident pixel from all the columns covered by the stixel ?
-        const size_t left_u = stixel_index * stixel_width;
+        const AlignedImage::const_view_t &transposed_slim_left_view = transposed_slim_left_image_p->get_view();
 
-        if(left_u >= input_width)
+        // guided schedule seeems to provide the best performance (better than default and static)
+#pragma omp parallel for schedule(guided)
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
         {
-            // reached the image border
-            continue; // no breaks allowed inside omp parallel
-        }
+            // we use the left pixel of each stixel column to choose the height
+            const size_t left_u = stixel_index; // each column correspond to one stixel
 
-        const AlignedImage::const_view_t::x_iterator
-                left_u_column_begin_it = transposed_left_view.row_begin(left_u),
-                left_u_column_end_it = transposed_left_view.row_end(left_u);
+            find_stixels_bottom_candidates_v1(left_u, stixel_index,
+                                              num_row_steps, row_step_size,
+                                              disparity_offset, horizon_row,
+                                              transposed_slim_left_view,
+                                              disparity_given_v,
+                                              top_v_for_stixel_estimation_given_disparity,
+                                              bottom_v_given_stixel_and_row_step,
+                                              top_v_given_stixel_and_row_step,
+                                              disparity_given_stixel_and_row_step);
+        } // end of "for each stixel left column"
+    }
+    else
+    {
+        const AlignedImage::const_view_t &transposed_left_view = transposed_left_image_p->get_view();
 
-        size_t row = std::max<size_t>(1, horizon_row);
-        const size_t previous_row = row - 1, next_row = row + 1;
-        AlignedImage::const_view_t::x_iterator
-                previous_row_it = left_u_column_begin_it + previous_row,
-                next_row_it = left_u_column_begin_it + next_row;
-
-        for(size_t row_step_index=0; row_step_index < num_row_steps; row_step_index +=1)
+        // guided schedule seeems to provide the best performance (better than default and static)
+#pragma omp parallel for schedule(guided)
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
         {
-            boost::uint16_t max_dy_value = 0;
-            size_t max_dy_row = previous_row + 1; // current row
+            // we use the left pixel of each stixel column to choose the height
+            // FIXME: should we use the most confident pixel from all the columns covered by the stixel ?
+            const size_t left_u = stixel_index * stixel_width;
 
-            const size_t max_row_at_current_step = horizon_row + static_cast<size_t>(row_step_index*row_step_size);
-
-            //for(size_t delta_row=0; (delta_row < row_step_size) and (next_row_it != left_u_column_end_it);
-            //    delta_row +=1, row+=1, ++previous_row_it, ++next_row_it)
-            for(; (row < max_row_at_current_step) and (next_row_it != left_u_column_end_it);
-                row+=1, ++previous_row_it, ++next_row_it)
+            if(left_u >= input_width)
             {
-                //AlignedImage::const_view_t::value_type
-                const boost::gil::rgb8c_pixel_t &previous_pixel = *(previous_row_it), &next_pixel = *(next_row_it);
-                const boost::uint16_t dy_value = sad_cost_uint16(previous_pixel, next_pixel);
+                // reached the image border
+                continue; // no breaks allowed inside omp parallel
+            }
 
-                if(dy_value > max_dy_value)
-                {
-                    max_dy_value = dy_value;
-                    max_dy_row = row;
-                }
-            } // end of "for each row in the row step"
-
-            assert(max_dy_row < input_left_view.height());
-            row_given_stixel_and_row_step[stixel_index][row_step_index] = max_dy_row;
-            disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity_given_v[max_dy_row];
-        } // end of "for each row step"
-
-    } // end of "for each stixel left column"
-
+            find_stixels_bottom_candidates_v1(left_u, stixel_index,
+                                              num_row_steps, row_step_size,
+                                              disparity_offset, horizon_row,
+                                              transposed_left_view,
+                                              disparity_given_v,
+                                              top_v_for_stixel_estimation_given_disparity,
+                                              bottom_v_given_stixel_and_row_step,
+                                              top_v_given_stixel_and_row_step,
+                                              disparity_given_stixel_and_row_step);
+        } // end of "for each stixel left column"
+    }
     return;
 }
+
 
 /// dumb version of find_stixels_bottom_candidates that set the bottom candidates at fix positions
 void ImagePlaneStixelsEstimator::set_fix_stixels_bottom_candidates()
@@ -412,16 +513,17 @@ void ImagePlaneStixelsEstimator::set_fix_stixels_bottom_candidates()
     // needs to be float when num_row_steps is a high number
     const float row_step_size = stixels_rows / static_cast<float>(num_row_steps);
 
-    if((row_given_stixel_and_row_step.shape()[0] != num_stixels) or
-       (row_given_stixel_and_row_step.shape()[1] != num_row_steps))
+    if((bottom_v_given_stixel_and_row_step.shape()[0] != num_stixels) or
+       (bottom_v_given_stixel_and_row_step.shape()[1] != num_row_steps))
     {
         // row_given_... and disparity_given... are kept together
-        row_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        bottom_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
+        top_v_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
         disparity_given_stixel_and_row_step.resize(boost::extents[num_stixels][num_row_steps]);
     }
 
     // guided schedule seeems to provide the best performance (better than default and static)
-//#pragma omp parallel for schedule(guided)
+    //#pragma omp parallel for schedule(guided)
     for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
     {
         // we use the left pixel of each stixel column to choose the height
@@ -439,7 +541,7 @@ void ImagePlaneStixelsEstimator::set_fix_stixels_bottom_candidates()
             const size_t max_row_at_current_step = horizon_row + static_cast<size_t>(row_step_index*row_step_size);
 
             assert(max_row_at_current_step < input_left_view.height());
-            row_given_stixel_and_row_step[stixel_index][row_step_index] = max_row_at_current_step;
+            bottom_v_given_stixel_and_row_step[stixel_index][row_step_index] = max_row_at_current_step;
             disparity_given_stixel_and_row_step[stixel_index][row_step_index] = disparity_given_v[max_row_at_current_step];
         } // end of "for each row step"
 
@@ -455,13 +557,15 @@ void ImagePlaneStixelsEstimator::collect_stereo_evidence()
     // (left view as transposed in find_stixels_bottom_candidates)
     copy_pixels(gil::transposed_view(input_right_view), transposed_right_image_p->get_view());
 
-    assert(row_given_stixel_and_row_step.empty() == false);
+    assert(bottom_v_given_stixel_and_row_step.empty() == false);
+    assert(top_v_given_stixel_and_row_step.empty() == false);
+
 
     // Here (u,v) refers to the 2d image plane, just like (x,y) or (cols, rows)
     const size_t
             num_rows = input_left_view.height(),
             //num_columns = input_left_view.width(),
-            num_stixels = row_given_stixel_and_row_step.shape()[0];
+            num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
 
     if(v_given_disparity.size() != static_cast<size_t>(num_disparities) or
        disparity_given_v.size() != num_rows)
@@ -521,109 +625,273 @@ void ImagePlaneStixelsEstimator::compute_transposed_rectified_right_image()
 }
 
 
+/// in this case we also know stixel_support_width == 1
+inline
+void compute_object_cost_stixel_using_slim_left(
+        const int stixel_index,
+        const int stixel_width,
+        const size_t num_row_steps,
+        const int num_columns,
+        const int disparity_offset,
+        const AlignedImage::const_view_t &transposed_left_view,
+        const AlignedImage::const_view_t &transposed_right_view,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        bottom_v_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        top_v_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::disparity_given_stixel_and_row_step_t::const_reference
+        disparity_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &object_cost)
+{
+    //const bool use_simd = false;
+    const bool use_simd = true;
+
+    for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
+    {
+        // precomputed_v_disparity_line already checked for >=0 and < num_rows
+        const size_t
+                bottom_v = bottom_v_given_stixel_and_row_step_at_stixel_index[row_step_index],
+                top_v = top_v_given_stixel_and_row_step_at_stixel_index[row_step_index];
+
+        // here d already includes the disparity_offset
+        const int d = disparity_given_stixel_and_row_step_at_stixel_index[row_step_index];
+
+        float &t_object_cost = object_cost(stixel_index, row_step_index);
+
+        uint32_t num_pixels_summed = 0;
+
+        const int left_u = stixel_index;
+        assert((left_u  >= 0) and (left_u < num_columns));
+
+        // a pixel (x,y) on the left image should be matched on the right image on the range ([0,x],y)
+        const int right_u = stixel_index*stixel_width - d;
+        if(right_u < 0)
+        {
+            // disparity is too large for the current column
+            // cost left to zero
+            continue;
+        }
+
+        const AlignedImage::const_view_t::x_iterator
+                left_column_begin_it = transposed_left_view.row_begin(left_u),
+                right_column_begin_it = transposed_right_view.row_begin(right_u);
+
+        // for each (u, disparity) value accumulate over the vertical axis --
+
+        const AlignedImage::const_view_t::x_iterator
+                left_begin_it = left_column_begin_it + top_v,
+                left_end_it = left_column_begin_it + bottom_v,
+                right_begin_it = right_column_begin_it + top_v;
+        assert(left_begin_it <= left_end_it);
+
+        AlignedImage::const_view_t::x_iterator
+                left_it = left_begin_it, right_it = right_begin_it;
+
+        // from tentative ground upwards, over the object -
+
+        //for(size_t v=minimum_v_for_disparity; v < ground_obstacle_v_boundary; v+=1)
+        //{
+        //    object_cost += rows_slice[v];
+        //}
+        if(use_simd)
+        {
+            sum_object_cost_simd(left_it, left_end_it, right_it, t_object_cost);
+        }
+        else
+        {
+            sum_object_cost_baseline(left_it, left_end_it, right_it, t_object_cost);
+        }
+
+        num_pixels_summed += (bottom_v - top_v);
+        assert(num_pixels_summed > 0); // since minimum_v_for_disparity was computed to ensure a minimum height
+
+        // normalize the object cost -
+        t_object_cost /= num_pixels_summed;
+        assert(t_object_cost >= 0);
+    } // end of "for each row step"
+
+    return;
+}
+
+
+inline
+void compute_object_cost_with_any_stixel_support_width(
+        const size_t stixel_left_u,
+        const size_t stixel_index,
+        const size_t num_row_steps,
+        const int stixel_support_width,
+        const int num_columns,
+        const AlignedImage::const_view_t &transposed_left_view,
+        const AlignedImage::const_view_t &transposed_right_view,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        bottom_v_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        top_v_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::disparity_given_stixel_and_row_step_t::const_reference
+        disparity_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &object_cost)
+{
+
+    //const bool use_simd = false;
+    const bool use_simd = true;
+
+
+    for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
+    {
+
+        // precomputed_v_disparity_line already checked for >=0 and < num_rows
+        const size_t
+                bottom_v = bottom_v_given_stixel_and_row_step_at_stixel_index[row_step_index],
+                top_v = top_v_given_stixel_and_row_step_at_stixel_index[row_step_index];
+
+        // here d already includes the disparity_offset
+        const int d = disparity_given_stixel_and_row_step_at_stixel_index[row_step_index];
+
+        float &t_object_cost = object_cost(stixel_index, row_step_index);
+
+        uint32_t num_pixels_summed = 0;
+
+        // FIXME if stixel_support_width is > 2, should make it symmetric (e.g. -1,0,1)
+        for(int delta_u = 0; delta_u < stixel_support_width; delta_u += 1)
+        {
+            const int left_u = stixel_left_u + delta_u;
+            if((left_u  < 0) or (left_u >= num_columns))
+            {
+                // we skip this column
+                continue;
+            }
+
+            // a pixel (x,y) on the left image should be matched on the right image on the range ([0,x],y)
+            const int right_u = left_u - d;
+            if(right_u < 0)
+            {
+                // disparity is too large for the current column
+                // cost left to zero
+                continue;
+            }
+
+            const AlignedImage::const_view_t::x_iterator
+                    left_column_begin_it = transposed_left_view.row_begin(left_u),
+                    right_column_begin_it = transposed_right_view.row_begin(right_u);
+
+            // for each (u, disparity) value accumulate over the vertical axis --
+
+            const AlignedImage::const_view_t::x_iterator
+                    left_begin_it = left_column_begin_it + top_v,
+                    left_end_it = left_column_begin_it + bottom_v,
+                    right_begin_it = right_column_begin_it + top_v;
+            assert(left_begin_it <= left_end_it);
+
+            AlignedImage::const_view_t::x_iterator
+                    left_it = left_begin_it, right_it = right_begin_it;
+
+            // from tentative ground upwards, over the object -
+
+            //for(size_t v=minimum_v_for_disparity; v < ground_obstacle_v_boundary; v+=1)
+            //{
+            //    object_cost += rows_slice[v];
+            //}
+            if(use_simd)
+            {
+                sum_object_cost_simd(left_it, left_end_it, right_it, t_object_cost);
+            }
+            else
+            {
+                sum_object_cost_baseline(left_it, left_end_it, right_it, t_object_cost);
+            }
+
+            num_pixels_summed += (bottom_v - top_v);
+
+        } // end of "for each column in the stixel"
+
+        // normalize the object cost -
+        if(num_pixels_summed > 0)
+        {
+            t_object_cost /= num_pixels_summed;
+        }
+        assert(t_object_cost >= 0);
+
+    } // end of "for each row step"
+
+    return;
+}
+
+
 void ImagePlaneStixelsEstimator::compute_object_cost(cost_per_stixel_and_row_step_t &object_cost) const
 {
     //const int num_rows = input_left_view.height();
     const int num_columns = input_left_view.width();
     //const size_t num_disparities = this->num_disparities;
-    const size_t num_stixels = row_given_stixel_and_row_step.shape()[0];
-    const int disparity_offset = this->disparity_offset;
+    const size_t num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
 
-    //const bool use_simd = false;
-    const bool use_simd = true;
+    if(transposed_slim_left_image_p)
+    {
+        assert(stixel_support_width == 1);
 
-    // guided schedule seeems to provide the best performance (better than default and static)
+        const AlignedImage::const_view_t
+                transposed_slim_left_view = transposed_slim_left_image_p->get_view(),
+                transposed_right_view = transposed_right_image_p->get_view();
+
+        // guided schedule seeems to provide the best performance (better than default and static)
 #pragma omp parallel for schedule(guided)
-    for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
-    { // iterate over the stixels
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
+        { // iterate over the stixels
 
-        const size_t stixel_left_u = stixel_index*stixel_width;
+            row_given_stixel_and_row_step_t::const_reference
+                    bottom_v_given_stixel_and_row_step_at_stixel_index = bottom_v_given_stixel_and_row_step[stixel_index],
+                    top_v_given_stixel_and_row_step_at_stixel_index = top_v_given_stixel_and_row_step[stixel_index];
 
-        row_given_stixel_and_row_step_t::const_reference
-                row_given_stixel_and_row_step_at_stixel_index = row_given_stixel_and_row_step[stixel_index];
+            disparity_given_stixel_and_row_step_t::const_reference
+                    disparity_given_stixel_and_row_step_at_stixel_index = disparity_given_stixel_and_row_step[stixel_index];
 
-        disparity_given_stixel_and_row_step_t::const_reference
-                disparity_given_stixel_and_row_step_at_stixel_index = disparity_given_stixel_and_row_step[stixel_index];
+            compute_object_cost_stixel_using_slim_left(
+                        stixel_index,
+                        stixel_width,
+                        num_row_steps,
+                        num_columns, disparity_offset,
+                        transposed_slim_left_view, transposed_right_view,
+                        bottom_v_given_stixel_and_row_step_at_stixel_index,
+                        top_v_given_stixel_and_row_step_at_stixel_index,
+                        disparity_given_stixel_and_row_step_at_stixel_index,
+                        object_cost);
 
-        for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
-        {
+        } // end of "for each stixel"
+    }
+    else
+    { // transposed_slim_left_image_p == false, thus transposed_left_image_p == true
 
-            // precomputed_v_disparity_line already checked for >=0 and < num_rows
-            const size_t
-                    row = row_given_stixel_and_row_step_at_stixel_index[row_step_index],
-                    ground_obstacle_v_boundary = row,
-                    d = disparity_given_stixel_and_row_step_at_stixel_index[row_step_index];
+        const AlignedImage::const_view_t
+                transposed_left_view = transposed_left_image_p->get_view(),
+                transposed_right_view = transposed_right_image_p->get_view();
 
-            const int minimum_v_for_disparity = top_v_for_stixel_estimation_given_disparity[d];
+        // guided schedule seeems to provide the best performance (better than default and static)
+#pragma omp parallel for schedule(guided)
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
+        { // iterate over the stixels
 
+            const size_t stixel_left_u = stixel_index*stixel_width;
 
-            float &t_object_cost = object_cost(stixel_index, row_step_index);
+            row_given_stixel_and_row_step_t::const_reference
+                    bottom_v_given_stixel_and_row_step_at_stixel_index = bottom_v_given_stixel_and_row_step[stixel_index],
+                    top_v_given_stixel_and_row_step_at_stixel_index = top_v_given_stixel_and_row_step[stixel_index];
 
-            uint32_t num_pixels_summed = 0;
+            disparity_given_stixel_and_row_step_t::const_reference
+                    disparity_given_stixel_and_row_step_at_stixel_index = disparity_given_stixel_and_row_step[stixel_index];
 
-            // FIXME if stixel_support_width is > 2, should make it symmetric (e.g. -1,0,1)
-            for(int delta_u = 0; delta_u < stixel_support_width; delta_u += 1)
-            {
-                const int left_u = stixel_left_u + delta_u;
-                if((left_u  < 0) or (left_u >= num_columns))
-                {
-                    // we skip this column
-                    continue;
-                }
+            compute_object_cost_with_any_stixel_support_width(
+                        stixel_left_u,
+                        stixel_index,
+                        num_row_steps, stixel_support_width,
+                        num_columns,
+                        transposed_left_view, transposed_right_view,
+                        bottom_v_given_stixel_and_row_step_at_stixel_index,
+                        top_v_given_stixel_and_row_step_at_stixel_index,
+                        disparity_given_stixel_and_row_step_at_stixel_index,
+                        object_cost);
 
-                // a pixel (x,y) on the left image should be matched on the right image on the range ([0,x],y)
-                const int right_u = left_u - (d + disparity_offset);
-                if(right_u < 0)
-                {
-                    // disparity is too large for the current column
-                    // cost left to zero
-                    continue;
-                }
+        } // end of "for each stixel"
 
-                const AlignedImage::const_view_t::x_iterator
-                        left_column_begin_it = transposed_left_image_p->get_view().row_begin(left_u),
-                        right_column_begin_it = transposed_right_image_p->get_view().row_begin(right_u);
-
-                // for each (u, disparity) value accumulate over the vertical axis --
-
-                const AlignedImage::const_view_t::x_iterator
-                        left_begin_it = left_column_begin_it + minimum_v_for_disparity,
-                        left_end_it = left_column_begin_it + ground_obstacle_v_boundary,
-                        right_begin_it = right_column_begin_it + minimum_v_for_disparity;
-                assert(left_begin_it <= left_end_it);
-
-                AlignedImage::const_view_t::x_iterator
-                        left_it = left_begin_it, right_it = right_begin_it;
-
-                // from tentative ground upwards, over the object -
-
-                //for(size_t v=minimum_v_for_disparity; v < ground_obstacle_v_boundary; v+=1)
-                //{
-                //    object_cost += rows_slice[v];
-                //}
-                if(use_simd)
-                {
-                    sum_object_cost_simd(left_it, left_end_it, right_it, t_object_cost);
-                }
-                else
-                {
-                    sum_object_cost_baseline(left_it, left_end_it, right_it, t_object_cost);
-                }
-
-                num_pixels_summed += (ground_obstacle_v_boundary - minimum_v_for_disparity);
-
-            } // end of "for each column in the stixel"
-
-            // normalize the object cost -
-            if(num_pixels_summed > 0)
-            {
-                t_object_cost /= num_pixels_summed;
-            }
-            assert(t_object_cost >= 0);
-
-        } // end of "for each row step"
-
-    } // end of "for each stixel"
+    }
 
     return;
 }
@@ -656,114 +924,255 @@ inline uint16_t simd_sad_cost_uint16(const gil::rgb8c_pixel_t &pixel_a, const gi
 }
 
 
-void ImagePlaneStixelsEstimator::compute_ground_cost(ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost) const
+/// in this case we also know stixel_support_width == 1
+inline
+void compute_ground_cost_using_slim_left(
+        const size_t stixel_index,
+        const int stixel_width,
+        const size_t num_row_steps,
+        const int num_columns, const size_t num_rows,
+        const AlignedImage::const_view_t &transposed_slim_left_view,
+        const AlignedImage::const_view_t &transposed_rectified_right_view,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        row_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost)
 {
-
-    const size_t num_rows = input_left_view.height();
-    const int num_columns = input_left_view.width();
-    //const size_t num_disparities = this->num_disparities;
-    const size_t num_stixels = row_given_stixel_and_row_step.shape()[0];
-    const int disparity_offset = this->disparity_offset;
 
     // in the current code, the simd version is slower that without simd
     //(which means improper use of simd and/or good auto-vectorization)
     const bool use_simd = false;
     //const bool use_simd = true;
 
-    // guided schedule seeems to provide the best performance (better than default and static)
-#pragma omp parallel for schedule(guided)
-    for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
-    { // iterate over the stixels
+    for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
+    {
+        // precomputed_v_disparity_line already checked for >=0 and < num_rows
+        const size_t
+                row = row_given_stixel_and_row_step_at_stixel_index[row_step_index],
+                ground_obstacle_v_boundary_at_d = row;
 
-        const size_t stixel_left_u = stixel_index*stixel_width;
-        // a pixel (x,y) on the left image should be matched on the right image on the range ([0,x],y)
+        assert(ground_obstacle_v_boundary_at_d < num_rows);
 
-        row_given_stixel_and_row_step_t::const_reference
-                row_given_stixel_and_row_step_at_stixel_index = row_given_stixel_and_row_step[stixel_index];
+        uint32_t column_cumulative_sum = 0;
+        uint32_t num_pixels_summed = 0;
 
-        disparity_given_stixel_and_row_step_t::const_reference
-                disparity_given_stixel_and_row_step_at_stixel_index = disparity_given_stixel_and_row_step[stixel_index];
+        const int left_u = stixel_index;
+        assert((left_u  >= 0) or (left_u < num_columns));
 
-        for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
+        const int right_u = stixel_index*stixel_width;
+        assert((right_u  >= 0) or (right_u < num_columns));
+
+        const AlignedImage::const_view_t::x_iterator
+                left_column_begin_it = transposed_slim_left_view.row_begin(left_u),
+                left_column_end_it = transposed_slim_left_view.row_end(left_u),
+                //right_column_begin_it = transposed_rectified_right_view.row_begin(right_u),
+                right_column_end_it = transposed_rectified_right_view.row_end(right_u);
+
+        // we are going to move in reverse from d = num_disparities - 1 to d = 0
+        const AlignedImage::const_view_t::x_iterator
+                left_begin_it = left_column_end_it - 1,
+                right_begin_it = right_column_end_it - 1,
+                left_step_end_it = left_column_begin_it + ground_obstacle_v_boundary_at_d;
+
+        // we cumulate the sum from the bottom of the image upwards
+        AlignedImage::const_view_t::x_iterator
+                left_it = left_begin_it,
+                right_it = right_begin_it;
+        assert(left_step_end_it <= left_it);
+
+        for(; left_it != left_step_end_it; --left_it, --right_it)
         {
-            // precomputed_v_disparity_line already checked for >=0 and < num_rows
-            const size_t
-                    row = row_given_stixel_and_row_step_at_stixel_index[row_step_index],
-                    ground_obstacle_v_boundary_at_d = row,
-                    d = disparity_given_stixel_and_row_step_at_stixel_index[row_step_index];
-
-            assert(ground_obstacle_v_boundary_at_d < num_rows);
-
-            uint32_t column_cumulative_sum = 0;
-            uint32_t num_pixels_summed = 0;
-
-            // FIXME if stixel_support_width is > 2, should make it symmetric (e.g. -1,0,1)
-            for(int delta_u = 0; delta_u < stixel_support_width; delta_u += 1)
+            if(use_simd)
             {
-                const int left_u = stixel_left_u + delta_u;
-                if((left_u  < 0) or (left_u >= num_columns))
-                {
-                    // we skip this column
-                    continue;
-                }
-
-                //if(u < d )
-                const int right_u = left_u - (d + disparity_offset);
-                if(right_u < 0 or (right_u >= num_columns))
-                {
-                    // disparity is too large for the current column
-                    // cost left to zero
-                    continue;
-                }
-
-                const AlignedImage::const_view_t::x_iterator
-                        left_column_begin_it = transposed_left_image_p->get_view().row_begin(left_u),
-                        left_column_end_it = transposed_left_image_p->get_view().row_end(left_u),
-                        //right_column_begin_it = transposed_rectified_right_image_p->get_view().row_begin(left_u),
-                        right_column_end_it = transposed_rectified_right_image_p->get_view().row_end(left_u);
-
-                // we are going to move in reverse from d = num_disparities - 1 to d = 0
-                const AlignedImage::const_view_t::x_iterator
-                        left_begin_it = left_column_end_it - 1,
-                        right_begin_it = right_column_end_it - 1,
-                        left_step_end_it = left_column_begin_it + ground_obstacle_v_boundary_at_d;
-
-                // we cumulate the sum from the bottom of the image upwards
-                AlignedImage::const_view_t::x_iterator
-                        left_it = left_begin_it,
-                        right_it = right_begin_it;
-                assert(left_step_end_it <= left_it);
-
-                for(; left_it != left_step_end_it; --left_it, --right_it)
-                {
-                    if(use_simd)
-                    {
-                        // FIXME for some unknown reason enabling this code messes up the ground plane estimation
-                        // it does compute the desired value, but it triggers a missbehaviour "somewhere else"
-                        // very weird simd related bug... (that appears on my laptop but not on my desktop)
-                        column_cumulative_sum += simd_sad_cost_uint16(*left_it, *right_it);
-                    }
-                    else
-                    {
-                        column_cumulative_sum += sad_cost_uint16(*left_it, *right_it);
-                    }
-                }
-
-                num_pixels_summed += 3*(num_rows - ground_obstacle_v_boundary_at_d); // 3 because of RGB
-
-            } // end of "for each column in the stixel"
-
-            // normalize and set the ground cost -
-            float &ground_cost_float = ground_cost(stixel_index, row_step_index);
-            ground_cost_float = column_cumulative_sum;
-            if(num_pixels_summed > 0)
-            {
-                ground_cost_float /= num_pixels_summed;
+                // FIXME for some unknown reason enabling this code messes up the ground plane estimation
+                // it does compute the desired value, but it triggers a missbehaviour "somewhere else"
+                // very weird simd related bug... (that appears on my laptop but not on my desktop)
+                column_cumulative_sum += simd_sad_cost_uint16(*left_it, *right_it);
             }
-            assert(ground_cost_float >= 0);
+            else
+            {
+                column_cumulative_sum += sad_cost_uint16(*left_it, *right_it);
+            }
+        }
 
-        } // end of "for each row step"
-    } // end of "for each stixel"
+        num_pixels_summed += 3*(num_rows - ground_obstacle_v_boundary_at_d); // 3 because of RGB
+
+
+        // normalize and set the ground cost -
+        float &ground_cost_float = ground_cost(stixel_index, row_step_index);
+        ground_cost_float = column_cumulative_sum;
+        if(num_pixels_summed > 0)
+        {
+            ground_cost_float /= num_pixels_summed;
+        }
+        assert(ground_cost_float >= 0);
+
+    } // end of "for each row step"
+
+
+    return;
+}
+
+
+inline
+void compute_ground_cost_with_any_stixel_support_width(
+        const size_t stixel_left_u,
+        const size_t stixel_index,
+        const size_t num_row_steps,
+        const int stixel_support_width,
+        const int num_columns, const size_t num_rows,
+        const AlignedImage::const_view_t &transposed_left_view,
+        const AlignedImage::const_view_t &transposed_rectified_right_view,
+        ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t::const_reference
+        row_given_stixel_and_row_step_at_stixel_index,
+        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost)
+{
+
+    // in the current code, the simd version is slower that without simd
+    //(which means improper use of simd and/or good auto-vectorization)
+    const bool use_simd = false;
+    //const bool use_simd = true;
+
+    for(size_t row_step_index = 0; row_step_index < num_row_steps; row_step_index += 1)
+    {
+        // precomputed_v_disparity_line already checked for >=0 and < num_rows
+        const size_t
+                row = row_given_stixel_and_row_step_at_stixel_index[row_step_index],
+                ground_obstacle_v_boundary_at_d = row;
+
+        assert(ground_obstacle_v_boundary_at_d < num_rows);
+
+        uint32_t column_cumulative_sum = 0;
+        uint32_t num_pixels_summed = 0;
+
+        // FIXME if stixel_support_width is > 2, should make it symmetric (e.g. -1,0,1)
+        for(int delta_u = 0; delta_u < stixel_support_width; delta_u += 1)
+        {
+            const int left_u = stixel_left_u + delta_u;
+            if((left_u  < 0) or (left_u >= num_columns))
+            {
+                // we skip this column
+                continue;
+            }
+
+            const AlignedImage::const_view_t::x_iterator
+                    left_column_begin_it = transposed_left_view.row_begin(left_u),
+                    left_column_end_it = transposed_left_view.row_end(left_u),
+                    //right_column_begin_it = transposed_rectified_right_view.row_begin(left_u),
+                    right_column_end_it = transposed_rectified_right_view.row_end(left_u);
+
+            // we are going to move in reverse from d = num_disparities - 1 to d = 0
+            const AlignedImage::const_view_t::x_iterator
+                    left_begin_it = left_column_end_it - 1,
+                    right_begin_it = right_column_end_it - 1,
+                    left_step_end_it = left_column_begin_it + ground_obstacle_v_boundary_at_d;
+
+            // we cumulate the sum from the bottom of the image upwards
+            AlignedImage::const_view_t::x_iterator
+                    left_it = left_begin_it,
+                    right_it = right_begin_it;
+            assert(left_step_end_it <= left_it);
+
+            for(; left_it != left_step_end_it; --left_it, --right_it)
+            {
+                if(use_simd)
+                {
+                    // FIXME for some unknown reason enabling this code messes up the ground plane estimation
+                    // it does compute the desired value, but it triggers a missbehaviour "somewhere else"
+                    // very weird simd related bug... (that appears on my laptop but not on my desktop)
+                    column_cumulative_sum += simd_sad_cost_uint16(*left_it, *right_it);
+                }
+                else
+                {
+                    column_cumulative_sum += sad_cost_uint16(*left_it, *right_it);
+                }
+            }
+
+            num_pixels_summed += 3*(num_rows - ground_obstacle_v_boundary_at_d); // 3 because of RGB
+
+        } // end of "for each column in the stixel"
+
+        // normalize and set the ground cost -
+        float &ground_cost_float = ground_cost(stixel_index, row_step_index);
+        ground_cost_float = column_cumulative_sum;
+        if(num_pixels_summed > 0)
+        {
+            ground_cost_float /= num_pixels_summed;
+        }
+        assert(ground_cost_float >= 0);
+
+    } // end of "for each row step"
+
+
+    return;
+}
+
+
+void ImagePlaneStixelsEstimator::compute_ground_cost(ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost) const
+{
+
+    const size_t num_rows = input_left_view.height();
+    const int num_columns = input_left_view.width();
+    //const size_t num_disparities = this->num_disparities;
+    const size_t num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
+
+    if(transposed_slim_left_image_p)
+    {
+        assert(stixel_support_width == 1);
+
+        // guided schedule seeems to provide the best performance (better than default and static)
+#pragma omp parallel for schedule(guided)
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
+        { // iterate over the stixels
+
+            const AlignedImage::const_view_t
+                    transposed_slim_left_view = transposed_slim_left_image_p->get_view(),
+                    transposed_rectified_right_view = transposed_rectified_right_image_p->get_view();
+
+            row_given_stixel_and_row_step_t::const_reference
+                    row_given_stixel_and_row_step_at_stixel_index = bottom_v_given_stixel_and_row_step[stixel_index];
+
+            compute_ground_cost_using_slim_left(
+                        stixel_index,
+                        stixel_width,
+                        num_row_steps,
+                        num_columns, num_rows,
+                        transposed_slim_left_view, transposed_rectified_right_view,
+                        row_given_stixel_and_row_step_at_stixel_index,
+                        ground_cost);
+
+        } // end of "for each stixel"
+
+    }
+    else
+    { // transposed_slim_left_image_p == false, thus transposed_left_image_p == true
+
+
+        // guided schedule seeems to provide the best performance (better than default and static)
+#pragma omp parallel for schedule(guided)
+        for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
+        { // iterate over the stixels
+
+            const size_t stixel_left_u = stixel_index*stixel_width;
+            // a pixel (x,y) on the left image should be matched on the right image on the range ([0,x],y)
+
+            row_given_stixel_and_row_step_t::const_reference
+                    row_given_stixel_and_row_step_at_stixel_index = bottom_v_given_stixel_and_row_step[stixel_index];
+
+            compute_ground_cost_with_any_stixel_support_width(
+                        stixel_left_u,
+                        stixel_index,
+                        num_row_steps,
+                        stixel_support_width,
+                        num_columns, num_rows,
+                        transposed_left_image_p->get_view(),
+                        transposed_rectified_right_image_p->get_view(),
+                        row_given_stixel_and_row_step_at_stixel_index,
+                        ground_cost);
+
+        } // end of "for each stixel"
+
+    }
+
 
     return;
 }
@@ -791,7 +1200,7 @@ void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_argmax_per_stixel
     // we store the object bottom for each image column
     u_v_ground_obstacle_boundary.resize(input_left_view.width());
 
-    const size_t num_stixels = row_given_stixel_and_row_step.shape()[0];
+    const size_t num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
     stixel_and_row_step_ground_obstacle_boundary.resize(num_stixels);
 
     const cost_per_stixel_and_row_step_t &cost = cost_per_stixel_and_row_step;
@@ -804,7 +1213,7 @@ void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_argmax_per_stixel
 
         stixel_and_row_step_ground_obstacle_boundary[stixel_index] = min_cost_row_step;
 
-        const row_t row = row_given_stixel_and_row_step[stixel_index][min_cost_row_step];
+        const row_t row = bottom_v_given_stixel_and_row_step[stixel_index][min_cost_row_step];
 
         for(size_t stixel_u = stixel_index*stixel_width;
             (stixel_u < (stixel_index+1)*stixel_width) and (stixel_u < u_v_ground_obstacle_boundary.size());
@@ -835,7 +1244,7 @@ void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_dynamic_programmi
 void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_dynamic_programming_v0_backtracking()
 {
 
-    const size_t num_stixels = row_given_stixel_and_row_step.shape()[0];
+    const size_t num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
     const int stixel_width = this->stixel_width;
 
     stixel_and_row_step_ground_obstacle_boundary.resize(num_stixels);
@@ -1042,8 +1451,8 @@ void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_dynamic_programmi
                         min_cost_row_step_index = stixel_and_row_step_ground_obstacle_boundary[stixel_index],
                         min_cost_next_row_step_index = stixel_and_row_step_ground_obstacle_boundary[next_stixel_index];
 
-                const row_t begin_row = row_given_stixel_and_row_step[stixel_index][min_cost_row_step_index],
-                        end_row = row_given_stixel_and_row_step[next_stixel_index][min_cost_next_row_step_index];
+                const row_t begin_row = bottom_v_given_stixel_and_row_step[stixel_index][min_cost_row_step_index],
+                        end_row = bottom_v_given_stixel_and_row_step[next_stixel_index][min_cost_next_row_step_index];
 
                 const float row_slope = static_cast<float>(end_row - begin_row) / stixel_width;
                 const size_t
@@ -1064,7 +1473,7 @@ void ImagePlaneStixelsEstimator::estimate_stixels_bottom_using_dynamic_programmi
             for(size_t stixel_index=0; stixel_index < num_stixels; stixel_index += 1)
             {
                 const size_t min_cost_row_step_index = stixel_and_row_step_ground_obstacle_boundary[stixel_index];
-                const row_t row = row_given_stixel_and_row_step[stixel_index][min_cost_row_step_index];
+                const row_t row = bottom_v_given_stixel_and_row_step[stixel_index][min_cost_row_step_index];
                 const size_t
                         begin_u = stixel_index*stixel_width,
                         end_u = std::min((stixel_index+1)*stixel_width, u_v_ground_obstacle_boundary.size());
@@ -1094,7 +1503,7 @@ void ImagePlaneStixelsEstimator::u_v_disparity_boundary_to_stixels()
     const size_t max_row_step_index = num_row_steps - 1;
 
     bool previous_is_occluded = false;
-    const size_t num_stixels = row_given_stixel_and_row_step.shape()[0];
+    const size_t num_stixels = bottom_v_given_stixel_and_row_step.shape()[0];
     for(size_t stixel_index = 0; stixel_index < num_stixels; stixel_index += 1)
     {
 

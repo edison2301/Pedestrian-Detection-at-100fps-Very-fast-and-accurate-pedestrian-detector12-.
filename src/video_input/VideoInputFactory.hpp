@@ -1,7 +1,6 @@
 #ifndef VIDEOINPUTFACTORY_HPP
 #define VIDEOINPUTFACTORY_HPP
 
-
 #include "AbstractVideoInput.hpp"
 
 namespace doppia

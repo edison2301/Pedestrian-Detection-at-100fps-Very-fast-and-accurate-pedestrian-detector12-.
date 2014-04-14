@@ -20,7 +20,7 @@ public:
 
     virtual void compute() = 0;
 
-    /// Return the filtered set of detections
+    /// @returns the filtered set of detections
     virtual const detections_t &get_detections();
 
 protected:

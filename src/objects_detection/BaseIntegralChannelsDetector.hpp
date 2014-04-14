@@ -2,20 +2,10 @@
 #define BICLOP_BASEINTEGRALCHANNELSDETECTOR_HPP
 
 #include "BaseObjectsDetectorWithNonMaximalSuppression.hpp"
+#include "ScaleData.hpp"
 
 namespace doppia {
 
-/// Helper structure to store data for each specific scale
-struct ScaleData
-{
-    typedef geometry::point_xy<size_t> image_size_t;
-    typedef geometry::point_xy<boost::uint16_t> stride_t;
-
-    image_size_t scaled_input_image_size;
-    DetectorSearchRange scaled_search_range;
-    AbstractObjectsDetector::detection_window_size_t scaled_detection_window_size;
-    stride_t stride; ///< scaled x/y stride
-};
 
 /// This base class fleshes what is common amongst IntegralChannelsDetector and GpuIntegralChannelsDetector
 /// The code and members defined here are mainly related to handling of the multiple scales
@@ -25,11 +15,8 @@ class BaseIntegralChannelsDetector: public BaseObjectsDetectorWithNonMaximalSupp
 {
 public:
 
-    typedef SoftCascadeOverIntegralChannelsModel::fast_stages_t cascade_stages_t;
-    typedef SoftCascadeOverIntegralChannelsModel::fast_stage_t cascade_stage_t;
-
-    typedef SoftCascadeOverIntegralChannelsModel::stump_stages_t stump_cascade_stages_t;
-    typedef SoftCascadeOverIntegralChannelsModel::stump_stage_t stump_cascade_stage_t;
+    typedef SoftCascadeOverIntegralChannelsModel::variant_stages_t variant_stages_t;
+    typedef variant_stages_t cascade_stages_t; // FIXME kept to make the code change easier, to remove
 
     typedef ScaleData::image_size_t image_size_t;
     typedef ScaleData::stride_t stride_t;
@@ -65,9 +52,7 @@ protected:
 
     /// for each entry inside AbstractObjectsDetector::search_ranges we
     /// store the corresponding detector cascade
-    std::vector<cascade_stages_t> detection_cascade_per_scale;
-
-    std::vector<stump_cascade_stages_t> detection_stump_cascade_per_scale;
+    std::vector<variant_stages_t> detection_cascade_per_scale;
 
     /// relative scale of the detection cascade (linked to detection_window_size per scale)
     /// (used for boundary checks only)
@@ -78,6 +63,7 @@ protected:
 
     /// additional data needed to compute detections are one specific scale
     std::vector<ScaleData> extra_data_per_scale;
+    int max_search_range_width, max_search_range_height;
 
     /// updates the values inside detection_cascade_per_scale and detection_window_size_per_scale
     virtual void compute_scaled_detection_cascades();
@@ -85,7 +71,7 @@ protected:
     virtual void compute_extra_data_per_scale(const size_t input_width, const size_t input_height);
 
     /// helper function that validates the internal consistency of the extra_data_per_scale
-    void check_extra_data_per_scale();
+    virtual void check_extra_data_per_scale();
 
     // store information related to ground plane and stixels
     ///@{
@@ -106,6 +92,8 @@ protected:
     /// this method must be implemented by the children classes
     virtual size_t get_input_height() const = 0;
 
+    /// obtain the 'final' search range including scale, occlusion, detector size and shrinking factor information
+    DetectorSearchRange compute_scaled_search_range(const size_t scale_index) const;
 };
 
 
@@ -122,20 +110,6 @@ void add_detection_for_bootstrapping(
         AbstractObjectsDetector::detections_t &detections);
 
 
-/// Helper class for sorting the search ranges by scale (indirectly)
-class SearchRangeScaleComparator
-{
-
-public:
-    SearchRangeScaleComparator(const detector_search_ranges_t &search_ranges);
-    ~SearchRangeScaleComparator();
-
-    bool operator()(const size_t a, const size_t b);
-
-protected:
-    const detector_search_ranges_t &search_ranges;
-
-};
 
 } // end of namespace doppia
 

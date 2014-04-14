@@ -12,7 +12,7 @@ namespace doppia {
 using namespace std;
 using namespace boost;
 
-typedef BaseIntegralChannelsDetector::cascade_stages_t cascade_stages_t;
+typedef SoftCascadeOverIntegralChannelsModel::fast_stages_t cascade_stages_t;
 typedef SoftCascadeOverIntegralChannelsModel::fast_stage_t stage_t;
 
 /// Helper function used to create the JSON needed for the code generation attempt

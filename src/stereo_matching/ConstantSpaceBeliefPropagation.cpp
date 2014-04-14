@@ -75,9 +75,9 @@ namespace doppia
         bilateral_filter_radius = get_option_value<int>(options, "csbp.post_filtering_radius");
         bilateral_filter_iterations = get_option_value<int>(options, "csbp.post_filtering_iterations");
 
-        do_post_processing  = (bilateral_filter_radius >= 3) && (bilateral_filter_iterations >= 1);
+        do_post_processing  = (bilateral_filter_radius >= 3) and (bilateral_filter_iterations >= 1);
 
-        if(num_scales < 1 || num_scales > 5)
+        if(num_scales < 1 or num_scales > 5)
         {
             throw std::runtime_error("csbp.scales is expected to be in the range [1,5]");
         }
@@ -85,7 +85,7 @@ namespace doppia
         /*
            const string pixels_matching_string = get_option_value<string>(options, "pixels_matching");
 
-           if (pixels_matching_string.empty() || (pixels_matching_string.compare("birchfield") == 0))
+           if (pixels_matching_string.empty() or (pixels_matching_string.compare("birchfield") == 0))
            {
            pixels_matching_method = QX_DEF_STEREO_CORR_VOL_METHOD_SMOOTH_BIRCHFIELD;
            }

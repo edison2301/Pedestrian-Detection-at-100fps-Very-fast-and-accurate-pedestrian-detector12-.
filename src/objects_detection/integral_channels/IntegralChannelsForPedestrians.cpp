@@ -871,15 +871,19 @@ void IntegralChannelsForPedestrians::save_channels_to_file()
 }
 
 #if defined(OBJECTS_DETECTION_LIB)
+
 void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
                                     const string file_path)
 {
     throw std::runtime_error("save_integral_channels_to_file not supported in this compiled version");
     return;
 }
+
 #else
-Eigen::MatrixXf get_channel_matrix(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
-                                   const size_t channel_index)
+
+void get_channel_matrix(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
+                        const size_t channel_index,
+                        Eigen::MatrixXf &channel_matrix)
 {
     const size_t num_channels = integral_channels.shape()[0];
 
@@ -894,7 +898,7 @@ Eigen::MatrixXf get_channel_matrix(const IntegralChannelsForPedestrians::integra
             integral_channel = integral_channels[channel_index];
 
     // reconstruct "non integral image" from integral image
-    Eigen::MatrixXf channel_matrix = Eigen::MatrixXf::Zero(channel_size_y, channel_size_x);
+    channel_matrix = Eigen::MatrixXf::Zero(channel_size_y, channel_size_x);
 
     for(size_t y=0; y < channel_size_y; y+=1)
     {
@@ -909,8 +913,9 @@ Eigen::MatrixXf get_channel_matrix(const IntegralChannelsForPedestrians::integra
         } // end of "for each column"
     } // end of "for each row"
 
-    return channel_matrix;
+    return;
 }
+
 
 void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
                                     const string file_path)
@@ -920,6 +925,7 @@ void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integr
 
     gil::rgb8_image_t channels_image(channel_size_x*num_channels, channel_size_y);
     gil::rgb8_view_t channels_image_view = gil::view(channels_image);
+    Eigen::MatrixXf channel_matrix;
 
     for(size_t i=0; i < num_channels; i += 1 )
     {
@@ -928,7 +934,7 @@ void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integr
                                    channel_size_x*i, 0, channel_size_x, channel_size_y);
 
         // reconstruct "non integral image" from integral image
-        const Eigen::MatrixXf channel_matrix = get_channel_matrix(integral_channels, i);
+        get_channel_matrix(integral_channels, i, channel_matrix);
 
         // copy matrix to overall image
         draw_matrix(channel_matrix, channel_view);
@@ -937,6 +943,7 @@ void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integr
     gil::png_write_view(file_path, gil::const_view(channels_image));
     return;
 }
+
 #endif // OBJECTS_DETECTION_LIB is defined or not
 
 
@@ -1001,6 +1008,7 @@ void IntegralChannelsForPedestrians::get_feature_vector(const rectangle_t &r, fe
 }
 #endif
 
+
 bool rectangle_is_smaller_or_equal(const rectangle_t &smaller, const rectangle_t &bigger)
 {
     bool is_smaller_or_equal = true;
@@ -1012,6 +1020,7 @@ bool rectangle_is_smaller_or_equal(const rectangle_t &smaller, const rectangle_t
 
     return is_smaller_or_equal;
 }
+
 
 #if not defined(OBJECTS_DETECTION_LIB)
 void IntegralChannelsForPedestrians::get_channels_values(const rectangle_t &input_rectangle, feature_vector_t &feature_vector)

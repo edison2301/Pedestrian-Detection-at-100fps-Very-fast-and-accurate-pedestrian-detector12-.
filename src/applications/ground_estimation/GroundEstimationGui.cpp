@@ -59,7 +59,7 @@ namespace doppia
 using boost::array;
 using namespace boost::gil;
 
-program_options::options_description GroundEstimationGui::get_args_options(void)
+program_options::options_description GroundEstimationGui::get_args_options()
 {
     program_options::options_description desc("GroundEstimationGui options");
 
@@ -67,8 +67,8 @@ program_options::options_description GroundEstimationGui::get_args_options(void)
     desc.add_options()
 
             /*("gui.colorize_disparity",
-                                                     program_options::value<bool>()->default_value(true),
-                                                     "colorize the disparity map or draw it using grayscale")*/
+                                             program_options::value<bool>()->default_value(true),
+                                             "colorize the disparity map or draw it using grayscale")*/
 
             ;
 
@@ -90,7 +90,7 @@ GroundEstimationGui::GroundEstimationGui(GroundEstimationApplication &_applicati
     }
 
     if((!application.ground_plane_estimator_p) and
-       (!application.fast_ground_plane_estimator_p))
+            (!application.fast_ground_plane_estimator_p))
     {
         throw std::runtime_error("GroundEstimationGui constructor expects that ground_plane_estimator_p or  and fast_ground_plane_estimator_p is already initialized");
     }
@@ -426,9 +426,9 @@ void GroundEstimationGui::draw_ground_plane_estimator(const FastGroundPlaneEstim
     fill_pixels(screen_subview, rgb8_pixel_t());
 
     boost::gil::rgb8_view_t screen_subsubview = boost::gil::subimage_view(screen_subview,
-                                                                          0, raw_v_disparity_view.height(),
-                                                                          raw_v_disparity_view.width(),
-                                                                          raw_v_disparity_view.height());
+                                                                       0, raw_v_disparity_view.height(),
+                                                                       raw_v_disparity_view.width(),
+                                                                       raw_v_disparity_view.height());
     Eigen::MatrixXf v_disparity_data;
     v_disparity_data_to_matrix(ground_plane_estimator.get_v_disparity(),
                                v_disparity_data);

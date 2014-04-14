@@ -46,7 +46,7 @@ protected:
 
     gpu_scales_data_t gpu_scales_data;
     gpu_scale_datum_t::search_range_t max_search_range;
-    int max_search_range_width, max_search_range_height, stixels_max_search_range_height;
+    int stixels_max_search_range_height;
 
     /// we store in GPU memory the stixels data
     gpu_stixels_t gpu_stixels;

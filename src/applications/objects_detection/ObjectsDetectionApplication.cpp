@@ -44,11 +44,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 #include <boost/format.hpp>
-
-#include <opencv2/imgproc/imgproc.hpp>
 
 #include <omp.h>
 
@@ -89,14 +85,16 @@ typedef AbstractStixelWorldEstimator::ground_plane_corridor_t ground_plane_corri
 
 std::string ObjectsDetectionApplication::get_application_title()
 {
-    return "Stereo objects detection on a flat world. Rodrigo Benenson @ KULeuven. 2011.";
+    return "Stereo objects detection on a flat world. Rodrigo Benenson @ KULeuven. 2011-2012.";
 }
+
 
 ObjectsDetectionApplication::ObjectsDetectionApplication()
     : BaseApplication(),
       should_save_detections(false),
       use_ground_plane_only(false),
       should_process_folder(false),
+      silent_mode(false),
       additional_border(0),
       stixels_computation_period(1)
 {
@@ -112,7 +110,7 @@ ObjectsDetectionApplication::~ObjectsDetectionApplication()
 }
 
 
-program_options::options_description ObjectsDetectionApplication::get_args_options(void)
+program_options::options_description ObjectsDetectionApplication::get_args_options()
 {
     program_options::options_description desc("ObjectsDetectionApplication options");
 
@@ -212,6 +210,7 @@ void ObjectsDetectionApplication::setup_logging(std::ofstream &log_file, const p
     return;
 }
 
+
 void ObjectsDetectionApplication::setup_problem(const program_options::variables_map &options)
 {
     // parse the application specific options --
@@ -219,7 +218,14 @@ void ObjectsDetectionApplication::setup_problem(const program_options::variables
     should_process_folder = options.count("process_folder") > 0;
     silent_mode = get_option_value<bool>(options, "silent_mode");
 
-    additional_border = get_option_value<int>(options, "additional_border");
+    if(options.count("additional_border") > 0)
+    { // this option may not be available when calling this function from a different application
+        additional_border = get_option_value<int>(options, "additional_border");
+    }
+    else
+    {
+        additional_border = 0;
+    }
 
     // instanciate the different processing modules --
     if(should_process_folder)
@@ -265,7 +271,10 @@ void ObjectsDetectionApplication::setup_problem(const program_options::variables
         stixel_world_estimator_p.reset(StixelWorldEstimatorFactory::new_instance(options, *video_input_p));
     }
 
-    objects_tracker_p.reset(ObjectsTrackerFactory::new_instance(options));
+    if(video_input_p)
+    { // for process folder, objects_tracker_p stays empty
+        objects_tracker_p.reset(ObjectsTrackerFactory::new_instance(options, video_input_p->get_metric_camera()));
+    }
     return;
 }
 
@@ -303,6 +312,9 @@ int ObjectsDetectionApplication::get_current_frame_number() const
     return current_frame_number;
 }
 
+
+namespace { // anonymous namespace
+
 boost::barrier stixel_world_compute_start_barrier(2); // only two threads are involved in this barrier
 boost::barrier stixel_world_compute_ended_barrier(2); // only two threads are involved in this barrier
 
@@ -323,6 +335,8 @@ void stixel_world_compute_thread(shared_ptr<AbstractStixelWorldEstimator> stixel
     }
     return;
 }
+
+} // end of anonymous namespace
 
 
 void ObjectsDetectionApplication::main_loop()
@@ -351,7 +365,7 @@ void ObjectsDetectionApplication::main_loop()
     {
         video_input_is_available = video_input_p->next_frame();
     }
-    
+
     stixels_t stixels_from_previous_frame;
     ground_plane_corridor_t ground_corridor_from_previous_frame;
 
@@ -576,14 +590,14 @@ void ObjectsDetectionApplication::record_detections()
 
         detection_data_p->set_score(detection.score);
 
-        // we must do the max(0, value) check since the Point2d only accept positives coordinates,
-        // saving a negative value would create an integer overflow
+        // Point2d support negative values, these are needed when handling detections on the image border
+        // (occluded detections)
         doppia_protobuf::Point2d &max_corner = *(detection_data_p->mutable_bounding_box()->mutable_max_corner());
-        max_corner.set_x(std::max(0, detection.bounding_box.max_corner().x() - additional_border));
-        max_corner.set_y(std::max(0, detection.bounding_box.max_corner().y() - additional_border));
+        max_corner.set_x(detection.bounding_box.max_corner().x() - additional_border);
+        max_corner.set_y(detection.bounding_box.max_corner().y() - additional_border);
         doppia_protobuf::Point2d &min_corner = *(detection_data_p->mutable_bounding_box()->mutable_min_corner());
-        min_corner.set_x(std::max(0, detection.bounding_box.min_corner().x() - additional_border));
-        min_corner.set_y(std::max(0, detection.bounding_box.min_corner().y() - additional_border));
+        min_corner.set_x(detection.bounding_box.min_corner().x() - additional_border);
+        min_corner.set_y(detection.bounding_box.min_corner().y() - additional_border);
 
         doppia_protobuf::Detection::ObjectClasses object_class = doppia_protobuf::Detection::Unknown;
         switch(detection.object_class)

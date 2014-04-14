@@ -208,14 +208,14 @@ namespace logging {
     virtual int_type overflow(int_type c) {
       {
         boost::mutex::scoped_lock lock(m_mutex);
-        if(!traits::eq_int_type(c, traits::eof())) {
+        if(not traits::eq_int_type(c, traits::eof())) {
           m_buffers[ boost::this_thread::get_id() ].push_back(static_cast<CharT>(c));
         }
       }
 
       // If the last character is a newline or cairrage return, then
       // we force a call to sync().
-      if ( c == '\n' || c == '\r' )
+      if ( c == '\n' or c == '\r' )
         sync();
       return traits::not_eof(c);
     }
@@ -233,7 +233,7 @@ namespace logging {
       if ( buffer.size() > 0 ) {
         const size_t last_char_position = buffer.size()-1;
 
-        if ( buffer[last_char_position] == '\n' ||
+        if ( buffer[last_char_position] == '\n' or
              buffer[last_char_position] == '\r' )
         {
           sync();
@@ -244,7 +244,7 @@ namespace logging {
 
     virtual int sync() {
       boost::mutex::scoped_lock lock(m_mutex);
-      if(!m_buffers[ boost::this_thread::get_id() ].empty() && m_out ) {
+      if(not m_buffers[ boost::this_thread::get_id() ].empty() and m_out ) {
         m_out->sputn(&m_buffers[ boost::this_thread::get_id() ][0], static_cast<std::streamsize>(m_buffers[ boost::this_thread::get_id() ].size()));
         m_out->pubsync();
         m_buffers[ boost::this_thread::get_id() ].clear();
@@ -310,7 +310,7 @@ namespace logging {
   inline std::string stringify(const T& x)
   {
     std::ostringstream o;
-    if (!(o << x))
+    if (not (o << x))
     {
       return std::string("[failed to stringify ") + typeid(x).name() + "]";
   }
@@ -382,8 +382,8 @@ namespace logging {
       for (rules_type::iterator it = m_rules.begin(); it != m_rules.end(); ++it) {
 
         // Pass through rule for complete wildcard
-        if ( (*it).second == "*" &&
-             ( (*it).first == logging::EveryMessage ||
+        if ( (*it).second == "*" and
+             ( (*it).first == logging::EveryMessage or
                log_level <= (*it).first ) )
           {
           return true;
@@ -402,7 +402,7 @@ namespace logging {
         }
 
         // Evaluation of half wild card
-        if ( has_leading_wildcard( (*it).second )  &&
+        if ( has_leading_wildcard( (*it).second )  and
              boost::iends_with(lower_namespace,after_wildcard((*it).second)) ) {
           if ( log_level <= (*it).first )
             {
@@ -417,7 +417,7 @@ namespace logging {
 
       // Progress bars get a free ride at InfoMessage level unless a
       // rule above modifies that.
-      if ( boost::iends_with(lower_namespace,".progress") &&
+      if ( boost::iends_with(lower_namespace,".progress") and
            log_level == logging::InfoMessage )
       {
         return true;
@@ -551,7 +551,7 @@ namespace logging {
       return;
     }
 
-    /// Return a reference to the console LogInstance.
+    /// @returns a reference to the console LogInstance.
     LogInstance& console_log() {
       boost::mutex::scoped_lock lock(m_system_log_mutex);
       return *m_console_log;

@@ -6,6 +6,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/gil/extension/io/png_io.hpp>
 #include <boost/gil/extension/io/jpeg_io.hpp>
+#include <boost/gil/extension/io_new/pnm_read.hpp>
 
 #include <stdexcept>
 
@@ -46,23 +47,50 @@ using namespace std;
 using namespace boost;
 
 
-gil::rgb8c_view_t open_image(const string &filename, gil::rgb8_image_t &image)
+gil::rgb8c_view_t open_image(const string &file_path, gil::rgb8_image_t &image)
 {
-
-    const string extension = filesystem::extension(filename);
+    const string extension = filesystem::extension(file_path);
     if(extension == ".png")
     {
-        gil::png_read_and_convert_image(filename, image);
+        try
+        {
+            gil::png_read_and_convert_image(file_path, image);
+        }
+        catch(std::exception &e)
+        {
+            log_error() << "Failed to read png image " << file_path << std::endl;
+            throw e;
+        }
+    }
+    else if(extension == ".pnm")
+    {
+        try
+        {
+            gil::read_and_convert_image(file_path, image, gil::pnm_tag());
+        }
+        catch(std::exception &e)
+        {
+            log_error() << "Failed to read pnm image " << file_path << std::endl;
+            throw e;
+        }
     }
     else if((extension == ".jpg") or (extension == ".jpeg"))
     {
-        gil::jpeg_read_and_convert_image(filename, image);
+        try
+        {
+            gil::jpeg_read_and_convert_image(file_path, image);
+        }
+        catch(std::exception &e)
+        {
+            log_error() << "Failed to read jpeg image " << file_path << std::endl;
+            throw e;
+        }
     }
     else
     {
         log_error() << "Received unsupported image extension " << extension << std::endl;
-        log_error() << "Filename: " << filename << std::endl;
-        std::invalid_argument("Received unsupported image extension");
+        log_error() << "Filename: " << file_path << std::endl;
+        throw std::invalid_argument("Received unsupported image extension");
     }
 
     return gil::view(image);

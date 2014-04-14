@@ -1,7 +1,7 @@
 # use glob syntax.
 syntax: glob
 
-applications/biclop/biclop
+applications/doppia/doppia
 applications/simple_stereo/simple_stereo
 applications/simple_stereo_lib/test_simple_stereo_lib
 applications/simple_gpu_stereo/simple_gpu_stereo
@@ -15,9 +15,11 @@ applications/objects_detection/objects_detection
 applications/ground_estimation/ground_estimation
 applications/create_learning_files/create_learning_files
 applications/boosted_learning/boosted_learning
-applications/bootstrapping_lib/test_bootstrapping_lib
-applications/objects_detection_lib/test_objects_detection_lib
-applications/objects_detection_lib/test_monocular_objects_detection_lib
+applications/bootstrapping_lib/test_*_lib
+applications/objects_detection_lib/test_*_lib
+applications/stixel_world_lib/test_*_lib
+applications/compute_geodesic_channels/compute_geodesic_channels
+applications/reweight_detections/reweight_detections
 
 tests/tracks_categorisation/test_tracks_categorisation
 tests/lines_detection/test_lines_detection
@@ -28,12 +30,15 @@ tests/objects_detection/test_objects_detection
 src/applications/objects_detection/*_recordings*
 tools/objects_detection/tmp/*
 src/applications/objects_detection/cvpr2012/*
+src/applications/objects_detection/results/*
+src/applications/boosted_learning/results/*
 src/applications/objects_detection/config_models/*
 src/applications/objects_detection/crop*
 src/applications/boosted_learning/left22222seed/*
 src/applications/boosted_learning/22222seed_new/*
 src/applications/boosted_learning/59166seed/*
 tools/objects_detection/crop*
+tools/objects_detection/results/*
 src/applications/boosted_learning/22222Seed/*
 
 src/applications/objects_detection/car_detection*
@@ -45,6 +50,7 @@ documentation/build
 2011_*
 2010_*
 2012_*
+2013_*
 
 gmon.out
 Makefile
@@ -58,7 +64,7 @@ output/*
 sceneflow_devernay/*
 folki/*
 
-src/applications/biclop/*_recordings/
+src/applications/doppia/*_recordings/
 src/applications/tracks_classifier_evaluation/*.txt
 src/applications/objects_detection/training_runs
 src/applications/linear_svm_learning/inria_model*.txt
@@ -77,6 +83,7 @@ src/applications/linear_svm_learning/inria_model*.txt
 *.avi
 *.mp4
 *.pdf
+*.submit
 
 *~
 *.pidb
@@ -86,6 +93,7 @@ src/applications/linear_svm_learning/inria_model*.txt
 .scon*
 .lock*
 *.pro.user
+*.tmp
 *.pyc
 *.pickle
 *.pkl

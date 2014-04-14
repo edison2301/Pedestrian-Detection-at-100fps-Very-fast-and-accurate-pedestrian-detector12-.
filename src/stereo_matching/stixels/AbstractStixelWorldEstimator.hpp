@@ -18,7 +18,8 @@ public:
     typedef boost::gil::rgb8_view_t input_image_view_t;
     typedef boost::gil::rgb8c_view_t input_image_const_view_t;
 
-    virtual void set_rectified_images_pair(input_image_const_view_t &left, input_image_const_view_t &right);
+    virtual void set_rectified_images_pair(const input_image_const_view_t &left,
+                                           const input_image_const_view_t &right);
 
     virtual void compute() = 0;
 

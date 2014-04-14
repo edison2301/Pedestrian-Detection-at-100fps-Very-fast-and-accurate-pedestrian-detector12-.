@@ -35,7 +35,7 @@ public:
     BaseSdlGui(BaseApplication &application, const boost::program_options::variables_map &options);
     virtual ~BaseSdlGui();
 
-    /// Returns false if the application should stop
+    /// @returnss false if the application should stop
     bool update();
 
 protected:

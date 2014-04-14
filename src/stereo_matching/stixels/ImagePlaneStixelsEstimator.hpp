@@ -74,19 +74,23 @@ protected:
     input_image_const_view_t input_left_view, input_right_view;
     boost::scoped_ptr<AlignedImage>
     transposed_left_image_p,
+    transposed_slim_left_image_p, // contains only the columns of interest
     transposed_right_image_p,
     rectified_right_image_p,
     transposed_rectified_right_image_p;
 
     cv::Mat gray_left_mat, df_dy_mat;
 
+public:
     /// for each stixel, for each vertical step, which is the expected bottom row
     typedef boost::uint16_t row_t;
     typedef boost::multi_array<row_t, 2> row_given_stixel_and_row_step_t;
-    row_given_stixel_and_row_step_t row_given_stixel_and_row_step;
 
-    typedef boost::uint16_t disparity_t;
+    typedef boost::int32_t disparity_t;
     typedef boost::multi_array<disparity_t, 2> disparity_given_stixel_and_row_step_t;
+
+protected:
+    row_given_stixel_and_row_step_t bottom_v_given_stixel_and_row_step, top_v_given_stixel_and_row_step;
     disparity_given_stixel_and_row_step_t disparity_given_stixel_and_row_step;
 
     /// for each column, and for each row_step find the most likely object bottom

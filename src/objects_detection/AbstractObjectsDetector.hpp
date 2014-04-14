@@ -3,6 +3,7 @@
 
 #include "Detection2d.hpp"
 #include "DetectorSearchRange.hpp"
+#include "ScaleData.hpp"
 #include "AbstractModelWindowToObjectWindowConverter.hpp"
 
 #include "stereo_matching/stixels/Stixel.hpp"
@@ -22,7 +23,7 @@ class AbstractObjectsDetector
 
 public:
 
-    typedef geometry::point_xy<boost::uint16_t> detection_window_size_t;
+    typedef ScaleData::detection_window_size_t detection_window_size_t;
 
     typedef Detection2d detection_t;
     typedef std::vector<detection_t> detections_t;
@@ -71,14 +72,14 @@ protected:
 
     boost::scoped_ptr<AbstractModelWindowToObjectWindowConverter> model_window_to_object_window_converter_p;
 
-    /// which area of the image should be explored at each scale ?
-    detector_search_ranges_t search_ranges;
+    /// which are the scales that should be explored ?
+    detector_search_ranges_data_t search_ranges_data;
 
     /// helper method used to set the search_ranges
-    void compute_search_ranges(
-        const boost::gil::rgb8c_view_t::point_t &input_dimensions,
-        const detection_window_size_t &detection_window_size,
-        detector_search_ranges_t &search_ranges) const;
+    void compute_search_ranges_meta_data(detector_search_ranges_data_t &search_ranges_data) const;
+
+    /// obtain the 'final' search range including scale, occlusion, detector size and shrinking factor information
+    virtual DetectorSearchRange compute_scaled_search_range(const size_t scale_index) const = 0;
 
     /// helper class for testing
     friend class DetectorsComparisonTestApplication;

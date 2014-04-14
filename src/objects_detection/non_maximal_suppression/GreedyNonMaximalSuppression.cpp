@@ -8,7 +8,6 @@
 
 #include <boost/foreach.hpp>
 
-//#include <iostream>
 
 #if defined(TESTING)
 #include <boost/multi_array.hpp>
@@ -37,7 +36,11 @@ GreedyNonMaximalSuppression::get_args_options()
              "see Section 1.2.1 P. Dollar, Integral Channel Features - Addendum, 2009. "
              "This overlap is _not_ the PASCAL VOC overlap criterion.")
             // 0.65 fixed based on the results of P. Dollar 2009 addendum, figure 2
-
+            ("objects_detector.greedy_overlap_method", value<string>()->default_value("dollar"),
+             "defines overlap criterion used:  <dollar> <pascal>"
+             "dollar: The non maximal suppression is based on greddy* variant, "
+             "see Section 1.2.1 P. Dollar, Integral Channel Features - Addendum, 2009. "
+             "pascal: PASCALVOC overlap over union; please adjust objects_detector.minimal_overlap_threshold")
             ;
 
     return desc;
@@ -47,14 +50,15 @@ GreedyNonMaximalSuppression::get_args_options()
 GreedyNonMaximalSuppression::GreedyNonMaximalSuppression(const variables_map &options)
     : minimal_overlap_threshold(
           get_option_value<float>(options, "objects_detector.minimal_overlap_threshold"))
+          , overlap_method(get_option_value<string>(options, "objects_detector.greedy_overlap_method"))
 {
     // nothing to do here
     return;
 }
 
 
-GreedyNonMaximalSuppression::GreedyNonMaximalSuppression(const float minimal_overlap_threshold_)
-    : minimal_overlap_threshold(minimal_overlap_threshold_)
+GreedyNonMaximalSuppression::GreedyNonMaximalSuppression(const float minimal_overlap_threshold_, const string overlap_method_)
+    : minimal_overlap_threshold(minimal_overlap_threshold_), overlap_method(overlap_method_)
 {
     // nothing to do here
     return;
@@ -118,27 +122,51 @@ float overlapping_area(const detection_t::rectangle_t &a,
     }
 }
 
+inline
+float union_area(const detection_t::rectangle_t &a,
+                       const detection_t::rectangle_t &b)
+{
+    // a and b are expected to be tuples of the type (x1, y1, x2, y2)
+    // code adapted from http://visiongrader.sf.net
+
+    const float a_area = area(a);
+    const float b_area = area(b);
+    const float inter = overlapping_area(a,b);
+    return a_area + b_area - inter;
+
+}
 
 // compute the overlap between two detections, using the P. Dollar overlap criterion
 // this is _not_ the PASCAL VOC overlap criterion
 // (_inlined is a dirty trick to have a local fast version and a "slow" version accessible from other files)
 inline
-float compute_overlap_inlined(const detection_t &a, const detection_t &b)
+float compute_overlap_inlined(const detection_t &a, const detection_t &b, const string & method = "dollar")
 {
-    //using namespace boost::geometry;
-    //const float union_area = area( union_( a.bounding_box, b.bounding_box ) );
-    const float intersection_area = overlapping_area(a.bounding_box, b.bounding_box);
-    const float area_a = area(a.bounding_box), area_b = area(b.bounding_box);
-    //const float union_area = area_a + area_b - intersection_area;
-    const float min_area = std::min(area_a, area_b);
+    if (method == "dollar"){
 
-    return intersection_area / min_area;
+        const float intersection_area = overlapping_area(a.bounding_box, b.bounding_box);
+        const float area_a = area(a.bounding_box), area_b = area(b.bounding_box);
+        const float min_area = std::min(area_a, area_b);
+        return intersection_area / min_area;
+
+    }else if (method =="pascal"){
+        //using namespace boost::geometry;
+
+        const float union_area_value = union_area( a.bounding_box, b.bounding_box );
+        const float intersection_area = overlapping_area(a.bounding_box, b.bounding_box);
+        return intersection_area / union_area_value;
+
+    }else{
+
+        throw std::runtime_error("overlap method must be 'dollar' or 'pascal'");
+    }
+
 }
 
 
-float compute_overlap(const detection_t &a, const detection_t &b)
+float compute_overlap(const detection_t &a, const detection_t &b, const string & method)
 {
-    return compute_overlap_inlined(a, b);
+    return compute_overlap_inlined(a, b, method);
 }
 
 
@@ -248,7 +276,7 @@ void GreedyNonMaximalSuppression::compute()
 {
     candidate_detections.sort(has_higher_score);
     maximal_detections.clear();
-    maximal_detections.reserve(42); // we do not expect more than 42 pedestrians per scene
+    maximal_detections.reserve(64); // we do not expect more than 64 pedestrians per scene
 
     candidate_detections_t::iterator detections_it = candidate_detections.begin();
     for(; detections_it != candidate_detections.end(); ++detections_it)
@@ -262,7 +290,7 @@ void GreedyNonMaximalSuppression::compute()
         ++lower_score_detection_it; // = detections_it + 1
         for(; lower_score_detection_it != candidate_detections.end(); )
         {
-            const float overlap = compute_overlap_inlined(detection, *lower_score_detection_it);
+            const float overlap = compute_overlap_inlined(detection, *lower_score_detection_it, overlap_method);
 
             if(overlap > minimal_overlap_threshold)
             {

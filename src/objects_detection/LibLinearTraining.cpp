@@ -114,6 +114,7 @@ void free_and_destroy_model(struct model **model_ptr_ptr)
     return;
 }
 
+
 void destroy_parameters(parameter& param)
 {
     if(param.weight_label != NULL)
@@ -136,6 +137,7 @@ LibLinearTraining::~LibLinearTraining()
     return;
 }
 
+
 void LibLinearTraining::set_feature_vectors_size(const int feature_vectors_size)
 {
     feature_vectors.resize(boost::extents[feature_vectors.shape()[0]][feature_vectors_size + 1]);
@@ -143,11 +145,13 @@ void LibLinearTraining::set_feature_vectors_size(const int feature_vectors_size)
     return;
 }
 
+
 void LibLinearTraining::set_feature_vectors_capacity(const int capacity)
 {
     feature_vectors.resize(boost::extents[capacity][feature_vectors.shape()[1]]);
     return;
 }
+
 
 void LibLinearTraining::set_number_of_feature_vectors(const int num_feature_vectors)
 {
@@ -171,10 +175,12 @@ void LibLinearTraining::set_number_of_feature_vectors(const int num_feature_vect
     return;
 }
 
+
 size_t LibLinearTraining::get_number_of_feature_vectors() const
 {
     return feature_vectors_pointers.size();
 }
+
 
 void LibLinearTraining::set_feature_vector(const size_t index, const int class_value, const feature_vector_t &input_vector)
 {
@@ -215,6 +221,7 @@ LinearSvmModel model_from_model(struct model &model)
     const float bias = model.bias;
     return LinearSvmModel(w, bias);
 }
+
 
 void LibLinearTraining::train()
 {
@@ -309,6 +316,7 @@ void LibLinearTraining::save_model(const std::string filename) const
     return;
 }
 
+
 /// slightly modified version from the one found inside liblinear's linear.cpp
 void predict_values(const struct model *model_, const struct feature_node *x,
                     double *dec_values, int &label_index)
@@ -358,6 +366,7 @@ void predict_values(const struct model *model_, const struct feature_node *x,
         return;
     }
 } // end of "predict"
+
 
 /// predict the training data
 void LibLinearTraining::predict()

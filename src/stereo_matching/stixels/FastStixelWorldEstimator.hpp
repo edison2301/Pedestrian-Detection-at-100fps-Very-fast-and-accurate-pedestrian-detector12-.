@@ -58,6 +58,8 @@ protected:
     friend class ObjectsDetectionApplication; // used for iros2012 hack
     friend class objects_detection::ObjectsDetectionLibGui; // used for debugging only
     friend class stixel_world::StixelWorldLibGui; // used for debugging only
+    friend void draw_u_disparity_cost_threshold(AbstractStixelWorldEstimator *, const boost::gil::rgb8_view_t &);
+
 
     const AbstractVideoInput::dimensions_t input_dimensions;
     const MetricStereoCamera& camera;

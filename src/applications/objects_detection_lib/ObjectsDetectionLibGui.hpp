@@ -72,7 +72,7 @@ public:
     void set_left_input(input_image_const_view_t &view);
     void set_right_input(input_image_const_view_t &view);
 
-    /// Returns false if the application should stop
+    /// @returnss false if the application should stop
     bool update();
 
 protected:

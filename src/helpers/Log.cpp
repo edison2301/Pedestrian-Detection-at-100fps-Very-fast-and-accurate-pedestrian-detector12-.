@@ -54,7 +54,7 @@ std::ostream& logging::log( int log_level, std::string log_namespace ) {
 logging::LogInstance::LogInstance(std::string log_filename, bool prepend_infostamp) : m_prepend_infostamp(prepend_infostamp) {
     // Open file and place the insertion pointer at the end of the file (ios_base::ate)
     m_log_ostream_ptr = new std::ofstream(log_filename.c_str(), std::ios::app);
-    if (! static_cast<std::ofstream*>(m_log_ostream_ptr)->is_open())
+    if (not  static_cast<std::ofstream*>(m_log_ostream_ptr)->is_open())
     {
         std::cerr << "Could not open log file " << log_filename << " for writing." << std::endl;
         throw std::runtime_error("Could not open log file for writing.");

@@ -1,8 +1,14 @@
 #include "BaseMultiscalesIntegralChannelsDetector.hpp"
 
+#include "MultiScalesIntegralChannelsModel.hpp"
+
 #include "integral_channels/IntegralChannelsForPedestrians.hpp"
 
 #include "ModelWindowToObjectWindowConverterFactory.hpp"
+
+#include "SearchRangeScaleComparator.hpp"
+
+#include "helpers/get_option_value.hpp"
 
 #include <boost/foreach.hpp>
 #include <boost/iterator/counting_iterator.hpp>
@@ -21,8 +27,28 @@ typedef AbstractObjectsDetector::detection_t detection_t;
 
 typedef BaseIntegralChannelsDetector::cascade_stages_t cascade_stages_t;
 
-using boost::counting_iterator;
+bool will_use_ground_plane(const boost::program_options::variables_map &options)
+{
+    return (options.count("use_ground_plane") and get_option_value<bool>(options, "use_ground_plane"))
+            or (options.count("use_stixels") and get_option_value<bool>(options, "use_stixels"));
+}
 
+
+/// This model less constructor is only meant to be used by BaseIntegralChannelsModelsBundleDetector
+/// This constructor does nothing
+BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector(
+        const boost::program_options::variables_map &options)
+    : // since the inheritance is virtual, and the constructor is protected,
+      // this particular constructor parameters will be never passed,
+      // but C++ still require to define them "just in case"
+      BaseIntegralChannelsDetector(options,
+                                   boost::shared_ptr<SoftCascadeOverIntegralChannelsModel>(),
+                                   boost::shared_ptr<AbstractNonMaximalSuppression>(), 0, 0),
+      use_ground_plane(will_use_ground_plane(options))
+{
+    // we do nothing in this constructor
+    return;
+}
 
 
 BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector(
@@ -35,6 +61,7 @@ BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector
       BaseIntegralChannelsDetector(options,
                                    boost::shared_ptr<SoftCascadeOverIntegralChannelsModel>(),
                                    boost::shared_ptr<AbstractNonMaximalSuppression>(), 0, 0),
+      use_ground_plane(will_use_ground_plane(options)),
       detector_model_p(detector_model_p_)
 {
     // the MultiScalesIntegralChannelsModel constructor already validated the consistency of the data
@@ -45,9 +72,23 @@ BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector
                                     "a non-null MultiScalesIntegralChannelsModel");
     }
 
+    check_shrinking_factor();
+    search_scale_one();
+    return;
+}
 
-    bool found_scale_one = false;
 
+BaseMultiscalesIntegralChannelsDetector::~BaseMultiscalesIntegralChannelsDetector()
+{
+    // nothing to do here
+    return;
+}
+
+
+/// Helper function that checks that the model shrinking factor matches the detector options
+/// Will throw an exception in case of mismatch
+void BaseMultiscalesIntegralChannelsDetector::check_shrinking_factor() const
+{
     BOOST_FOREACH(const detector_t &detector, detector_model_p->get_detectors())
     {
         // IntegralChannelsForPedestrians::get_shrinking_factor() == GpuIntegralChannelsForPedestrians::get_shrinking_factor()
@@ -62,6 +103,21 @@ BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector
             throw std::invalid_argument("One of the input models has a different shrinking factor than "
                                         "the currently used integral channels computer");
         }
+
+    } // end of "for each detector"
+
+    return;
+}
+
+
+/// Helper function that searches for the model with scale one and
+/// sets the detection window size and model_window_to_object_window_converter accordingly
+void BaseMultiscalesIntegralChannelsDetector::search_scale_one()
+{
+    bool found_scale_one = false;
+
+    BOOST_FOREACH(const detector_t &detector, detector_model_p->get_detectors())
+    {
 
         if(detector.get_scale() == 1.0f)
         {
@@ -85,59 +141,86 @@ BaseMultiscalesIntegralChannelsDetector::BaseMultiscalesIntegralChannelsDetector
                                     "the reiceved data does contain a detector for scale 1");
     }
 
-
     return;
 }
 
 
-BaseMultiscalesIntegralChannelsDetector::~BaseMultiscalesIntegralChannelsDetector()
-{
-    // nothing to do here
-    return;
-}
-
+/// helper function called inside BaseMultiscalesIntegralChannelsDetector::compute_scaled_detection_cascades
 /// reordering search_ranges by scale and making sure
 /// detection_{cascade, window_size}_per_scale is also in correct order
 void reorder_by_search_range_scale(
-        detector_search_ranges_t  &search_ranges,
+        detector_search_ranges_data_t  &search_ranges_data,
         std::vector<cascade_stages_t>  &detection_cascade_per_scale,
-        std::vector<detection_window_size_t> &detection_window_size_per_scale)
+        std::vector<detection_window_size_t> &detection_window_size_per_scale,
+        std::vector<float> &original_detection_window_scales)
 {
-
     // (sorting two arrays in C++ is a pain, see
     // http://www.stanford.edu/~dgleich/notebook/2006/03/sorting_two_arrays_simultaneou.html )
+    using boost::counting_iterator;
 
     std::vector<size_t> search_ranges_indices(counting_iterator<size_t>(0),
-                                              counting_iterator<size_t>(search_ranges.size()));
+                                              counting_iterator<size_t>(search_ranges_data.size()));
 
-    SearchRangeScaleComparator search_range_scale_comparator(search_ranges);
+    SearchRangeScaleComparator search_range_scale_comparator(search_ranges_data);
     std::sort(search_ranges_indices.begin(), search_ranges_indices.end(), search_range_scale_comparator);
 
 
     std::vector<cascade_stages_t> reordered_detection_cascade_per_scale;
-    detector_search_ranges_t reordered_search_ranges;
+    detector_search_ranges_data_t reordered_search_ranges;
     std::vector<detection_window_size_t> reordered_detection_window_size_per_scale;
+    std::vector<float> reordered_original_detection_window_scales;
 
     reordered_detection_cascade_per_scale.resize(detection_cascade_per_scale.size());
-    reordered_search_ranges.resize(search_ranges.size());
-    reordered_detection_window_size_per_scale.resize(search_ranges.size());
+    reordered_search_ranges.resize(search_ranges_data.size());
+    reordered_detection_window_size_per_scale.resize(search_ranges_data.size());
+    reordered_original_detection_window_scales.resize(search_ranges_data.size());
 
     assert(reordered_detection_cascade_per_scale.size() == reordered_search_ranges.size());
 
     for(size_t index=0; index < search_ranges_indices.size(); index +=1)
     {
         const size_t old_index = search_ranges_indices[index];
-        reordered_search_ranges[index] = search_ranges[old_index];
+        reordered_search_ranges[index] = search_ranges_data[old_index];
         reordered_detection_cascade_per_scale[index] = detection_cascade_per_scale[old_index];
         reordered_detection_window_size_per_scale[index] = detection_window_size_per_scale[old_index];
+        reordered_original_detection_window_scales[index] = original_detection_window_scales[old_index];
     }
 
     detection_cascade_per_scale = reordered_detection_cascade_per_scale;
-    search_ranges = reordered_search_ranges;
+    search_ranges_data = reordered_search_ranges;
     detection_window_size_per_scale = reordered_detection_window_size_per_scale;
-
+    original_detection_window_scales = reordered_original_detection_window_scales;
     return;
 }
+
+
+/// helper function called inside BaseMultiscalesIntegralChannelsDetector::compute_scaled_detection_cascades
+const detector_t *find_nearest_scale_detector_model(const float detection_window_scale,
+                                                    const detectors_t &detectors)
+{
+    const detector_t *nearest_detector_scale_p = NULL;
+
+    float min_abs_log_scale = std::numeric_limits<float>::max();
+
+    const float search_range_log_scale = log(detection_window_scale);
+    BOOST_FOREACH(const detector_t &detector, detectors)
+    {
+        const float
+                log_detector_scale = log(detector.get_scale()),
+                abs_log_scale = std::abs<float>(search_range_log_scale - log_detector_scale);
+
+        if(abs_log_scale < min_abs_log_scale)
+        {
+            min_abs_log_scale = abs_log_scale;
+            nearest_detector_scale_p = &detector;
+        }
+    } // end of "for each detector"
+
+    assert(nearest_detector_scale_p != NULL);
+
+    return nearest_detector_scale_p;
+}
+
 
 /// updates the values inside detection_cascade_per_scale
 /// this variant will also update search_ranges,
@@ -151,14 +234,12 @@ void BaseMultiscalesIntegralChannelsDetector::compute_scaled_detection_cascades(
     }
 
     detection_cascade_per_scale.clear();
-    detection_stump_cascade_per_scale.clear();
     detector_cascade_relative_scale_per_scale.clear();
     detection_window_size_per_scale.clear();
     original_detection_window_scales.clear();
 
-    const size_t num_scales = search_ranges.size();
+    const size_t num_scales = search_ranges_data.size();
     detection_cascade_per_scale.reserve(num_scales);
-    detection_stump_cascade_per_scale.reserve(num_scales);
     detector_cascade_relative_scale_per_scale.reserve(num_scales);
     detection_window_size_per_scale.reserve(num_scales);
     original_detection_window_scales.reserve(num_scales);
@@ -166,58 +247,48 @@ void BaseMultiscalesIntegralChannelsDetector::compute_scaled_detection_cascades(
 
     for(size_t scale_index=0; scale_index < num_scales; scale_index+=1)
     {
-        DetectorSearchRange &search_range = search_ranges[scale_index];
+        DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
 
-        if(search_range.detection_window_ratio != 1.0)
+        if(search_range_data.detection_window_ratio != 1.0)
         {
             throw std::invalid_argument("MultiscalesIntegralChannelsDetector does not handle ratios != 1");
         }
 
-        original_detection_window_scales.push_back(search_range.detection_window_scale);
+        original_detection_window_scales.push_back(search_range_data.detection_window_scale);
 
         // search the nearest scale model ---
-        const detector_t *nearest_detector_scale_p = NULL;
-        float min_abs_log_scale = std::numeric_limits<float>::max();
-
-        const float search_range_log_scale = log(search_range.detection_window_scale);
-        BOOST_FOREACH(const detector_t &detector, detector_model_p->get_detectors())
-        {
-            const float
-                    log_detector_scale = log(detector.get_scale()),
-                    abs_log_scale = std::abs<float>(search_range_log_scale - log_detector_scale);
-
-            if(abs_log_scale < min_abs_log_scale)
-            {
-                min_abs_log_scale = abs_log_scale;
-                nearest_detector_scale_p = &detector;
-            }
-        } // end of "for each detector"
-
-        assert(nearest_detector_scale_p != NULL);
+        const detector_t *nearest_detector_scale_p =
+                find_nearest_scale_detector_model(search_range_data.detection_window_scale,
+                                                  detector_model_p->get_detectors());
 
         if(first_call)
         {
             printf("Selected model scale %.3f for detection window scale %.3f\n",
-                   nearest_detector_scale_p->get_scale(), search_range.detection_window_scale);
+                   nearest_detector_scale_p->get_scale(), search_range_data.detection_window_scale);
         }
 
+
         // update the search range scale --
-        search_range.detection_window_scale /= nearest_detector_scale_p->get_scale();
+        {
+            search_range_data.detection_window_scale /= nearest_detector_scale_p->get_scale();
 
-        const float relative_scale = 1.0f; // we rescale the images, not the the features
-        const cascade_stages_t cascade_stages = nearest_detector_scale_p->get_rescaled_fast_stages(relative_scale);
-        detection_cascade_per_scale.push_back(cascade_stages);
+            const float relative_scale = 1.0f; // we rescale the images, not the the features
+            const cascade_stages_t cascade_stages = nearest_detector_scale_p->get_rescaled_stages(relative_scale);
+            detection_cascade_per_scale.push_back(cascade_stages);
 
-        const stump_cascade_stages_t stump_cascade_stages = nearest_detector_scale_p->get_rescaled_stump_stages(relative_scale);
-        detection_stump_cascade_per_scale.push_back(stump_cascade_stages);
-
-        detector_cascade_relative_scale_per_scale.push_back(relative_scale);
-        detection_window_size_per_scale.push_back(nearest_detector_scale_p->get_model_window_size());
+            detector_cascade_relative_scale_per_scale.push_back(relative_scale);
+            detection_window_size_per_scale.push_back(nearest_detector_scale_p->get_model_window_size());
+        }
     } // end of "for each search range"
 
 
-    // reordering search_ranges by scale and making sure detection_cascade_per_scale is also in correct order
-    reorder_by_search_range_scale(search_ranges, detection_cascade_per_scale, detection_window_size_per_scale);
+    if(use_ground_plane == false)
+    { // we only re-order when not using ground planes
+
+        // reordering search_ranges by scale and making sure detection_cascade_per_scale is also in correct order
+        reorder_by_search_range_scale(search_ranges_data, detection_cascade_per_scale,
+                                      detection_window_size_per_scale, original_detection_window_scales);
+    }
 
     first_call = false;
     return;

@@ -90,10 +90,10 @@ void  AbstractDisparityCostVolumeEstimator::resize_cost_volume(const point_t &in
 
     // lazy initialization
     if(data.empty()
-            || data.dimensionality != 3
-            || cost_volume.rows() != static_cast<size_t>(input_dimensions.y)
-            || cost_volume.columns() != static_cast<size_t>(input_dimensions.x)
-            || cost_volume.disparities() != max_disparity)
+            or data.dimensionality != 3
+            or cost_volume.rows() != static_cast<size_t>(input_dimensions.y)
+            or cost_volume.columns() != static_cast<size_t>(input_dimensions.x)
+            or cost_volume.disparities() != max_disparity)
     {
         cost_volume.resize(input_dimensions.y, input_dimensions.x, max_disparity);
     }

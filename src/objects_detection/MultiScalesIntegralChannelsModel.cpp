@@ -43,9 +43,10 @@ std::vector<float> downscaling_factors;
 
 namespace doppia {
 
-
-void normalized_multiscales(const doppia_protobuf::MultiScalesDetectorModel &model,
-                            doppia_protobuf::MultiScalesDetectorModel &rescaled_model)
+/// ProtobufModelDataType shoudl be doppia_protobuf::MultiScalesDetectorModel or DetectorModelsBundle
+template<typename ProtobufModelDataType>
+void normalized_multiscales_impl(const ProtobufModelDataType &model,
+                                 ProtobufModelDataType &rescaled_model)
 {
     rescaled_model.CopyFrom(model);
 
@@ -55,12 +56,12 @@ void normalized_multiscales(const doppia_protobuf::MultiScalesDetectorModel &mod
     const bool print_original_multiscales_model = false;
     if(print_original_multiscales_model)
     {
-        log_debug() << "Full multiscales model before normalization" << std::endl;
+        log_debug() << "Full multiscales/bundle model before normalization" << std::endl;
         log_debug() << model.DebugString() << std::endl;
     }
 
 
-    log_info() << "Multiscales model is being normalized to have maximum detection score == "
+    log_info() << "Multiscales/bundle model is being normalized to have maximum detection score == "
                << desired_max_score << std::endl;
 
     for(int detector_index=0; detector_index < rescaled_model.detectors_size(); detector_index+=1)
@@ -99,9 +100,23 @@ void normalized_multiscales(const doppia_protobuf::MultiScalesDetectorModel &mod
 }
 
 
+void normalized_multiscales(const doppia_protobuf::MultiScalesDetectorModel &model,
+                            doppia_protobuf::MultiScalesDetectorModel &rescaled_model)
+{
+    return normalized_multiscales_impl<>(model, rescaled_model);
+}
+
+
+void normalized_bundle(const doppia_protobuf::DetectorModelsBundle &model,
+                       doppia_protobuf::DetectorModelsBundle &rescaled_model)
+{
+    return normalized_multiscales_impl<>(model, rescaled_model);
+}
+
 
 /// this constructor will copy the protobuf data into a more efficient data structure
 MultiScalesIntegralChannelsModel::MultiScalesIntegralChannelsModel(const doppia_protobuf::MultiScalesDetectorModel &model)
+    :IntegralChannelsDetectorModelsBundle()
 {
     if(model.has_detector_name())
     {
@@ -128,43 +143,13 @@ MultiScalesIntegralChannelsModel::MultiScalesIntegralChannelsModel(const doppia_
     return;
 }
 
+
 MultiScalesIntegralChannelsModel::~MultiScalesIntegralChannelsModel()
 {
     // nothing to do here
     return;
 }
 
-const MultiScalesIntegralChannelsModel::detectors_t& MultiScalesIntegralChannelsModel::get_detectors() const
-{
-    return detectors;
-}
-
-bool MultiScalesIntegralChannelsModel::has_soft_cascade() const
-{
-    int num_detectors_with_cascade = 0;
-    BOOST_FOREACH(const detector_t &detector, detectors)
-    {
-        const SoftCascadeOverIntegralChannelsModel::fast_stages_t &stages = detector.get_fast_stages();
-        if(stages.empty() == false)
-        {
-            // if the last weak learner has a "non infinity" cascade threshold,
-            // then the model has a non trivial cascade, we should use it
-            if(stages.back().cascade_threshold > -1E5)
-            {
-                num_detectors_with_cascade += 1;
-            }
-        }
-    }
-
-    const bool use_the_detector_model_cascade = num_detectors_with_cascade > (detectors.size()/2.0f);
-
-    log_info() << "Will " << ( (use_the_detector_model_cascade)?"use":"ignore")
-               << " the cascade thresholds provided in " << num_detectors_with_cascade
-               << " out of " << detectors.size()
-               << " detectors in the multiscales model" << std::endl;
-
-    return use_the_detector_model_cascade;
-}
 
 void MultiScalesIntegralChannelsModel::sanity_check() const
 {
@@ -228,7 +213,7 @@ void MultiScalesIntegralChannelsModel::sanity_check() const
                         << std::endl;
             log_error() << boost::str(boost::format(
                                           "Model window size at scale %.3f (width, height) == (%i, %i)")
-                                      % detector_scale % scale_one_window_size.x() % scale_one_window_size.y())
+                                      % detector_scale % model_window_size.x() % model_window_size.y())
                         << std::endl;
 
             throw  std::invalid_argument("MultiScalesIntegralChannelsModel received model data with inconsistent "

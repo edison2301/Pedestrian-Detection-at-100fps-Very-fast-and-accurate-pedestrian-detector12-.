@@ -11,10 +11,11 @@ namespace doppia {
 
 TrackedDetection2d::TrackedDetection2d(const int id, const TrackedDetection2d::detection_t &detection,
                                        const int max_extrapolation_length_)
-    : max_extrapolation_length(max_extrapolation_length_)
+    :
+      object_class(detection.object_class),
+      track_id(id),
+      max_extrapolation_length(max_extrapolation_length_)
 {
-    track_id = id;
-    object_class = detection.object_class;
     current_bounding_box = detection.bounding_box;
     detections_in_time.push_back(detection);
 
@@ -55,7 +56,7 @@ void TrackedDetection2d::add_matched_detection(const TrackedDetection2d::detecti
         // we consider the max score
         last_detection.score = max_detection_score;
 
-        // we consider the ration of true detections
+        // we consider the ratio of true detections versus total detections (how many points extrapolated?)
         last_detection.score *= static_cast<float>(num_true_detections_in_time) / detections_in_time.size();
 
         // and we make longer tracks more confident
@@ -155,7 +156,8 @@ const int TrackedDetection2d::get_id() const
     return track_id;
 }
 
-TrackedDetection2d::rectangle_t TrackedDetection2d::compute_extrapolated_bounding_box()
+
+TrackedDetection2d::rectangle_t TrackedDetection2d::compute_extrapolated_bounding_box() const
 {
     const bool estimate_2d_motion = true;
     if(not estimate_2d_motion)

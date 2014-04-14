@@ -52,29 +52,35 @@ gpu_channel_ref_texture_t input_channel_texture;
 template <int shrinking_factor>
 __device__ __forceinline__
 void compute_shrinked_pixel(
-        const int &x, const int &y,
-        gpu_channel_ref_t::KernelData &shrunk_channel)
+        const int x, const int y,
+        const gpu_channel_ref_t::KernelConstData &input_channel,
+        const gpu_channel_ref_t::KernelData &shrunk_channel)
 {
     int sum = 0;
     const int input_x = x*shrinking_factor, input_y = y*shrinking_factor;
 
+    const int
+            max_input_x = input_channel.size[0] -1,
+            max_input_y = input_channel.size[1] -1;
+
     // adding #pragma unroll here makes no difference
     for(int row=0; row < shrinking_factor; row+=1)
     {
-        const int t_y = input_y + row;
+        const int t_y = min(input_y + row, max_input_y);
 
         for(int col=0; col < shrinking_factor; col+=1)
         {
-            sum += tex2D(input_channel_texture, input_x + col, t_y);
+            const int t_x = min(input_x + col, max_input_x);
+            sum += tex2D(input_channel_texture, t_x, t_y);
         } // end of "for each row"
     } // end of "for each row"
 
 
-    sum /= shrinking_factor*shrinking_factor; // rescale back to [0, 255]
+    sum /= (shrinking_factor*shrinking_factor); // rescale back to [0, 255]
 
     const size_t &row_stride = shrunk_channel.stride[0];
     const int shrunk_pixel_index = x + y * row_stride;
-    shrunk_channel.data[shrunk_pixel_index] = static_cast<uint8_t>(sum);
+    shrunk_channel.data[shrunk_pixel_index] = static_cast<gpu_channel_ref_t::Type>(sum);
     return;
 }
 
@@ -82,7 +88,9 @@ void compute_shrinked_pixel(
 /// the input_channel is accessed via input_channel_texture
 template <int shrinking_factor>
 __global__
-void shrink_channel_kernel(gpu_channel_ref_t::KernelData shrunk_channel)
+void shrink_channel_kernel(
+        const gpu_channel_ref_t::KernelConstData input_channel,
+        const gpu_channel_ref_t::KernelData shrunk_channel)
 {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -90,7 +98,7 @@ void shrink_channel_kernel(gpu_channel_ref_t::KernelData shrunk_channel)
 
     if ((x < shrunk_channel.size[0]) and (y < shrunk_channel.size[1]))
     {
-        compute_shrinked_pixel<shrinking_factor>(x,y, shrunk_channel);
+        compute_shrinked_pixel<shrinking_factor>(x, y, input_channel, shrunk_channel);
     } // end of "if x,y inside the image"
 
     return;
@@ -117,10 +125,15 @@ void shrink_channel(const gpu_channel_ref_t &input_channel, gpu_channel_ref_t &s
         expected_shrunk_width = (input_width + 1)/2;
         expected_shrunk_height = (input_height + 1)/2;
     }
+    else if(shrinking_factor == 1)
+    {
+        expected_shrunk_width = input_width;
+        expected_shrunk_height = input_height;
+    }
     else
     {
         printf("shrinking_factor == %i\n", shrinking_factor);
-        std::invalid_argument("shrink_channel called with an unsupported shrinking_factor value");
+        throw std::invalid_argument("shrink_channel called with an unsupported shrinking_factor value");
     }
 
     if((expected_shrunk_width != shrunk_width) or  (expected_shrunk_height != shrunk_height))
@@ -139,18 +152,22 @@ void shrink_channel(const gpu_channel_ref_t &input_channel, gpu_channel_ref_t &s
     {
         shrink_channel_kernel<4>
                 <<<grid_dimensions, block_dimensions>>>
-                                                      (shrunk_channel);
+                                                      (input_channel, shrunk_channel);
     }
     else if (shrinking_factor == 2)
     {
         shrink_channel_kernel<2>
                 <<<grid_dimensions, block_dimensions>>>
-                                                      (shrunk_channel);
+                                                      (input_channel, shrunk_channel);
+    }
+    else if(shrinking_factor == 1)
+    {
+        Cuda::copy(shrunk_channel, input_channel);
     }
     else
     {
         printf("shrinking_factor == %i\n", shrinking_factor);
-        std::invalid_argument("shrink_channel called with an unsupported shrinking_factor value");
+        throw std::invalid_argument("shrink_channel called with an unsupported shrinking_factor value");
     }
 
 
@@ -209,12 +226,16 @@ void bind_input_channels_texture(const gpu_channels_t &input_channels)
 template <int shrinking_factor>
 __device__ __forceinline__
 void compute_shrinked_pixel(
-        const int &x, const int &y, const int &channel_index,
+        const int x, const int y, const int channel_index,
         const gpu_channels_t::KernelConstData &input_channels,
-        gpu_channels_t::KernelData &shrunk_channels)
+        const gpu_channels_t::KernelData &shrunk_channels)
 {
     int sum = 0;
     const int input_x = x*shrinking_factor, input_y = y*shrinking_factor;
+
+    const int
+            max_input_x = input_channels.size[0] -1,
+            max_input_y = input_channels.size[1] -1;
 
     const size_t
             &input_channel_stride = input_channels.stride[1],
@@ -223,30 +244,34 @@ void compute_shrinked_pixel(
             &shrunk_row_stride = shrunk_channels.stride[0];
 
     // if x or y are too high, some of these indices may be fall outside the channel memory
-    const size_t
+    const int
             input_channel_offset = channel_index*input_channel_stride,
             shrunk_channel_offset = channel_index*shrunk_channel_stride;
 
     // adding #pragma unroll here makes no difference
     for(int row=0; row < shrinking_factor; row+=1)
     {
-        const size_t input_x_and_row_offset = input_x + (input_y + row)*input_row_stride + input_channel_offset;
+        const int
+                t_y = min(input_y + row, max_input_y),
+                input_row_offset = t_y*input_row_stride + input_channel_offset;
 
         for(int col=0; col < shrinking_factor; col+=1)
         {
-            const size_t input_pixel_index = col + input_x_and_row_offset;
+            const int
+                    t_x = min(input_x + col, max_input_x),
+                    input_pixel_index = t_x + input_row_offset;
 
             // tex1Dfetch should be used to access linear memory (not text1D)
             sum += tex1Dfetch(input_channels_texture, input_pixel_index);
             //sum += input_channels.data[input_pixel_index];
-
+            
         } // end of "for each row"
     } // end of "for each row"
 
-    sum /= shrinking_factor*shrinking_factor; // rescale back to [0, 255]
+    sum /= (shrinking_factor*shrinking_factor); // rescale back to [0, 255]
 
     const int shrunk_pixel_index = x + y * shrunk_row_stride + shrunk_channel_offset;
-    shrunk_channels.data[shrunk_pixel_index] = static_cast<uint8_t>(sum);
+    shrunk_channels.data[shrunk_pixel_index] = static_cast<gpu_channels_t::Type>(sum);
     return;
 }
 
@@ -256,23 +281,23 @@ void compute_shrinked_pixel(
 template <int shrinking_factor>
 __global__
 void shrink_channels_kernel(
-        gpu_channels_t::KernelConstData input_channels,
-        gpu_channels_t::KernelData shrunk_channels)
+        const gpu_channels_t::KernelConstData input_channels,
+        const gpu_channels_t::KernelData shrunk_channels)
 {
-    const int x = blockIdx.x * blockDim.x + threadIdx.x;
-    const int y = blockIdx.y * blockDim.y + threadIdx.y;
-    //const int channel_index = blockIdx.z * blockDim.z + threadIdx.z;
-    const int channel_index = blockIdx.z; // we expect blockDim.z and threadIdx.z == 1
-
+    const int
+            x = blockIdx.x * blockDim.x + threadIdx.x,
+            y = blockIdx.y * blockDim.y + threadIdx.y,
+            //channel_index = blockIdx.z * blockDim.z + threadIdx.z;
+            channel_index = blockIdx.z; // we expect blockDim.z and threadIdx.z == 1
 
     if ((x < shrunk_channels.size[0]) and (y < shrunk_channels.size[1]))
     {
-        compute_shrinked_pixel<shrinking_factor>(x,y, channel_index, input_channels, shrunk_channels);
+        compute_shrinked_pixel<shrinking_factor>(x, y, channel_index,
+                                                 input_channels, shrunk_channels);
     } // end of "if x,y inside the image"
 
     return;
 }
-
 
 
 void shrink_channels(const gpu_channels_t &input_channels, gpu_channels_t &shrunk_channels, const int shrinking_factor)
@@ -355,7 +380,7 @@ void shrink_channels(const gpu_channels_t &input_channels, gpu_channels_t &shrun
 
     cuda_safe_call( cudaUnbindTexture(input_channels_texture) );
     cuda_safe_call( cudaGetLastError() );
-
+    cuda_safe_call( cudaDeviceSynchronize() );
 
     return;
 }

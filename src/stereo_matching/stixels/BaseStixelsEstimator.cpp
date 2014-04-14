@@ -69,13 +69,13 @@ int BaseStixelsEstimator::get_stixel_width() const
 }
 
 
-const std::vector<int> &BaseStixelsEstimator::get_v_given_disparity() const
+const BaseStixelsEstimator::v_given_disparity_t &BaseStixelsEstimator::get_v_given_disparity() const
 {
     return v_given_disparity;
 }
 
 
-const std::vector<int> &BaseStixelsEstimator::get_disparity_given_v() const
+const BaseStixelsEstimator::disparity_given_v_t &BaseStixelsEstimator::get_disparity_given_v() const
 {
     return disparity_given_v;
 }

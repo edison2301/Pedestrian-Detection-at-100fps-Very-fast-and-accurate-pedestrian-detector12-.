@@ -8,14 +8,18 @@
 
 # to compile the local code you can use: cmake ./ && make -j2
 
+# ----------------------------------------------------------------------
+# Base CMake setup
 cmake_minimum_required (VERSION 2.6)
 
 set(doppia_root "../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
-set(CMAKE_MODULE_PATH "/home/rodrigob/work/code/doppia_references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
-set(CMAKE_MODULE_PATH "/users/visics/rbenenso/code/references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+#set(CMAKE_MODULE_PATH "/home/rodrigob/work/code/doppia_references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+#set(CMAKE_MODULE_PATH "/users/visics/rbenenso/code/references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+# ----------------------------------------------------------------------
+# Setup the project
 
 include(FindPkgConfig)
 project (ObjectsDetectionLib)
@@ -43,7 +47,7 @@ set(local_INCLUDE_DIRS
     "${doppia_root}/src/applications/boosted_learning"
     #"/usr/include/eigen2"
     #"/usr/local/include/eigen2"
-    "/users/visics/rbenenso/no_backup/usr/local/include"
+    "/users/visics/mmathias/no_backup/usr/local/include"
     "${doppia_root}/src/objects_detection/integral_channels" # to avoid doppia specific paths in the library header
     "${doppia_root}/src/objects_detection" # to avoid doppia specific paths in the library header
     "/usr/local/cuda/include"
@@ -93,9 +97,22 @@ file(GLOB SrcCpp
   "${doppia_src}/applications/*Application.cpp"
   "${doppia_src}/applications/AbstractGui.cpp"
   "${doppia_src}/applications/EmptyGui.cpp"
+  "${doppia_src}/applications/BaseSdlGui.cpp"
 
   "${doppia_src}/image_processing/*.cpp"
   "${doppia_src}/drawing/gil/draw_matrix.cpp"
+  "${doppia_src}/applications/stixel_world/*Gui.cpp"
+  "${doppia_src}/drawing/gil/*.cpp"
+  "${doppia_src}/applications/objects_detection/ObjectsDetectionGui.cpp"
+  "${doppia_src}/applications/objects_detection/ObjectsDetectionApplication.cpp"
+  "${doppia_src}/applications/*.cpp"
+  "${doppia_src}/applications/stixel_world/*Gui.cpp"
+  "${doppia_src}/applications/objects_tracking/*Application.cpp"
+  "${doppia_src}/visual_odometry/Abstract*.cpp"
+  "${doppia_src}/objects_tracking/*.cpp"
+  "${doppia_src}/objects_tracking/motion_models/*.cpp"
+  "${doppia_src}/objects_tracking/detection_descriptors/*.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/*.cpp"
 )
 
 file(GLOB MonocularSrcCpp
@@ -235,10 +252,10 @@ add_library(objects_detection SHARED
 )
 
 target_link_libraries(objects_detection
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
-   protobuf
+   boost_unit_test_framework
+   boost_program_options boost_filesystem boost_system
+   boost_thread pthread gomp
+   protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -260,10 +277,10 @@ set_property(
 )
 
 target_link_libraries(objects_detection_with_ui
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
-   protobuf
+   boost_unit_test_framework
+   boost_program_options boost_filesystem boost_system
+   boost_thread pthread gomp
+   protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -285,10 +302,10 @@ set_property(
 )
 
 target_link_libraries(monocular_objects_detection
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
-   protobuf
+   boost_unit_test_framework
+   boost_program_options boost_filesystem boost_system
+   boost_thread pthread gomp
+   protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -335,8 +352,8 @@ add_executable(test_objects_detection_lib
 target_link_libraries(test_objects_detection_lib objects_detection)
 
 target_link_libraries(test_objects_detection_lib
-   boost_program_options-mt boost_filesystem-mt
-   gomp
+   boost_program_options boost_filesystem
+   gomp SDL
    ${opencv_LIBRARIES} opencv_legacy # required since opencv2.4
 # SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -352,8 +369,8 @@ add_executable(test_objects_detection_with_ui_lib
 target_link_libraries(test_objects_detection_with_ui_lib objects_detection_with_ui)
 
 target_link_libraries(test_objects_detection_with_ui_lib
-   boost_program_options-mt boost_filesystem-mt
-   gomp
+   boost_program_options boost_filesystem
+   gomp SDL
    ${opencv_LIBRARIES} opencv_legacy # required since opencv2.4
    SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -376,7 +393,7 @@ set_property(
 target_link_libraries(test_monocular_objects_detection_lib monocular_objects_detection)
 
 target_link_libraries(test_monocular_objects_detection_lib
-   boost_program_options-mt boost_filesystem-mt
+   boost_program_options boost_filesystem
    gomp
    ${opencv_LIBRARIES}
 # SDL Xext Xrandr X11
@@ -400,7 +417,7 @@ set_property(
 target_link_libraries(test_monocular_objects_detection_with_ui_lib monocular_objects_detection_with_ui)
 
 target_link_libraries(test_monocular_objects_detection_with_ui_lib
-   boost_program_options-mt boost_filesystem-mt
+   boost_program_options boost_filesystem
    gomp
    ${opencv_LIBRARIES}
    SDL Xext Xrandr X11

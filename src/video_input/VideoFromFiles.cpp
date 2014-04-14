@@ -73,7 +73,7 @@ VideoFromFiles::VideoFromFiles(const program_options::variables_map &options,
     left_filename_mask = get_option_value<string>(options, "video_input.left_filename_mask");
     right_filename_mask = get_option_value<string>(options, "video_input.right_filename_mask");
 
-    if(left_filename_mask.empty() || right_filename_mask.empty())
+    if(left_filename_mask.empty() or right_filename_mask.empty())
     {
         throw std::runtime_error("Left and right input filename masks should be non empty strings");
     }
@@ -111,7 +111,7 @@ VideoFromFiles::VideoFromFiles(const program_options::variables_map &options,
         throw std::runtime_error("Left and right input images do not have the same dimensions");
     }
 
-    if(found_frames && ((left_image_view.size() == 0) ||  (right_image_view.size() == 0)))
+    if(found_frames and ((left_image_view.size() == 0) or  (right_image_view.size() == 0)))
     {
         throw std::runtime_error("Read an empty image file");
     }
@@ -124,10 +124,17 @@ VideoFromFiles::VideoFromFiles(const program_options::variables_map &options,
     return;
 }
 
+
 VideoFromFiles::~VideoFromFiles()
 {
     // we stop the reading thread, before destroying the object
     image_reading_thread.interrupt();
+
+    // we make sure the thread has done everything it should
+    // this is necessary to avoid "'!pthread_mutex_destroy(&internal_mutex)' failed" exceptions
+    // see https://bbs.archlinux.org/viewtopic.php?id=130195
+    image_reading_thread.join();
+
     return;
 }
 
@@ -144,11 +151,13 @@ const StereoCameraCalibration &VideoFromFiles::get_stereo_calibration() const
     }
 }
 
+
 void VideoFromFiles::set_preprocessor(const shared_ptr<AbstractPreprocessor> &preprocessor)
 {
     this->preprocessor_p = preprocessor;
     return;
 }
+
 
 const shared_ptr<AbstractPreprocessor> &VideoFromFiles::get_preprocessor() const
 {
@@ -161,6 +170,7 @@ bool VideoFromFiles::next_frame()
 {
     return this->set_frame(current_frame_number + 1);
 }
+
 
 /// Go back in stream
 bool VideoFromFiles::previous_frame()
@@ -225,7 +235,6 @@ int VideoFromFiles::get_number_of_frames()
 
     return total_number_of_frames;
 }
-
 
 
 /// Set current absolute frame
@@ -318,7 +327,7 @@ bool VideoFromFiles::read_frame_from_disk(const int frame_number,
     using namespace boost::filesystem;
     using boost::format;
 
-    if(frame_number < start_frame || frame_number > end_frame )
+    if(frame_number < start_frame or frame_number > end_frame )
     {
         printf("Requested frame number %i but frames should be in range (%i, %i)\n", frame_number, start_frame, end_frame);
         return false;
@@ -344,7 +353,7 @@ bool VideoFromFiles::read_frame_from_disk(const int frame_number,
     }
 
 
-    if ((exists(left_image_path) == false) || (exists(right_image_path) == false) )
+    if ((exists(left_image_path) == false) or (exists(right_image_path) == false) )
     {
         const bool print_not_found = true;
         if(print_not_found)
@@ -373,7 +382,7 @@ bool VideoFromFiles::read_frame_from_disk(const int frame_number,
         printf("Reading files:\n%s\n%s\n", left_image_path.string().c_str(), right_image_path.string().c_str());
     }
 
-    if(left_view.size() == 0 || right_view.size() == 0)
+    if(left_view.size() == 0 or right_view.size() == 0)
     {
         // if views are empty, do memory allocation and create views
         boost::gil::png_read_and_convert_image(left_image_path.string(), left_image);
@@ -421,6 +430,7 @@ const AbstractVideoInput::input_image_view_t &VideoFromFiles::get_left_image()
 
     return this->left_image_view;
 }
+
 
 const AbstractVideoInput::input_image_view_t &VideoFromFiles::get_right_image()
 {

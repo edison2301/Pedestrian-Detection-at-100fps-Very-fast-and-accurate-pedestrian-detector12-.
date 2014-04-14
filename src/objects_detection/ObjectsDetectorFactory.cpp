@@ -12,6 +12,7 @@
 #if defined(USE_GPU)
 #include "GpuIntegralChannelsDetector.hpp"
 #include "GpuMultiscalesIntegralChannelsDetector.hpp"
+#include "GpuIntegralChannelsModelsBundleDetector.hpp"
 #include "GpuFastestPedestrianDetectorInTheWest.hpp"
 #include "GpuVeryFastIntegralChannelsDetector.hpp"
 #endif
@@ -21,6 +22,7 @@
 #include "LinearSvmModel.hpp"
 #include "SoftCascadeOverIntegralChannelsModel.hpp"
 #include "MultiScalesIntegralChannelsModel.hpp"
+#include "IntegralChannelsDetectorModelsBundle.hpp"
 
 #include "detector_model.pb.h"
 
@@ -119,6 +121,10 @@ ObjectsDetectorFactory::get_args_options()
              "Negative offset added cascade threshold, so that they are less strict." \
              "The value is a fraction of the maximum (last) threshold value (e.g 0.1).")
 
+            ("objects_detector.max_num_stages", value<int>()->default_value(-1),
+             "This value sets the maximum number of stages used from a model" \
+             "The parameter is ignored if the softcascade contains fewer stages than specified or if it is set to -1")
+
             ;
 
     desc.add(AbstractObjectsDetector::get_args_options());
@@ -161,9 +167,9 @@ void read_protobuf_model_impl(const string &filename, boost::shared_ptr<ProtoBuf
         const bool success = detector_model_p->ParseFromZeroCopyStream(zci_stream_p);
         delete zci_stream_p;
 
-        if(success == false or detector_model_p->IsInitialized() == false)
+        if((success == false) or (detector_model_p->IsInitialized() == false))
         {
-            log_info() << "Model file " << filename << " is not in text binary buffer format" << std::endl;
+            log_info() << "Model file " << filename << " is not in binary protocol buffer format" << std::endl;
             detector_model_p.reset(); // detroy the allocated object to indicate the failure
         }
         else
@@ -261,6 +267,16 @@ new_single_scale_detector_instance(const variables_map &options,
                                    boost::shared_ptr<doppia_protobuf::DetectorModel> detector_model_data_p,
                                    boost::shared_ptr<AbstractNonMaximalSuppression> non_maximal_suppression_p)
 {
+//asdf
+    //mutable_stages
+    const int max_num_stages = get_option_value<int>(options, "objects_detector.max_num_stages");
+    doppia_protobuf::SoftCascadeOverIntegralChannelsModel &model = *(detector_model_data_p->mutable_soft_cascade_model());
+
+    if ((max_num_stages != -1) and (max_num_stages< model.stages_size())){
+        printf ("numstages: %d\n", model.stages_size());
+        model.mutable_stages()->DeleteSubrange(max_num_stages, model.stages_size()-max_num_stages);
+        printf ("numstages after cropping: %d\n", model.stages_size());
+    }
 
     if((detector_model_data_p.get() != NULL) and (detector_model_data_p->has_soft_cascade_model()))
     {
@@ -430,77 +446,102 @@ new_single_scale_detector_instance(const variables_map &options,
 }
 
 
+/// helper function that will modify the detector model data
+template <typename ProtobufDetectorModel>
+void add_cascade_offset(
+        const variables_map &options,
+        boost::shared_ptr<ProtobufDetectorModel> detector_model_data_p)
+{
+    assert(detector_model_data_p.get() != NULL);
+
+    const float
+            cascade_threshold_offset_fraction = \
+            get_option_value<float>(options, "objects_detector.cascade_threshold_offset"),
+            cascade_threshold_offset_decay = \
+            get_option_value<float>(options, "objects_detector.cascade_threshold_offset_decay"),
+            cascade_threshold_additive_offset = \
+            get_option_value<float>(options, "objects_detector.cascade_threshold_additive_offset");
+
+
+    for(int index=0; index < detector_model_data_p->detectors().size(); index += 1)
+    {
+        doppia_protobuf::DetectorModel &single_detector_model_data =
+                *(detector_model_data_p->mutable_detectors(index));
+        if(single_detector_model_data.has_soft_cascade_model())
+        {
+            add_cascade_offset(*(single_detector_model_data.mutable_soft_cascade_model()),
+                               cascade_threshold_offset_fraction, cascade_threshold_offset_decay,
+                               cascade_threshold_additive_offset);
+        }
+
+    } // end of "for each detector model element"
+
+    return;
+}
+
+
+
+
+/// helper function that updates the score threshold based on the cascade threshold
+template<typename DetectorModelType>
+void add_last_cascade_threshold_to_score_threshold(
+        const variables_map &options,
+        boost::shared_ptr<DetectorModelType> detector_model_p,
+        float &score_threshold)
+{
+    assert(detector_model_p.get() != NULL);
+
+    const bool ignore_cascade = get_option_value<bool>(options, "objects_detector.ignore_soft_cascade");
+
+    const typename DetectorModelType::detectors_t &detectors = detector_model_p->get_detectors();
+
+    if(ignore_cascade == false)
+    {
+        for(size_t detector_index=0; detector_index < detectors.size(); detector_index += 1)
+        {
+            const typename DetectorModelType::detector_t &detector = detectors[detector_index];
+            if(detector.has_soft_cascade())
+            {
+                const float last_cascade_threshold = detector.get_last_cascade_threshold();
+                // seems a "non trivial" threshold
+                log_info() <<  boost::str(boost::format(
+                                              "Updating the score threshold using "
+                                              "the last cascade threshold of detector %i. " \
+                                              "New score threshold == %.3f (= %.3f + %.3f)")
+                                          % detector_index
+                                          % (score_threshold + last_cascade_threshold)
+                                          % score_threshold % last_cascade_threshold) << std::endl;
+                score_threshold += last_cascade_threshold;
+                break;
+            }
+        } // end of "for each detector"
+    } // end of "if we care about the cascade"
+
+    return;
+}
+
+
 AbstractObjectsDetector*
 new_multi_scales_detector_instance(const variables_map &options,
                                    boost::shared_ptr<doppia_protobuf::MultiScalesDetectorModel> detector_model_data_p,
                                    boost::shared_ptr<AbstractNonMaximalSuppression> non_maximal_suppression_p)
 {
 
-    if(detector_model_data_p)
-    {
-        const float
-                cascade_threshold_offset_fraction = \
-                get_option_value<float>(options, "objects_detector.cascade_threshold_offset"),
-                cascade_threshold_offset_decay = \
-                get_option_value<float>(options, "objects_detector.cascade_threshold_offset_decay"),
-                cascade_threshold_additive_offset = \
-                get_option_value<float>(options, "objects_detector.cascade_threshold_additive_offset");
-
-
-        for(int index=0; index < detector_model_data_p->detectors().size(); index += 1)
-        {
-            doppia_protobuf::DetectorModel &single_detector_model_data =
-                    *(detector_model_data_p->mutable_detectors(index));
-            if(single_detector_model_data.has_soft_cascade_model())
-            {
-                add_cascade_offset(*(single_detector_model_data.mutable_soft_cascade_model()),
-                                   cascade_threshold_offset_fraction, cascade_threshold_offset_decay,
-                                   cascade_threshold_additive_offset);
-            }
-
-        } // end of "for each detector model element"
-    } // end of "if detector model data is available"
-
     boost::shared_ptr<MultiScalesIntegralChannelsModel> detector_model_p;
     float score_threshold = get_option_value<float>(options, "objects_detector.score_threshold");
 
-    const bool ignore_cascade = get_option_value<bool>(options, "objects_detector.ignore_soft_cascade");
-
     if(detector_model_data_p)
     {
+        add_cascade_offset(options, detector_model_data_p);
+
         // the MultiScalesIntegralChannelsModel is built _after_ applying cascade_threshold_offset
         detector_model_p.reset(new MultiScalesIntegralChannelsModel(*detector_model_data_p));
 
         // MultiScalesIntegralChannelsModel takes care of normalizing the models between themselves
         // this we only need to update the score_threshold based on one of models
 
-        if(detector_model_p->get_detectors().empty() == false)
-        {
-            if(ignore_cascade == false)
-            {
-                for(size_t detector_index=0; detector_index < detector_model_p->get_detectors().size(); detector_index += 1)
-                {
-                    const MultiScalesIntegralChannelsModel::detector_t &detector = detector_model_p->get_detectors()[detector_index];
-                    if(detector.has_soft_cascade())
-                    {
-                        const SoftCascadeOverIntegralChannelsModel::fast_stages_t &stages =
-                                detector.get_fast_stages();
+        add_last_cascade_threshold_to_score_threshold(options, detector_model_p, score_threshold);
 
-                        const float last_cascade_threshold = stages.back().cascade_threshold;
-                        // seems a "non trivial" threshold
-                        log_info() <<  boost::str(boost::format(
-                                                      "Updating the score threshold using "
-                                                      "the last cascade threshold of detector %i. " \
-                                                      "New score threshold == %.3f (= %.3f + %.3f)")
-                                                  % detector_index
-                                                  % (score_threshold + last_cascade_threshold)
-                                                  % score_threshold % last_cascade_threshold) << std::endl;
-                        score_threshold += last_cascade_threshold;
-                        break;
-                    }
-                } // end of "for each detector"
-            } // end of "if we care about the cascade"
-        } // end of "if detectors is not empty"
     } // end of "if detector model data is available"
 
 
@@ -596,6 +637,86 @@ new_multi_scales_detector_instance(const variables_map &options,
 
 
 AbstractObjectsDetector*
+new_detectors_bundle_instance(const variables_map &options,
+                              boost::shared_ptr<doppia_protobuf::DetectorModelsBundle> detector_model_data_p,
+                              boost::shared_ptr<AbstractNonMaximalSuppression> non_maximal_suppression_p)
+{
+
+    boost::shared_ptr<IntegralChannelsDetectorModelsBundle> detector_model_p;
+    float score_threshold = get_option_value<float>(options, "objects_detector.score_threshold");
+
+
+    if(detector_model_data_p)
+    {
+        add_cascade_offset(options, detector_model_data_p);
+
+        // the MultiScalesIntegralChannelsModel is built _after_ applying cascade_threshold_offset
+        detector_model_p.reset(new IntegralChannelsDetectorModelsBundle(*detector_model_data_p));
+
+        // MultiScalesIntegralChannelsModel takes care of normalizing the models between themselves
+        // this we only need to update the score_threshold based on one of models
+
+        add_last_cascade_threshold_to_score_threshold(options, detector_model_p, score_threshold);
+
+    } // end of "if detector model data is available"
+
+
+    AbstractObjectsDetector* objects_detector_p = NULL;
+    const string method = get_option_value<string>(options, "objects_detector.method");
+    if((method.compare("gpu_channel") == 0) or
+            (method.compare("gpu_channels") == 0) or
+            (method.compare("gpu_chnftrs") == 0) )
+    {
+
+#if defined(USE_GPU) and (not defined(BOOTSTRAPPING_LIB))
+        int additional_border = 0;
+        if(options.count("additional_border") > 0)
+        {
+            additional_border = get_option_value<int>(options, "additional_border");
+        }
+
+        objects_detector_p = new GpuIntegralChannelsModelsBundleDetector(
+                    options,
+                    detector_model_p, non_maximal_suppression_p,
+                    score_threshold, additional_border);
+#else
+        throw std::runtime_error("This executable was compiled without support for GpuIntegralChannelsDetector");
+#endif
+    }
+    else if((method.compare("cpu_channel") == 0) or
+            (method.compare("cpu_channels") == 0) or
+            (method.compare("cpu_chnftrs") == 0) or
+            (method.compare("cpu_very_fast") == 0) or
+            (method.compare("cpu_fast") == 0) or
+            (method.compare("cpu_cvpr2012") == 0) or
+            (method.compare("gpu_very_fast") == 0) or
+            (method.compare("gpu_fast") == 0) or
+            (method.compare("gpu_cvpr2012") == 0) or
+            (method.compare("cpu_linear_svm") == 0) or
+            (method.compare("cpu_fpdw") == 0) or
+            (method.compare("gpu_fpdw") == 0) )
+    {
+        throw std::runtime_error(
+                    boost::str( boost::format(
+                                    "method %s does not support (yet) a detector models bundle as input") % method));
+    }
+    else if (method.compare("none") == 0)
+    {
+        objects_detector_p = NULL;
+    }
+    else
+    {
+        printf("ObjectsDetectorFactory received objects_detector.method value == %s\n", method.c_str());
+        throw std::runtime_error("Unknown 'objects_detector.method' value  (for detector models bundle)");
+    }
+
+
+    return objects_detector_p;
+}
+
+
+
+AbstractObjectsDetector*
 ObjectsDetectorFactory::new_instance(const variables_map &options)
 {
 
@@ -617,27 +738,42 @@ ObjectsDetectorFactory::new_instance(const variables_map &options)
     boost::shared_ptr<doppia_protobuf::DetectorModel> detector_model_data_p;
     read_protobuf_model(model_path.string(), detector_model_data_p);
 
+    boost::shared_ptr<doppia_protobuf::MultiScalesDetectorModel> multi_scales_detector_model_data_p;
+    read_protobuf_model_impl(model_path.string(), multi_scales_detector_model_data_p);
+
+    boost::shared_ptr<doppia_protobuf::DetectorModelsBundle> detector_models_bundle_data_p;
+    read_protobuf_model_impl(model_path.string(), detector_models_bundle_data_p);
+
+    // current code cannot distinguish MultiScalesDetectorModel from DetectorModelsBundle
+    // because the messages are compatible. We use the "method" as a quick hack.
+    bool should_use_bundle = false;
+    const string method = get_option_value<string>(options, "objects_detector.method");
+    if((method.compare("gpu_channel") == 0) or
+            (method.compare("gpu_channels") == 0) or
+            (method.compare("gpu_chnftrs") == 0) )
+    {
+        should_use_bundle = true;
+    }
+
     if(detector_model_data_p)
     {
         return new_single_scale_detector_instance(options,
                                                   detector_model_data_p, non_maximal_suppression_p);
     }
+    else if(detector_models_bundle_data_p and should_use_bundle)
+    {
+        return new_detectors_bundle_instance(options,
+                                             detector_models_bundle_data_p, non_maximal_suppression_p);
+    }
+    else if(multi_scales_detector_model_data_p)
+    {
+        return new_multi_scales_detector_instance(options,
+                                                  multi_scales_detector_model_data_p, non_maximal_suppression_p);
+    }
     else
     {
-        boost::shared_ptr<doppia_protobuf::MultiScalesDetectorModel> multi_scales_detector_model_data_p;
-        read_protobuf_model_impl(model_path.string(), multi_scales_detector_model_data_p);
-
-        if(multi_scales_detector_model_data_p)
-        {
-            return new_multi_scales_detector_instance(options,
-                                                      multi_scales_detector_model_data_p, non_maximal_suppression_p);
-
-        }
-        else
-        {
-            throw std::runtime_error("Provided model was recognized neither "
-                                     "as DetectorModel nor as MultiScalesDetectorModel");
-        }
+        throw std::runtime_error("Received a model of an unknown type, model was not recognized "
+                                 "as DetectorModel, MultiScalesDetectorModel nor DetectorModelsBundle");
     }
 
     return NULL;

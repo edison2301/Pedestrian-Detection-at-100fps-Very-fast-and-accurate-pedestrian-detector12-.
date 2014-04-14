@@ -182,69 +182,73 @@ void FastestPedestrianDetectorInTheWest::compute_detections_at_specific_scale(
         const bool save_score_image,
         const bool first_call)
 {
-
-
-    const DetectorSearchRange &original_search_range = search_ranges[scale_index];
-
-    if(original_search_range.max_x == 0 or original_search_range.max_y == 0)
-    {
-        // empty search range, the pedestrians would be bigger than the actual image
-        return;
-    }
+    const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[scale_index];
 
     const int octave_index = detection_window_scale_to_octave_index(
-                                 original_search_range.detection_window_scale, min_detection_window_scale, integral_channels_scales.size());
+                original_search_range_data.detection_window_scale, min_detection_window_scale, integral_channels_scales.size());
     const IntegralChannelsForPedestrians &integral_channels_computer = integral_channels_computers[octave_index];
     const integral_channels_t &integral_channels = integral_channels_computer.get_integral_channels();
-    const float channels_resizing_factor = 1.0f/integral_channels_computer.get_shrinking_factor();
+
     const float integral_channels_scale = integral_channels_scales[octave_index];
 
     // new scale means new features to evaluate
-    const float original_to_channel_scale = \
-            original_search_range.detection_window_scale * integral_channels_scale * channels_resizing_factor;
 
     // we want relative_scale = original_search_range.detection_window_scale / pow(2, current_octave)
     // integral_channels_scale == 1 / pow(2, current_octave)
-    const float relative_scale = original_search_range.detection_window_scale * integral_channels_scale;
-    const cascade_stages_t cascade_stages = cascade_model_p->get_rescaled_fast_stages(relative_scale);
+    const float relative_scale = original_search_range_data.detection_window_scale * integral_channels_scale;
+    const cascade_stages_t cascade_stages = cascade_model_p->get_rescaled_stages(relative_scale);
 
     const bool print_stages = false;
     const bool print_cascade_statistics = false;
     if(print_stages and first_call)
     {
         log_info() << "Detection cascade stages at detection window scale "
-                   << original_search_range.detection_window_scale << std::endl;
-        print_detection_cascade_stages(log_info(), cascade_stages);
+                   << original_search_range_data.detection_window_scale << std::endl;
+
+        print_detection_cascade_variant_stages(log_info(), cascade_stages);
         //throw std::runtime_error("Stopped the program so we can debug it. See the output of print_detection_cascade_stages");
     }
 
     if(save_score_image)
     {
         log_info() << str(format("For scale %.3f using octave %i which corresponds to integral_channel_scale %.3f")
-                          % original_search_range.detection_window_scale
+                          % original_search_range_data.detection_window_scale
                           % octave_index
                           % integral_channels_scale) << std::endl;
     }
 
+
+#if defined(TESTING)
+    const float channels_resizing_factor = 1.0f/integral_channels_computer.get_shrinking_factor();
+    const float original_to_channel_scale =
+            original_search_range_data.detection_window_scale * integral_channels_scale * channels_resizing_factor;
     const stride_t actual_stride(
                 max<stride_t::coordinate_t>(1, x_stride*original_to_channel_scale),
                 max<stride_t::coordinate_t>(1, y_stride*original_to_channel_scale));
+#endif
 
     // resize the search range based on the new image size
-    if(original_search_range.detection_window_ratio != 1.0)
+    if(original_search_range_data.detection_window_ratio != 1.0)
     {
         throw std::invalid_argument("FastestPedestrianDetectorInTheWest does not support detection_window_ratio != 1.0");
     }
-    const float original_to_channel_ratio = 1.0;
-    const DetectorSearchRange scaled_search_range =
-            original_search_range.get_rescaled(integral_channels_scale*channels_resizing_factor,
-                                               original_to_channel_ratio);
 
+    //const float original_to_channel_ratio = 1.0;
+    //const DetectorSearchRange scaled_search_range =
+    //        original_search_range.get_rescaled(integral_channels_scale*channels_resizing_factor,
+    //                                           original_to_channel_ratio);
+    const DetectorSearchRange scaled_search_range = compute_scaled_search_range(scale_index);
+
+    if((scaled_search_range.max_x == 0) or (scaled_search_range.max_y == 0))
+    {
+        // empty search range, the pedestrians would be bigger than the actual image
+        return;
+    }
 
 
     // max < integral_channels.shape (and not <=) since integral images are original image size + 1 row/column
     if((scaled_search_range.max_y >= integral_channels.shape()[1]) or
-       (scaled_search_range.max_x >= integral_channels.shape()[2]))
+            (scaled_search_range.max_x >= integral_channels.shape()[2]))
     {
         log_error() << "scaled_search_range.max_y ==" << scaled_search_range.max_y << std::endl;
         log_error() << "integral_channels.shape()[1] ==" << integral_channels.shape()[1] << std::endl;
@@ -263,7 +267,7 @@ void FastestPedestrianDetectorInTheWest::compute_detections_at_specific_scale(
                 detections_scores,
                 integral_channels,
                 scale_one_detection_window_size,
-                original_search_range.detection_window_scale,
+                original_search_range_data.detection_window_scale,
                 detections, non_rescaled_detections_p,
                 cascade_stages,
                 score_threshold,
@@ -291,7 +295,7 @@ void FastestPedestrianDetectorInTheWest::compute_detections()
     const bool save_score_image = false;
     static bool first_call = true;
 
-    for(size_t scale_index=0; scale_index < search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index +=1)
     {
         compute_detections_at_specific_scale(scale_index,
                                              save_score_image, first_call);

@@ -238,6 +238,9 @@ void FastStixelsEstimator::compute_object_cost(u_disparity_cost_t &object_cost) 
     const size_t num_disparities = this->num_disparities;
     const int disparity_offset = this->disparity_offset;
 
+    assert(static_cast<size_t>(object_cost.rows()) == num_disparities);
+    assert(static_cast<size_t>(object_cost.cols()) == num_columns);
+
     //const bool use_simd = false;
     const bool use_simd = true;
 

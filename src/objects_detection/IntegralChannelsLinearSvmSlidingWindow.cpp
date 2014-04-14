@@ -303,4 +303,11 @@ void IntegralChannelsLinearSvmSlidingWindow::compute()
     return;
 }
 
+
+DetectorSearchRange IntegralChannelsLinearSvmSlidingWindow::compute_scaled_search_range(const size_t) const
+{
+    throw std::runtime_error("IntegralChannelsLinearSvmSlidingWindow::compute_scaled_search_range is not yet implemented");
+    return DetectorSearchRange();
+}
+
 } // end of namespace doppia

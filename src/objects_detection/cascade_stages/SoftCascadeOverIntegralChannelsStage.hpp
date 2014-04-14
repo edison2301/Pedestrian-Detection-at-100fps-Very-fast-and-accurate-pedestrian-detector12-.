@@ -77,6 +77,7 @@ public:
 
     /// if (strong_classifier_score < cascade_threshold) answer is "not this class"
     float cascade_threshold;
+
 };
 
 } // end of namespace doppia

@@ -3,6 +3,8 @@
 #include <cudatemplates/hostmemoryheap.hpp>
 #include <cudatemplates/copy.hpp>
 
+#include <boost/variant/get.hpp>
+
 namespace doppia {
 
 GpuFastestPedestrianDetectorInTheWest::GpuFastestPedestrianDetectorInTheWest(
@@ -30,79 +32,8 @@ GpuFastestPedestrianDetectorInTheWest::~GpuFastestPedestrianDetectorInTheWest()
     return;
 }
 
-
 const bool use_fractional_features = false;
 //const bool use_fractional_features = true;
-
-
-void GpuFastestPedestrianDetectorInTheWest::set_gpu_scale_detection_cascades()
-{
-    if(use_fractional_features)
-    { // we state fractional cascade stages, instead of the usual cascade stages
-        set_gpu_scale_fractional_detection_cascades();
-    }
-    else
-    {
-        GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades();
-    }
-    return;
-}
-
-
-/// This function is a copy+paste+minor_edits of GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades
-void GpuFastestPedestrianDetectorInTheWest::set_gpu_scale_fractional_detection_cascades()
-{
-    // FIXME copy and paste is bad ? Making this a templated function would be better ?
-    // (seems more complication for little benefit. Applying the "three is too much" rule,
-    // right now, only two copies, so it is ok)
-
-    if(fractional_detection_cascade_per_scale.empty())
-    {
-        throw std::runtime_error(
-                    "GpuFastestPedestrianDetectorInTheWest::set_gpu_scale_detection_fractional_cascades called, but "
-                    "fractional_detection_cascade_per_scale is empty");
-    }
-
-    const size_t
-            cascades_length = fractional_detection_cascade_per_scale[0].size(),
-            num_cascades = fractional_detection_cascade_per_scale.size();
-
-    Cuda::HostMemoryHeap2D<fractional_cascade_stage_t>
-            cpu_fractional_detection_cascade_per_scale(cascades_length, num_cascades);
-
-    for(size_t cascade_index=0; cascade_index < num_cascades; cascade_index+=1)
-    {
-        if(cascades_length != fractional_detection_cascade_per_scale[cascade_index].size())
-        {
-            throw std::invalid_argument("Current version of GpuFastestPedestrianDetectorInTheWest requires "
-                                        "multiscales models with equal number of weak classifiers");
-            // FIXME how to fix this ?
-            // Using cascade_score_threshold to stop when reached the "last stage" ?
-            // Adding dummy stages with zero weight ?
-        }
-
-        for(size_t stage_index =0; stage_index < cascades_length; stage_index += 1)
-        {
-            const size_t index = stage_index + cascade_index*cpu_fractional_detection_cascade_per_scale.stride[0];
-            cpu_fractional_detection_cascade_per_scale[index] = \
-                    fractional_detection_cascade_per_scale[cascade_index][stage_index];
-        } // end of "for each stage in the cascade"
-    } // end of "for each cascade"
-
-    if(false and ((num_cascades*cascades_length) > 0))
-    {
-        printf("GpuFastestPedestrianDetectorInTheWest::set_gpu_scale_fractional_detection_cascades "
-               "Cascade 0, stage 0 cascade_threshold == %3.f\n",
-               cpu_fractional_detection_cascade_per_scale[0].cascade_threshold);
-    }
-
-    gpu_fractional_detection_cascade_per_scale.alloc(cascades_length, num_cascades);
-    Cuda::copy(gpu_fractional_detection_cascade_per_scale, cpu_fractional_detection_cascade_per_scale);
-
-    return;
-}
-
-
 
 void GpuFastestPedestrianDetectorInTheWest::compute_detections_at_specific_scale_v1(
         const size_t search_range_index,
@@ -131,8 +62,11 @@ void GpuFastestPedestrianDetectorInTheWest::compute_detections_at_specific_scale
         doppia::objects_detection::integral_channels_detector(
                     integral_channels,
                     search_range_index,
-                    scale_data.scaled_search_range,
-                    gpu_fractional_detection_cascade_per_scale,
+                    scale_data,
+                    //gpu_fractional_detection_cascade_per_scale,
+                    //gpu_detection_variant_cascade_per_scale,
+                    // FIXME quick hack, will raise runtime exception if types to not match
+                    boost::get<gpu_detection_cascade_per_scale_t>(gpu_detection_variant_cascade_per_scale),
                     score_threshold, use_the_detector_model_cascade,
                     gpu_detections, num_gpu_detections);
     }
@@ -140,7 +74,7 @@ void GpuFastestPedestrianDetectorInTheWest::compute_detections_at_specific_scale
     // ( the detections will be colected after iterating over all the scales )
 
 #if defined(BOOTSTRAPPING_LIB)
-    current_image_scale = 1.0f/search_ranges[search_range_index].detection_window_scale;
+    current_image_scale = 1.0f/search_ranges_data[search_range_index].detection_window_scale;
 #endif
 
     return;

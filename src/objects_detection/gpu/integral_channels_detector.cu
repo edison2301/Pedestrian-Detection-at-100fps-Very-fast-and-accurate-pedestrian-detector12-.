@@ -22,7 +22,6 @@ static inline int div_up(const int total, const int grain)
     return (total + grain - 1) / grain;
 }
 
-
 } // end of anonymous namespace
 
 
@@ -202,8 +201,8 @@ float get_feature_value_tex2d(const FeatureType &feature,
 {
     // if x or y are too high, some of these indices may be fall outside the channel memory
 
-    //const size_t integral_channels_height = integral_channels.size[1];
-    const size_t integral_channels_height = 120; // FIXME HARDCODED TEST (will only work with shrinking factor 4 and images of size 640x480
+    const size_t integral_channels_height = integral_channels.height; // magic trick !
+
     const float y_offset = y + feature.channel_index*integral_channels_height;
 
     // in CUDA 5 (4.2 ?) references to textures are not allowed, we use macro work around
@@ -259,8 +258,6 @@ float get_feature_value<IntegralChannelsFractionalFeature, true>(
     // should_use_2d_texture == true
     return get_feature_value_tex2d(feature, x, y, integral_channels);
 }
-
-
 
 
 inline
@@ -408,12 +405,118 @@ void update_detection_score<SoftCascadeOverIntegralChannelsStumpStage>(
     return;
 }
 
+
+
+template<>
+inline
+__device__
+void update_detection_score<two_stumps_stage_t>(
+        const int x, const int y,
+        const two_stumps_stage_t &stage,
+        const gpu_integral_channels_t::KernelConstData &integral_channels,
+        float &current_detection_score)
+{
+    typedef two_stumps_stage_t::stump_t::feature_t feature_t;
+
+    const float
+            stump_0_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[0].feature, x, y, integral_channels),
+            stump_1_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[1].feature, x, y, integral_channels);
+
+    const int weight_index =
+            evaluate_decision_stump(stage.stumps[0], stump_0_feature_value) * 1
+            + evaluate_decision_stump(stage.stumps[1], stump_1_feature_value) * 2;
+
+    current_detection_score += stage.weights[weight_index];
+
+    return;
+}
+
+
+template<>
+inline
+__device__
+void update_detection_score<three_stumps_stage_t>(
+        const int x, const int y,
+        const three_stumps_stage_t &stage,
+        const gpu_integral_channels_t::KernelConstData &integral_channels,
+        float &current_detection_score)
+{
+    typedef three_stumps_stage_t::stump_t::feature_t feature_t;
+
+    const float
+            stump_0_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[0].feature, x, y, integral_channels),
+            stump_1_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[1].feature, x, y, integral_channels),
+            stump_2_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[2].feature, x, y, integral_channels);
+
+    const int weight_index =
+            evaluate_decision_stump(stage.stumps[0], stump_0_feature_value) * 1
+            + evaluate_decision_stump(stage.stumps[1], stump_1_feature_value) * 2
+            + evaluate_decision_stump(stage.stumps[2], stump_2_feature_value) * 4;
+
+    current_detection_score += stage.weights[weight_index];
+
+    return;
+}
+
+
+template<>
+inline
+__device__
+void update_detection_score<four_stumps_stage_t>(
+        const int x, const int y,
+        const four_stumps_stage_t &stage,
+        const gpu_integral_channels_t::KernelConstData &integral_channels,
+        float &current_detection_score)
+{
+    typedef four_stumps_stage_t::stump_t::feature_t feature_t;
+
+    const float
+            stump_0_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[0].feature, x, y, integral_channels),
+            stump_1_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[1].feature, x, y, integral_channels),
+            stump_2_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[2].feature, x, y, integral_channels),
+            stump_3_feature_value =
+            get_feature_value<feature_t, use_2d_texture>(stage.stumps[3].feature, x, y, integral_channels);
+
+
+    const int weight_index =
+            evaluate_decision_stump(stage.stumps[0], stump_0_feature_value) * 1
+            + evaluate_decision_stump(stage.stumps[1], stump_1_feature_value) * 2
+            + evaluate_decision_stump(stage.stumps[2], stump_2_feature_value) * 4
+            + evaluate_decision_stump(stage.stumps[3], stump_3_feature_value) * 8;
+
+    current_detection_score += stage.weights[weight_index];
+
+    return;
+}
+
+#if defined(BOOTSTRAPPING_LIB)
+const bool use_hardcoded_cascade = true;
+//const int hardcoded_cascade_start_stage = 100; // this is probably good enough
+const int hardcoded_cascade_start_stage = 100; // to be on the safe side
+const float hardcoded_cascade_threshold = -5;
+//const int hardcoded_cascade_start_stage = 500; // this is conservative
+#else
 // FIXME these should be templated options, selected at runtime
 //const bool use_hardcoded_cascade = true;
-const bool use_hardcoded_cascade = false;
+const bool use_hardcoded_cascade = true;
 //const int hardcoded_cascade_start_stage = 100;
-const int hardcoded_cascade_start_stage = 500;
+//const int hardcoded_cascade_start_stage = 250; // same as during bootstrapping
+const int hardcoded_cascade_start_stage = 100;
+//const int hardcoded_cascade_start_stage = 1000;
 
+// will break if (detection_score < hardcoded_cascade_threshold)
+//const float hardcoded_cascade_threshold = 0;
+//const float hardcoded_cascade_threshold = -1;
+const float hardcoded_cascade_threshold = -0.03;
+#endif
 
 /// this kernel is called for each position where we which to detect objects
 /// we assume that the border effects where already checked when computing the DetectorSearchRange
@@ -495,8 +598,10 @@ void integral_channels_detector_kernel(
 
 
 
-        if((not use_the_model_cascade) and
-           use_hardcoded_cascade and (stage_index > hardcoded_cascade_start_stage) and (detection_score < 0))
+        if((not use_the_model_cascade)
+                and use_hardcoded_cascade
+                and (stage_index > hardcoded_cascade_start_stage)
+                and (detection_score < hardcoded_cascade_threshold))
         {
             // this is not an object of the class we are looking for
             // do an early stop of this pixel
@@ -585,19 +690,26 @@ void add_detection(
 template <bool use_the_model_cascade, typename DetectionCascadeStageType>
 __global__
 void integral_channels_detector_kernel(
-        const int search_range_width, const int search_range_height,
+        const gpu_scale_datum_t scale_datum,
         const gpu_integral_channels_t::KernelConstData integral_channels,
         const size_t scale_index,
         const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
         const float score_threshold,
         gpu_detections_t::KernelData gpu_detections)
 {
-    const int
-            x = blockIdx.x * blockDim.x + threadIdx.x,
-            //y = blockIdx.y;
-            y = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if((x >= search_range_width) or ( y >= search_range_height))
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    //const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+    const int
+            delta_x = blockIdx.x * blockDim.x + threadIdx.x,
+            //delta_y = blockIdx.y;
+            delta_y = blockIdx.y * blockDim.y + threadIdx.y,
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
     {
         // out of area of interest
         return;
@@ -610,7 +722,6 @@ void integral_channels_detector_kernel(
 
     const size_t
             cascade_length = detection_cascade_per_scale.size[0],
-            //cascade_length = 1000, // FIXME MEGA HARCODED VALUE DANGER DANGER <<<<<<<<<<<<<<<<
             scale_offset = scale_index * detection_cascade_per_scale.stride[0];
 
     for(size_t stage_index=0; stage_index < cascade_length; stage_index+=1)
@@ -623,8 +734,10 @@ void integral_channels_detector_kernel(
 
         update_detection_score(x, y, stage, integral_channels, detection_score);
 
-        if((not use_the_model_cascade) and
-           use_hardcoded_cascade and (stage_index > hardcoded_cascade_start_stage) and (detection_score < 0))
+        if((not use_the_model_cascade)
+                and use_hardcoded_cascade
+                and (stage_index > hardcoded_cascade_start_stage)
+                and (detection_score < hardcoded_cascade_threshold))
         {
             // this is not an object of the class we are looking for
             // do an early stop of this pixel
@@ -670,7 +783,7 @@ void bind_integral_channels_to_1d_texture(gpu_integral_channels_t &integral_chan
             cudaCreateChannelDesc<gpu_integral_channels_t::Type>();
 
     if(texture_channel_description.f == cudaChannelFormatKindNone
-       or texture_channel_description.f != cudaChannelFormatKindUnsigned )
+            or texture_channel_description.f != cudaChannelFormatKindUnsigned )
     {
         throw std::runtime_error("cudaCreateChannelDesc failed");
     }
@@ -709,7 +822,7 @@ void bind_integral_channels_to_2d_texture(gpu_3d_integral_channels_t &integral_c
     const cudaChannelFormatDesc texture_channel_description = cudaCreateChannelDesc<gpu_3d_integral_channels_t::Type>();
 
     if(texture_channel_description.f == cudaChannelFormatKindNone
-       or texture_channel_description.f != cudaChannelFormatKindUnsigned )
+            or texture_channel_description.f != cudaChannelFormatKindUnsigned )
     {
         throw std::runtime_error("cudaCreateChannelDesc seems to have failed");
     }
@@ -815,12 +928,19 @@ void integral_channels_detector_impl(
 
     if((search_range.min_x != 0) or (search_range.min_y != 0))
     {
-        printf("search_range.min_x/y == (%i, %i)\n", search_range.min_x, search_range.min_y);
-        throw std::runtime_error("integral_channels_detector(...) expect search_range.min_x/y values to be zero");
+        throw std::runtime_error("integral_channels_detector(...) expect search_range.min_x/y values to be zero"
+                                 "(use_stixels/use_ground_plane should be false)");
     }
 
     typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
     const int width = search_range.max_x, height = search_range.max_y;
+
+    if((width <= 0) or (height <= 0))
+    { // nothing to be done
+        throw std::invalid_argument("integral_channels_detector_impl (with detection_scores), "
+                                    "should be calied with valid search ranges");
+    }
+
 
     if((width > detection_scores.cols) or (height > detection_scores.rows))
     {
@@ -916,13 +1036,30 @@ void integral_channels_detector(
     return;
 }
 
+
+void integral_channels_detector(
+        gpu_integral_channels_t &integral_channels,
+        const size_t search_range_index,
+        const doppia::DetectorSearchRange &search_range,
+        gpu_detection_three_stumps_cascade_per_scale_t &detection_cascade_per_scale,
+        const bool use_the_model_cascade,
+        cv::gpu::DevMem2Df& detection_scores)
+{
+    integral_channels_detector_impl(integral_channels,
+                                    search_range_index,
+                                    search_range,
+                                    detection_cascade_per_scale,
+                                    use_the_model_cascade,
+                                    detection_scores);
+    return;
+}
 // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-
 
 /// this method directly adds elements into the gpu_detections vector
 template<typename GpuDetectionCascadePerScaleType>
 void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
                                      const size_t search_range_index,
-                                     const doppia::DetectorSearchRange &search_range,
+                                     const doppia::ScaleData &scale_data,
                                      GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
                                      const float score_threshold,
                                      const bool use_the_model_cascade,
@@ -930,14 +1067,34 @@ void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
                                      size_t &num_detections)
 {
 
-    if((search_range.min_x != 0) or (search_range.min_y != 0))
+    const doppia::DetectorSearchRange &search_range = scale_data.scaled_search_range;
+
+    gpu_scale_datum_t scale_datum;
     {
-        printf("search_range.min_x/y == (%i, %i)\n", search_range.min_x, search_range.min_y);
-        throw std::runtime_error("integral_channels_detector(...) expect search_range.min_x/y values to be zero");
+        scale_datum.search_range.min_corner().x( search_range.min_x );
+        scale_datum.search_range.min_corner().y( search_range.min_y );
+        scale_datum.search_range.max_corner().x( search_range.max_x );
+        scale_datum.search_range.max_corner().y( search_range.max_y );
+
+        scale_datum.stride.x( scale_data.stride.x() );
+        scale_datum.stride.y( scale_data.stride.y() );
+    }
+
+
+    //if((search_range.detection_window_scale/search_range.range_scaling) == 1)
+    if(false)
+    {
+        printf("Occlusion type == %i\n", search_range.detector_occlusion_type);
+        printf("integral_channels_detector_impl search range min (x,y) == (%.3f, %.3f), max (x,y) == (%.3f, %.3f)\n",
+               (search_range.min_x/search_range.range_scaling),
+               (search_range.min_y/search_range.range_scaling),
+               (search_range.max_x/search_range.range_scaling),
+               (search_range.max_y/search_range.range_scaling));
+
+        //throw std::runtime_error("Stopping everything so you can debug");
     }
 
     typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
-    const int width = search_range.max_x, height = search_range.max_y;
 
     //const int nthreads = 320; // we optimize for images of width 640 pixel
     //dim3 block_dimensions(32, 10);
@@ -952,7 +1109,18 @@ void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
             block_y = num_threads / block_x;
     dim3 block_dimensions(block_x, block_y);
 
-    dim3 grid_dimensions(div_up(width, block_dimensions.x), div_up(height, block_dimensions.y));
+    const int
+            width = search_range.max_x - search_range.min_x,
+            height = search_range.max_y - search_range.min_y;
+
+    if((width <= 0) or (height <= 0))
+    { // nothing to be done
+        // num_detections is left unchanged
+        return;
+    }
+
+    dim3 grid_dimensions(div_up(width, block_dimensions.x),
+                         div_up(height, block_dimensions.y));
 
     // prepare variables for kernel call --
     bind_integral_channels_texture(integral_channels);
@@ -963,7 +1131,7 @@ void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
         integral_channels_detector_kernel
                 <true, CascadeStageType>
                 <<<grid_dimensions, block_dimensions>>>
-                                                      (width, height,
+                                                      (scale_datum,
                                                        integral_channels,
                                                        search_range_index,
                                                        detection_cascade_per_scale,
@@ -975,7 +1143,7 @@ void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
         integral_channels_detector_kernel
                 <false, CascadeStageType>
                 <<<grid_dimensions, block_dimensions>>>
-                                                      (width, height,
+                                                      (scale_datum,
                                                        integral_channels,
                                                        search_range_index,
                                                        detection_cascade_per_scale,
@@ -996,22 +1164,23 @@ void integral_channels_detector_impl(gpu_integral_channels_t &integral_channels,
 
 void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const size_t search_range_index,
-                                const doppia::DetectorSearchRange &search_range,
+                                const doppia::ScaleData &scale_data,
                                 gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
                                 const float score_threshold,
                                 const bool use_the_model_cascade,
                                 gpu_detections_t& gpu_detections,
                                 size_t &num_detections)
-{    
+{
     // call the templated generic implementation
-    integral_channels_detector_impl(integral_channels, search_range_index, search_range, detection_cascade_per_scale,
+    integral_channels_detector_impl(integral_channels, search_range_index, scale_data, detection_cascade_per_scale,
                                     score_threshold, use_the_model_cascade, gpu_detections, num_detections);
     return;
 }
 
+
 void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const size_t search_range_index,
-                                const doppia::DetectorSearchRange &search_range,
+                                const doppia::ScaleData &scale_data,
                                 gpu_detection_stump_cascade_per_scale_t &detection_cascade_per_scale,
                                 const float score_threshold,
                                 const bool use_the_model_cascade,
@@ -1019,7 +1188,7 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 size_t &num_detections)
 {
     // call the templated generic implementation
-    integral_channels_detector_impl(integral_channels, search_range_index, search_range, detection_cascade_per_scale,
+    integral_channels_detector_impl(integral_channels, search_range_index, scale_data, detection_cascade_per_scale,
                                     score_threshold, use_the_model_cascade, gpu_detections, num_detections);
     return;
 }
@@ -1027,7 +1196,7 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
 
 void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const size_t search_range_index,
-                                const doppia::DetectorSearchRange &search_range,
+                                const doppia::ScaleData &scale_data,
                                 gpu_fractional_detection_cascade_per_scale_t &detection_cascade_per_scale,
                                 const float score_threshold,
                                 const bool use_the_model_cascade,
@@ -1035,7 +1204,23 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 size_t &num_detections)
 {
     // call the templated generic implementation
-    integral_channels_detector_impl(integral_channels, search_range_index, search_range, detection_cascade_per_scale,
+    integral_channels_detector_impl(integral_channels, search_range_index, scale_data, detection_cascade_per_scale,
+                                    score_threshold, use_the_model_cascade, gpu_detections, num_detections);
+    return;
+}
+
+
+void integral_channels_detector(gpu_integral_channels_t &integral_channels,
+                                const size_t search_range_index,
+                                const doppia::ScaleData &scale_data,
+                                gpu_detection_three_stumps_cascade_per_scale_t  &detection_cascade_per_scale,
+                                const float score_threshold,
+                                const bool use_the_model_cascade,
+                                gpu_detections_t& gpu_detections,
+                                size_t &num_detections)
+{
+    // call the templated generic implementation
+    integral_channels_detector_impl(integral_channels, search_range_index, scale_data, detection_cascade_per_scale,
                                     score_threshold, use_the_model_cascade, gpu_detections, num_detections);
     return;
 }
@@ -1096,9 +1281,9 @@ void integral_channels_detector_over_all_scales_kernel_v0(
 
         // we order the if conditions putting most likely ones first
         if( (y > search_range.max_corner().y())
-            or (y < search_range.min_corner().y())
-            or (x < search_range.min_corner().x())
-            or (x > search_range.max_corner().x()) )
+                or (y < search_range.min_corner().y())
+                or (x < search_range.min_corner().x())
+                or (x > search_range.max_corner().x()) )
         {
             // current pixel is out of this scale search range, we skip computations
             continue;
@@ -1121,8 +1306,10 @@ void integral_channels_detector_over_all_scales_kernel_v0(
 
             update_detection_score(x, y, stage, integral_channels, detection_score);
 
-            if((not use_the_model_cascade) and
-               use_hardcoded_cascade and (stage_index > hardcoded_cascade_start_stage) and (detection_score < 0))
+            if((not use_the_model_cascade)
+                    and use_hardcoded_cascade
+                    and (stage_index > hardcoded_cascade_start_stage)
+                    and (detection_score < hardcoded_cascade_threshold))
             {
                 // this is not an object of the class we are looking for
                 // do an early stop of this pixel
@@ -1137,8 +1324,8 @@ void integral_channels_detector_over_all_scales_kernel_v0(
             }
 
             if(use_the_model_cascade
-               //and scale_index > 100 // force evaluation of the first 100 stages
-               and detection_score < stage.cascade_threshold)
+                    //and scale_index > 100 // force evaluation of the first 100 stages
+                    and detection_score < stage.cascade_threshold)
             {
                 // this is not an object of the class we are looking for
                 // do an early stop of this pixel
@@ -1485,9 +1672,9 @@ void integral_channels_detector_over_all_scales_kernel_v2(
 
         // we order the if conditions putting most likelly ones first
         if( (y > search_range.max_corner().y())
-            or (y < search_range.min_corner().y())
-            or (x < search_range.min_corner().x())
-            or (x > search_range.max_corner().x()) )
+                or (y < search_range.min_corner().y())
+                or (x < search_range.min_corner().x())
+                or (x > search_range.max_corner().x()) )
         {
             // current pixel is out of this scale search range, we skip computations
             // (nothing to do here)
@@ -1703,6 +1890,78 @@ void integral_channels_detector_over_all_scales_kernel_v4_xy_stride(
 
     return;
 } // end of integral_channels_detector_over_all_scales_kernel_v4
+
+
+//#define USE_GENERATED_CODE
+
+// this file was created using the json data that came from
+// void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
+#if defined(USE_GENERATED_CODE)
+//#include "integral_channels_detector_over_all_scales_kernel_v4_generated.cuda_include"
+#include "generated_integral_channels_detector.all_scales_kernel.cuda_include"
+#endif
+
+
+/// _v5 should only be used with integral_channels_detector_over_all_scales_impl_v3_coalesced
+template <bool use_the_model_cascade, typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v5_coalesced(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const int max_search_range_height,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections)
+{
+
+    const int
+            y_id = blockIdx.y * blockDim.y + threadIdx.y,
+            //y_id_modulo = y_id % max_search_range_height,
+            //scale_index = (y_id - y_id_modulo) / max_search_range_height,
+            // we exploit the behaviour of integer division to avoid doing a costly modulo operation
+            scale_index = y_id / max_search_range_height,
+            num_scales = scales_data.size[0];
+
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+
+    const int
+            y_id_modulo = y_id - (scale_index*max_search_range_height),
+            delta_x = (blockIdx.x * blockDim.x + threadIdx.x)*stride.x(),
+            delta_y = (y_id_modulo)*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+        compute_specific_detection<use_the_model_cascade, DetectionCascadeStageType>
+                (x, y, scale_index, score_threshold,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v5_coalesced
+
+
 
 
 /// this method directly adds elements into the gpu_detections vector
@@ -1972,6 +2231,90 @@ void integral_channels_detector_over_all_scales_impl_v2_xy_stride(
 
 
 
+
+/// in _v2 blocks span x,y, scale
+/// in _v3 blocks span only x,y (scales are handled via an repetitions in the 2d domain)
+/// this way all the accesses in the block are coalesced
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v3_coalesced(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &/*max_search_range*/,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+    // CUDA occupancy calculator pointed out
+    // 192 (or 256) threads as a sweet spot for the current setup (revision 1798:ebfd7914cdfd)
+    const int
+            num_scales = scales_data.getNumElements(),
+            //num_threads = 160, // to fit the 640 horizontal pixels
+            num_threads = 192, // ~4.8 Hz
+            //num_threads = 256, // ~4.5 Hz
+            //block_z = 8,
+            // we want to keep the vertical elements of the block low so that we can efficiently search
+            // in the scales that have strong vertical constraints
+            //block_y = 4, block_x = num_threads / block_y; // runs at ~ 15 Hz too
+            //block_y = 2, block_x = num_threads / (block_y*block_z); // slightly faster than block_y = 4
+            // in this version, block_y = 16 (or 32) is critical for the obtained speed
+            block_y = 16, block_x = num_threads / (block_y);
+
+
+    dim3 block_dimensions(block_x, block_y);
+
+    // we map the scales to repetitions on the y axis
+    dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
+                         div_up(max_search_range_height*num_scales, block_dimensions.y));
+
+    // prepare variables for kernel call --
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v5_coalesced
+                <true, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          max_search_range_height,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v5_coalesced
+                <false, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          max_search_range_height,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v3_coalesced
+
+
+
+
 /// this function will evaluate the detection score of a specific window,
 /// it is assumed that border checks have already been done
 /// this method will directly call add_detection(...) if relevant
@@ -2035,6 +2378,1114 @@ void compute_specific_detection(
 }
 
 
+template <bool use_the_model_cascade,
+          bool use_excitation,
+          typename DetectionCascadeStageType>
+inline
+__device__
+void compute_specific_detection_score_for_two_pixels(
+        const int x, const int y, const int scale_index,
+        const float score_threshold,
+        const gpu_integral_channels_t::KernelConstData &integral_channels,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData &detection_cascade_per_scale,
+        gpu_detections_t::KernelData &gpu_detections)
+{
+
+    if(use_excitation)
+    { // we only evaluate the second pixel, if the first pixel was "close to be a detection"
+
+        bool should_evaluate_neighbour = false;
+        // first pixel
+        compute_specific_detection<use_the_model_cascade,DetectionCascadeStageType>
+                (x, y, scale_index, score_threshold, should_evaluate_neighbour,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+
+        if(should_evaluate_neighbour)
+        {
+            // second pixel
+            compute_specific_detection<use_the_model_cascade,DetectionCascadeStageType>
+                    (x, y+1, scale_index, score_threshold,
+                     integral_channels, detection_cascade_per_scale, gpu_detections);
+        }
+
+    }
+    else
+    { // we always evaluate both pixels
+
+        // first pixel
+        compute_specific_detection<use_the_model_cascade,DetectionCascadeStageType>
+                (x, y, scale_index, score_threshold,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+
+        // second pixel
+        compute_specific_detection<use_the_model_cascade,DetectionCascadeStageType>
+                (x, y+1, scale_index, score_threshold,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+
+    }
+
+    return;
+}
+
+/// _v6 should only be used with integral_channels_detector_over_all_scales_impl_v4_two_pixels_per_thread
+/// each thread process two pixels in the vertical direction
+template <bool use_the_model_cascade,
+          bool use_excitation,
+          typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v6_two_pixels_per_thread(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections)
+{
+    const int
+            scale_index = blockIdx.z * blockDim.z + threadIdx.z,
+            num_scales = scales_data.size[0];
+
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+
+    const int
+            delta_x = (blockIdx.x * blockDim.x + threadIdx.x)*stride.x(),
+            delta_y = (blockIdx.y * blockDim.y + threadIdx.y)*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+
+        compute_specific_detection_score_for_two_pixels
+                <use_the_model_cascade, use_excitation, DetectionCascadeStageType>
+                (x, y, scale_index, score_threshold,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v6_two_pixels_per_thread
+
+
+
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v4_two_pixels_per_thread(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+    // CUDA occupancy calculator pointed out
+    // 192 (or 256) threads as a sweet spot for the current setup (revision 1798:ebfd7914cdfd)
+    const int
+            num_scales = scales_data.getNumElements(),
+            //block_z = 8,
+            block_z = 1,
+            //num_threads = 192, // ~4.8 Hz
+            //num_threads = 256, // ~4.5 Hz
+            //num_threads = 128, // ~?? Hz
+            num_threads = 160, // ~13.10 Hz
+            // we want to keep the vertical elements of the block low so that we can efficiently search
+            // in the scales that have strong vertical constraints
+            //block_y = 4, block_x = num_threads / block_y; // runs at ~ 15 Hz too
+            //block_y = 2, block_x = num_threads / (block_y * block_z); // slightly faster than block_y = 4
+            block_y = 16, block_x = num_threads / (block_y * block_z); // slightly faster than block_y = 4
+
+    // FIXME should use the stride information when setting the block sizes ?
+
+    dim3 block_dimensions(block_x, block_y, block_z);
+
+    // each pixel will process two pixels in the vertical dimension
+    dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
+                         div_up(max_search_range_height, block_dimensions.y)/2,
+                         div_up(num_scales, block_z));
+
+    // prepare variables for kernel call --
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    // v1 is slower than v0; v3 is the fastest, we should use v3
+    // v4 considers the strides, making it faster than v4 (when using strides > 1)
+    // v5 is like v4, but uses two pixels per thread
+
+
+    //const bool use_excitation = false; // speed == 13.10 [Hz]
+    const bool use_excitation = true; // speed == 19.32 [Hz], quality ??
+
+    if(use_excitation)
+    {
+        printf("Will use naive excitation, for two pixels\n");
+    }
+
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v6_two_pixels_per_thread
+                <true, use_excitation, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v6_two_pixels_per_thread
+                <false, use_excitation, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v4_two_pixels_per_thread
+
+
+// we use unsigned int instead of float, because of atomicMax supported types
+// we choose unsigned int instead of int to make the scores initialization simpler (0 is the lowest value)
+// we assumes scores are in the range -10, +10 to do the uint to float mapping
+typedef unsigned int inhibition_checkpoints_score_t;
+
+// we will have only 5 checkpoints, this is hardcoded
+typedef Cuda::DeviceMemoryPitched3D<inhibition_checkpoints_score_t> inhibition_scores_map_t;
+
+inhibition_scores_map_t inhibition_scores_map;
+
+/// _v7 should only be used with integral_channels_detector_over_all_scales_impl_v5_scales_inhibition
+template <bool use_the_model_cascade, typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections,
+        inhibition_scores_map_t::KernelData inhibition_score_checkpoints_map)
+{
+    const int
+            scale_index = blockIdx.z * blockDim.z + threadIdx.z,
+            num_scales = scales_data.size[0];
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+    const int
+            delta_x = (blockIdx.x * blockDim.x + threadIdx.x)*stride.x(),
+            delta_y = (blockIdx.y * blockDim.y + threadIdx.y)*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+
+        const int
+                cascade_length = detection_cascade_per_scale.size[0],
+                scale_offset = scale_index * detection_cascade_per_scale.stride[0];
+
+        const int checkpoint_zero_index = (y*inhibition_score_checkpoints_map.stride[1])
+                + (x*inhibition_score_checkpoints_map.stride[0]);
+        inhibition_checkpoints_score_t *inhibition_score_checkpoints =
+                &inhibition_score_checkpoints_map.data[checkpoint_zero_index];
+
+
+        // retrieve current score value
+        float detection_score = 0;
+
+        // (we use int instead of size_t, as indicated by Cuda Best Programming Practices, section 6.3)
+        // (using int of size_t moved from 1.48 Hz to 1.53 Hz)
+
+        const int supremum_checkpoint_stage_index = 32 + 1;
+
+        for(int stage_index=0; stage_index < supremum_checkpoint_stage_index; stage_index+=1)
+        {
+            const int index = scale_offset + stage_index;
+
+            // we copy the cascade stage from global memory to thread memory
+            // (when using a reference code runs at ~4.35 Hz, with copy it runs at ~4.55 Hz)
+            const DetectionCascadeStageType stage = detection_cascade_per_scale.data[index];
+
+            if((not use_the_model_cascade) or detection_score > stage.cascade_threshold)
+            {
+                update_detection_score(x, y, stage, integral_channels, detection_score);
+
+                // check for inhibition checkpoint scores, and updates if needed
+                {
+
+                    // to be useful the inhibition needs to be able to abort things before the soft cascade does
+                    // since most candidate windows have very few evaluations,
+                    // the scales inhibition check points are on the very early stages.
+
+                    // FIXME is the compiler smart enough to put the ifs/elses outside of the for loop ?
+                    // (or we should do that by hand/templates ?)
+                    inhibition_checkpoints_score_t *score_checkpoint_p = NULL;
+                    /*if(stage_index == 2)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[0];
+                    }
+                    else */if(stage_index == 4)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[1];
+                    }
+                    else if(stage_index == 8)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[2];
+                    }
+                    /*else if(stage_index == 16)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[3];
+                    }*/
+                    else if(stage_index == 32)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[4];
+                    }
+
+                    if(score_checkpoint_p != NULL)
+                    {
+                        // we convert from uint to float
+                        const float score_checkpoint = (*score_checkpoint_p - 1e8f)/1e7f;
+
+                        if(detection_score <= score_checkpoint)
+                        {
+
+                            // detection score at current checkpoint is below the desired score,
+                            // this means that at the same position, but different scale someone has already
+                            // found a much stronger detection
+                            detection_score = -1E5; // set to a value lower than score_threshold
+                            break;
+                        }
+                        else
+                        { // detection_score > score_checkpoint
+
+                            // the current detection has the highest score up to now,
+                            // we will update the score map
+
+                            // FIXME this is an horrible heuristic
+                            //const float new_checkpoint_float_score = detection_score - 0; // quality drop
+                            //const float new_checkpoint_float_score = detection_score - 0.015; // quality 6.6 %
+                            //const float new_checkpoint_float_score = detection_score - 0.005; // quality 7.1%
+                            const float new_checkpoint_float_score = detection_score - 0.01; // quality 6.6 %
+
+                            // we convert from float to int
+                            const inhibition_checkpoints_score_t new_checkpoint_score =
+                                    static_cast<inhibition_checkpoints_score_t>((new_checkpoint_float_score * 1e7f) + 1e8f);
+
+                            const inhibition_checkpoints_score_t old =
+                                    atomicMax(score_checkpoint_p, new_checkpoint_score);
+
+                            //const bool print_checkpoints = true;
+                            const bool print_checkpoints = false;
+                            if(print_checkpoints)
+                            {
+                                if(x == 10 and y == 10)
+                                {
+                                    printf("At (x, y, scale_index) == (%i, %i, %i), stage %i, old checkpoint score %i, new checkpoint score %i\n",
+                                           x, y, scale_index, stage_index, old, new_checkpoint_score);
+                                }
+                            }
+                        }
+
+                    } // end of "if at checkpoint stage"
+
+                } // end of "inhibition checkpoint scores handling"
+
+            }
+            else
+            {
+                // detection score is below cascade threshold,
+                // we are not interested on this object
+                detection_score = -1E5; // set to a value lower than score_threshold
+                break;
+            }
+
+        } // end of "for each stage where we may check for inhibition across scales"
+
+
+        for(int stage_index=supremum_checkpoint_stage_index; stage_index < cascade_length; stage_index+=1)
+        {
+            const int index = scale_offset + stage_index;
+
+            // we copy the cascade stage from global memory to thread memory
+            // (when using a reference code runs at ~4.35 Hz, with copy it runs at ~4.55 Hz)
+            const DetectionCascadeStageType stage = detection_cascade_per_scale.data[index];
+
+            if((not use_the_model_cascade) or detection_score > stage.cascade_threshold)
+            {
+                update_detection_score(x, y, stage, integral_channels, detection_score);
+            }
+            else
+            {
+                // detection score is below cascade threshold,
+                // we are not interested on this object
+                detection_score = -1E5; // set to a value lower than score_threshold
+                break;
+            }
+
+        } // end of "for each stage"
+
+
+        // >= to be consistent with Markus's code
+        if(detection_score >= score_threshold)
+        {
+            // we got a detection
+            add_detection(gpu_detections, x, y, scale_index, detection_score);
+
+        } // end of "if detection score is high enough"
+
+
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition
+
+
+/// _v8 should only be used with integral_channels_detector_over_all_scales_impl_v6_coalesced_scales_inhibition
+template <bool use_the_model_cascade, typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v8_coalesced_scales_inhibition(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const int max_search_range_height,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections,
+        inhibition_scores_map_t::KernelData inhibition_score_checkpoints_map)
+{
+
+
+    const int
+            y_id = blockIdx.y * blockDim.y + threadIdx.y,
+            //y_id_modulo = y_id % max_search_range_height,
+            //scale_index = (y_id - y_id_modulo) / max_search_range_height,
+            // we exploit the behaviour of integer division to avoid doing a costly modulo operation
+            scale_index = y_id / max_search_range_height,
+            num_scales = scales_data.size[0];
+
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+
+    const int
+            y_id_modulo = y_id - (scale_index*max_search_range_height),
+            delta_x = (blockIdx.x * blockDim.x + threadIdx.x)*stride.x(),
+            delta_y = (y_id_modulo)*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+
+        const int
+                cascade_length = detection_cascade_per_scale.size[0],
+                scale_offset = scale_index * detection_cascade_per_scale.stride[0];
+
+        const int checkpoint_zero_index = (y*inhibition_score_checkpoints_map.stride[1])
+                + (x*inhibition_score_checkpoints_map.stride[0]);
+        inhibition_checkpoints_score_t *inhibition_score_checkpoints =
+                &inhibition_score_checkpoints_map.data[checkpoint_zero_index];
+
+
+        // retrieve current score value
+        float detection_score = 0;
+
+        // (we use int instead of size_t, as indicated by Cuda Best Programming Practices, section 6.3)
+        // (using int of size_t moved from 1.48 Hz to 1.53 Hz)
+
+        for(int stage_index=0; stage_index < cascade_length; stage_index+=1)
+        {
+            const int index = scale_offset + stage_index;
+
+            // we copy the cascade stage from global memory to thread memory
+            // (when using a reference code runs at ~4.35 Hz, with copy it runs at ~4.55 Hz)
+            const DetectionCascadeStageType stage = detection_cascade_per_scale.data[index];
+
+            if((not use_the_model_cascade) or detection_score > stage.cascade_threshold)
+            {
+                update_detection_score(x, y, stage, integral_channels, detection_score);
+
+                // check for inhibition checkpoint scores, and updates if needed
+                {
+
+                    // to be useful the inhibition needs to be able to abort things before the soft cascade does
+                    // since most candidate windows have very few evaluations,
+                    // the scales inhibition check points are on the very early stages.
+
+                    // FIXME is the compiler smart enough to put the ifs/elses outside of the for loop ?
+                    // (or we should do that by hand/templates ?)
+                    inhibition_checkpoints_score_t *score_checkpoint_p = NULL;
+                    if(stage_index == 2)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[0];
+                    }
+                    else if(stage_index == 4)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[1];
+                    }
+                    else if(stage_index == 8)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[2];
+                    }
+                    else if(stage_index == 16)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[3];
+                    }
+                    else if(stage_index == 32)
+                    {
+                        score_checkpoint_p = &inhibition_score_checkpoints[4];
+                    }
+
+                    if(score_checkpoint_p != NULL)
+                    {
+                        // we convert from uint to float
+                        const float score_checkpoint = (*score_checkpoint_p - 1e8f)/1e7f;
+
+                        if(detection_score <= score_checkpoint)
+                        {
+
+                            // detection score at current checkpoint is below the desired score,
+                            // this means that at the same position, but different scale someone has already
+                            // found a much stronger detection
+                            detection_score = -1E5; // set to a value lower than score_threshold
+                            break;
+                        }
+                        else
+                        { // detection_score > score_checkpoint
+
+                            // the current detection has the highest score up to now,
+                            // we will update the score map
+
+                            // FIXME this is an horrible heuristic
+                            //const float new_checkpoint_float_score = detection_score - 0.015;
+                            const float new_checkpoint_float_score = detection_score - 0;
+
+                            // we convert from float to int
+                            const inhibition_checkpoints_score_t new_checkpoint_score =
+                                    static_cast<inhibition_checkpoints_score_t>((new_checkpoint_float_score * 1e7f) + 1e8f);
+
+                            const inhibition_checkpoints_score_t old =
+                                    atomicMax(score_checkpoint_p, new_checkpoint_score);
+
+                            //const bool print_checkpoints = true;
+                            const bool print_checkpoints = false;
+                            if(print_checkpoints)
+                            {
+                                if(x == 10 and y == 10)
+                                {
+                                    printf("At (x, y, scale_index) == (%i, %i, %i), stage %i, old checkpoint score %i, new checkpoint score %i\n",
+                                           x, y, scale_index, stage_index, old, new_checkpoint_score);
+                                }
+                            }
+                        }
+
+                    } // end of "if at checkpoint stage"
+
+                } // end of "inhibition checkpoint scores handling"
+
+            }
+            else
+            {
+                // detection score is below cascade threshold,
+                // we are not interested on this object
+                detection_score = -1E5; // set to a value lower than score_threshold
+                break;
+            }
+
+        } // end of "for each stage"
+
+        // >= to be consistent with Markus's code
+        if(detection_score >= score_threshold)
+        {
+            // we got a detection
+            add_detection(gpu_detections, x, y, scale_index, detection_score);
+
+        } // end of "if detection score is high enough"
+
+
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v8_coalesced_scales_inhibition
+
+
+
+
+void initalize_inhibition_scores_map(const gpu_integral_channels_t &integral_channels)
+{
+    // (re)-allocate the inhibition_scores_map
+    if((inhibition_scores_map.size[1] != integral_channels.size[0]) or
+            (inhibition_scores_map.size[2] != integral_channels.size[1]))
+    {
+        // we will have only 5 checkpoints, this is hardcoded
+        const size_t num_rows = integral_channels.size[0], num_columns = integral_channels.size[1];
+        printf("Going to allocate a inhibition_scores_map of size (rows, cols) == (%zu, %zu)\n",
+               num_rows, num_columns);
+        inhibition_scores_map.realloc(5, num_rows, num_columns);
+    }
+
+    // we clean-up the inhibition scores map, we set the checkpoint score to a very low (unsigned int) value
+    {
+        inhibition_scores_map.initMem(0);
+    }
+    return;
+}
+
+/// this version is similar to _v2, but it additionally implements
+/// inhibition across scales
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v5_scales_inhibition(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+    // CUDA occupancy calculator pointed out
+    // 192 (or 256) threads as a sweet spot for the current setup (revision 1798:ebfd7914cdfd)
+    const int
+            num_scales = scales_data.getNumElements(),
+            //block_z = 8,
+            block_z = 1,
+            num_threads = 192, // ~4.8 Hz
+            //num_threads = 256, // ~4.5 Hz
+            // we want to keep the vertical elements of the block low so that we can efficiently search
+            // in the scales that have strong vertical constraints
+            //block_y = 4, block_x = num_threads / block_y; // runs at ~ 15 Hz too
+            //block_y = 2, block_x = num_threads / (block_y * block_z); // slightly faster than block_y = 4
+            block_y = 16, block_x = num_threads / (block_y * block_z); // slightly faster than block_y = 4
+
+    // FIXME should use the stride information when setting the block sizes ?
+    dim3 block_dimensions(block_x, block_y, block_z);
+
+    // each pixel will process two pixels in the vertical dimension
+    dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
+                         div_up(max_search_range_height, block_dimensions.y),
+                         div_up(num_scales, block_z));
+
+    // prepare variables for kernel call --
+    initalize_inhibition_scores_map(integral_channels);
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    // v1 is slower than v0; v3 is the fastest, we should use v3
+    // v4 considers the strides, making it faster than v4 (when using strides > 1)
+    // v5 is like v4, but uses two pixels per thread
+    // v7 implements scales inhibition
+
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition
+                <true, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections,
+                                                          inhibition_scores_map);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition
+                <false, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections,
+                                                          inhibition_scores_map);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v5_scales_inhibition
+
+
+
+/// this version is similar to _v3_coalesced, but it additionally implements
+/// inhibition across scales
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v6_coalesced_scales_inhibition(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+    // CUDA occupancy calculator pointed out
+    // 192 (or 256) threads as a sweet spot for the current setup (revision 1798:ebfd7914cdfd)
+    const int
+            num_scales = scales_data.getNumElements(),
+            //block_z = 8,
+            num_threads = 192, // ~4.8 Hz
+            //num_threads = 256, // ~4.5 Hz
+            // we want to keep the vertical elements of the block low so that we can efficiently search
+            // in the scales that have strong vertical constraints
+            //block_y = 4, block_x = num_threads / block_y; // runs at ~ 15 Hz too
+            //block_y = 2, block_x = num_threads / (block_y * block_z); // slightly faster than block_y = 4
+            // in this version, block_y = 16 (or 32) is critical for the obtained speed
+            block_y = 16, block_x = num_threads / (block_y);
+
+    // FIXME should use the stride information when setting the block sizes ?
+    dim3 block_dimensions(block_x, block_y);
+
+    // we map the scales to repetitions on the y axis
+    dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
+                         div_up(max_search_range_height*num_scales, block_dimensions.y));
+
+    // prepare variables for kernel call --
+    initalize_inhibition_scores_map(integral_channels);
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    // v1 is slower than v0; v3 is the fastest, we should use v3
+    // v4 considers the strides, making it faster than v4 (when using strides > 1)
+    // v5 is like v4, but uses two pixels per thread
+    // v7 implements scales inhibition
+
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v8_coalesced_scales_inhibition
+                <true, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          max_search_range_height,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections,
+                                                          inhibition_scores_map);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v8_coalesced_scales_inhibition
+                <false, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          max_search_range_height,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections,
+                                                          inhibition_scores_map);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v6_coalesced_scales_inhibition
+
+
+// 6 pixels per block => 192 threads
+// 8 pixels per block => 256 threads
+//#define NUM_PIXELS_PER_BLOCK 6
+#define NUM_PIXELS_PER_BLOCK 8
+//#define NUM_PIXELS_PER_BLOCK 12
+//#define NUM_PIXELS_PER_BLOCK (6*8)
+
+#define WARP_SIZE 32
+//#define WARP_SIZE 16
+//#define WARP_SIZE 4
+
+/// _v9 should only be used with integral_channels_detector_over_all_scales_impl_v7
+/// in this version, each warp works together to compute the detector response
+template <bool use_the_model_cascade, typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v9_one_pixel_per_warp(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections)
+{
+    const int
+            scale_index = blockIdx.z * blockDim.z + threadIdx.z,
+            num_scales = scales_data.size[0];
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+    __shared__ float pixel_detection_scores[NUM_PIXELS_PER_BLOCK];
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+    const int
+            pixel_index = threadIdx.x,
+            delta_stage = threadIdx.y,
+            delta_x = ((blockIdx.x * blockDim.x) + threadIdx.x)*stride.x(),
+            delta_y = blockIdx.y*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+
+        const int
+                cascade_length = detection_cascade_per_scale.size[0],
+                scale_offset = scale_index * detection_cascade_per_scale.stride[0];
+
+        float &detection_score = pixel_detection_scores[pixel_index];
+        if(delta_stage == 0) // only one thread initalizes
+        {
+            detection_score = 0;
+        }
+        __syncthreads(); // make sure initialization is done
+
+        // (we use int instead of size_t, as indicated by Cuda Best Programming Practices, section 6.3)
+        // (relevant speed diference)
+
+        int stage_index = delta_stage;
+        for(; stage_index < cascade_length; stage_index+=WARP_SIZE)
+        {
+            const int index = scale_offset + stage_index;
+
+            // we copy the cascade stage from global memory to thread memory
+            // (when using a reference code runs at ~4.35 Hz, with copy it runs at ~4.55 Hz)
+            const DetectionCascadeStageType stage = detection_cascade_per_scale.data[index];
+
+            if(use_the_model_cascade
+                    and (detection_score <= stage.cascade_threshold))
+            {
+                // detection score is below cascade threshold,
+                // we are not interested on this object
+                break;
+            }
+
+            float delta_detection_score = 0; // set to zero
+            update_detection_score(x, y, stage, integral_channels, delta_detection_score);
+            atomicAdd(&detection_score, delta_detection_score);
+
+        } // end of "for each stage"
+
+        // score >= threshold to be consistent with Markus's code
+        if((delta_stage == 0) // only one thread adds the detection
+                and (detection_score >= score_threshold)
+                and (stage_index >= cascade_length)) // only if we did not abort earlier
+        {
+            // we got a detection
+            add_detection(gpu_detections, x, y, scale_index, detection_score);
+
+        } // end of "if detection score is high enough"
+
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v9_one_pixel_per_warp
+
+
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v7_one_pixel_per_warp(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+
+    const int
+            num_scales = scales_data.getNumElements(),
+            block_z = 1, // we handle one scale at a time
+            //num_threads = 192, // speed ??
+            //num_threads = 256, // speed ??
+            warpSize = WARP_SIZE, // FIXME how to retrieve this number from API ?
+            block_y = warpSize,
+            //num_pixels_per_block = num_threads / (block_y * block_z),
+            block_x = NUM_PIXELS_PER_BLOCK;
+
+    // FIXME should use the stride information when setting the block sizes ?
+    dim3 block_dimensions(block_x, block_y, block_z);
+
+    dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
+                         max_search_range_height,
+                         div_up(num_scales, block_z));
+
+    // prepare variables for kernel call --
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    // v1 is slower than v0; v3 is the fastest, we should use v3
+    // v4 considers the strides, making it faster than v4 (when using strides > 1)
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v9_one_pixel_per_warp
+                <true, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v9_one_pixel_per_warp
+                <false, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v7_one_pixel_per_warp
+
+
+
+/// _v10 should only be used with integral_channels_detector_over_all_scales_impl_v8
+template <bool use_the_model_cascade, typename DetectionCascadeStageType>
+__global__
+void integral_channels_detector_over_all_scales_kernel_v10_many_scales_per_block(
+        const gpu_integral_channels_t::KernelConstData integral_channels,
+        const gpu_scales_data_t::KernelConstData scales_data,
+        const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
+        const float score_threshold,
+        gpu_detections_t::KernelData gpu_detections)
+{
+    const int
+            scale_index = (blockIdx.x * blockDim.x + threadIdx.x),
+            num_scales = scales_data.size[0];
+
+    if(scale_index >= num_scales)
+    {
+        // out of scales range
+        // (nothing to do here)
+        return;
+    }
+
+    // we copy the search stage from global memory to thread memory
+    // (here using copy or reference seems to make no difference, 11.82 Hz in both cases)
+    const gpu_scale_datum_t scale_datum = scales_data.data[scale_index];
+    const gpu_scale_datum_t::search_range_t &search_range = scale_datum.search_range;
+    const gpu_scale_datum_t::stride_t &stride = scale_datum.stride;
+
+    const int
+            delta_x = (blockIdx.y * blockDim.y + threadIdx.y)*stride.x(),
+            delta_y = (blockIdx.z * blockDim.z + threadIdx.z)*stride.y(),
+            x = search_range.min_corner().x() + delta_x,
+            y = search_range.min_corner().y() + delta_y;
+
+    // we order the if conditions putting most likelly ones first
+    if( (y > search_range.max_corner().y()) or (x > search_range.max_corner().x()) )
+    {
+        // current pixel is out of this scale search range, we skip computations
+        // (nothing to do here)
+    }
+    else
+    { // inside search range
+
+        compute_specific_detection<use_the_model_cascade, DetectionCascadeStageType>
+                (x, y, scale_index, score_threshold,
+                 integral_channels, detection_cascade_per_scale, gpu_detections);
+
+    } // end of "inside search range or not"
+
+    return;
+} // end of integral_channels_detector_over_all_scales_kernel_v10_many_scales_per_block
+
+
+/// In this implementation we try to get the block focusing on scales first,
+/// and spatial dimensions second.
+/// The idea is that a key blocking point on GPU speed is that the whole block need to finish,
+/// before launching the next one. If we group spatially, we have to wait that all neighbours have finished.
+/// We expect that (~50) scales are more co-related than (~50) neighbours
+template<typename GpuDetectionCascadePerScaleType>
+void integral_channels_detector_over_all_scales_impl_v8_many_scales_per_block(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+
+    typedef typename GpuDetectionCascadePerScaleType::Type CascadeStageType;
+
+    // CUDA occupancy calculator pointed out
+    // 192 (or 256) threads as a sweet spot for the current setup (revision 1798:ebfd7914cdfd)
+    const int
+            num_scales = scales_data.getNumElements(),
+            max_num_threads = 192,
+            block_x = num_scales,
+            block_y = 1, // we expect vertical correlation to be stronger
+            block_z = max_num_threads / block_x;
+
+    // FIXME should use the stride information when setting the block sizes ?
+    dim3 block_dimensions(block_x, block_y, block_z);
+    //dim3 block_dimensions(2, 8, 8);
+
+
+    dim3 grid_dimensions(div_up(num_scales, block_dimensions.x),
+                         div_up(max_search_range_width, block_dimensions.y),
+                         div_up(max_search_range_height, block_dimensions.z));
+
+    // prepare variables for kernel call --
+    bind_integral_channels_texture(integral_channels);
+    move_num_detections_from_cpu_to_gpu(num_detections);
+
+    // call the GPU kernel --
+    if(use_the_model_cascade)
+    {
+        integral_channels_detector_over_all_scales_kernel_v10_many_scales_per_block
+                <true, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+    else
+    {
+        integral_channels_detector_over_all_scales_kernel_v10_many_scales_per_block
+                <false, CascadeStageType>
+                <<<grid_dimensions, block_dimensions>>> (
+                                                          integral_channels,
+                                                          scales_data,
+                                                          detection_cascade_per_scale,
+                                                          score_threshold,
+                                                          gpu_detections);
+    }
+
+    cuda_safe_call( cudaGetLastError() );
+    cuda_safe_call( cudaDeviceSynchronize() );
+
+    // clean-up variables after kernel call --
+    unbind_integral_channels_texture();
+    move_num_detections_from_gpu_to_cpu(num_detections);
+
+    return;
+} // end of integral_channels_detector_over_all_scales_impl_v8_many_scales_per_block
+
 
 void integral_channels_detector_over_all_scales(
         gpu_integral_channels_t &integral_channels,
@@ -2054,7 +3505,14 @@ void integral_channels_detector_over_all_scales(
     // v2 in unuk reaches 55 Hz, v3 56 Hz (monocular mode)
     //integral_channels_detector_over_all_scales_impl_v0(
     //integral_channels_detector_over_all_scales_impl_v1(
-    integral_channels_detector_over_all_scales_impl_v2_xy_stride( // this is the version you want
+    // v2_xy_stride is the version you want
+    integral_channels_detector_over_all_scales_impl_v2_xy_stride(
+                //integral_channels_detector_over_all_scales_impl_v3_coalesced(
+                //integral_channels_detector_over_all_scales_impl_v4_two_pixels_per_thread (
+                //integral_channels_detector_over_all_scales_impl_v5_scales_inhibition(
+                //integral_channels_detector_over_all_scales_impl_v6_coalesced_scales_inhibition(
+                //integral_channels_detector_over_all_scales_impl_v7_one_pixel_per_warp(
+                //integral_channels_detector_over_all_scales_impl_v8_many_scales_per_block(
                 integral_channels,
                 max_search_range, max_search_range_width, max_search_range_height,
                 scales_data,
@@ -2062,6 +3520,36 @@ void integral_channels_detector_over_all_scales(
                 score_threshold, use_the_model_cascade, gpu_detections, num_detections);
     return;
 }
+
+
+
+/// compute detections at all scales in one call
+/// three stumps version
+/// this method directly adds elements into the gpu_detections vector
+/// @warning will skip all detections once the vector is full
+void integral_channels_detector_over_all_scales(
+        gpu_integral_channels_t &integral_channels,
+        gpu_scale_datum_t::search_range_t &max_search_range,
+        const int max_search_range_width, const int max_search_range_height,
+        gpu_scales_data_t &scales_data,
+        gpu_detection_three_stumps_cascade_per_scale_t &detection_cascade_per_scale,
+        const float score_threshold,
+        const bool use_the_model_cascade,
+        gpu_detections_t& gpu_detections,
+        size_t &num_detections)
+{
+    // v2_xy_stride is the version you want
+    integral_channels_detector_over_all_scales_impl_v2_xy_stride(
+                integral_channels,
+                max_search_range, max_search_range_width, max_search_range_height,
+                scales_data,
+                detection_cascade_per_scale,
+                score_threshold, use_the_model_cascade, gpu_detections, num_detections);
+
+    return;
+}
+
+
 
 
 void integral_channels_detector_over_all_scales(
@@ -2082,6 +3570,7 @@ void integral_channels_detector_over_all_scales(
     //integral_channels_detector_over_all_scales_impl_v0(
     //integral_channels_detector_over_all_scales_impl_v1(
     integral_channels_detector_over_all_scales_impl_v2_xy_stride(
+                //integral_channels_detector_over_all_scales_impl_v3_coalesced(
                 integral_channels,
                 max_search_range, max_search_range_width, max_search_range_height,
                 scales_data,

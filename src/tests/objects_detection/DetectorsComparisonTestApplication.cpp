@@ -19,6 +19,9 @@
 #include <boost/accumulators/statistics/max.hpp>
 #include <boost/accumulators/statistics/min.hpp>
 #include <boost/gil/extension/io/png_io.hpp>
+#include <boost/variant/static_visitor.hpp>
+#include <boost/variant/apply_visitor.hpp>
+#include <boost/variant/get.hpp>
 
 #include <boost/test/test_tools.hpp>
 
@@ -294,10 +297,10 @@ void DetectorsComparisonTestApplication::check_computed_statistics()
     const float max_std_deviation = 0.5;
     //const float max_std_deviation = 5.0; // ridiculuous number, just for testing
 
-    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges_data.size(); scale_index +=1)
     {
 
-        const float detection_window_scale = chnftrs_detector_p->search_ranges[scale_index].detection_window_scale;
+        const float detection_window_scale = chnftrs_detector_p->search_ranges_data[scale_index].detection_window_scale;
 
         for(size_t channel_index = 0; channel_index < this->per_scale_per_channel_statistics.shape()[0]; channel_index +=1)
         {
@@ -335,7 +338,7 @@ void DetectorsComparisonTestApplication::check_computed_statistics()
 
     printf("\n\n");
 
-    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges_data.size(); scale_index +=1)
     {
         const channel_statistics_accumulator_t &statistics = global_channel_statistics[scale_index];
         const float feature_ratio_mean = accumulators::mean(statistics);
@@ -343,7 +346,7 @@ void DetectorsComparisonTestApplication::check_computed_statistics()
 
         printf("Scale %.3f, chnftrs/fpdw (all channels together) is in range (%.3f, %.3f)\t"
                "with an average of\t%.4f and a standard deviation of\t%.4f\n",
-               chnftrs_detector_p->search_ranges[scale_index].detection_window_scale,
+               chnftrs_detector_p->search_ranges_data[scale_index].detection_window_scale,
                accumulators::min(statistics),
                accumulators::max(statistics),
                feature_ratio_mean,
@@ -373,15 +376,15 @@ void DetectorsComparisonTestApplication::save_channel_statistics()
             "# The rows are: scales, "
             "channel_0_mean, channel_0_std_deviation, channel_1_mean, channel_1_std_deviation, etc..\n");
 
-    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges_data.size(); scale_index +=1)
     {
-        fprintf(fout, "%.5f ", chnftrs_detector_p->search_ranges[scale_index].detection_window_scale);
+        fprintf(fout, "%.5f ", chnftrs_detector_p->search_ranges_data[scale_index].detection_window_scale);
     }
     fprintf(fout, "\n");
 
     for(size_t channel_index = 0; channel_index < this->per_scale_per_channel_statistics.shape()[0]; channel_index +=1)
     {
-        for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges.size(); scale_index +=1)
+        for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges_data.size(); scale_index +=1)
         {
             const channel_statistics_accumulator_t &statistics =
                     per_scale_per_channel_statistics[channel_index][scale_index];
@@ -390,7 +393,7 @@ void DetectorsComparisonTestApplication::save_channel_statistics()
         } // end of "for each scale"
         fprintf(fout, "\n");
 
-        for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges.size(); scale_index +=1)
+        for(size_t scale_index=0; scale_index < chnftrs_detector_p->search_ranges_data.size(); scale_index +=1)
         {
             const channel_statistics_accumulator_t &statistics =
                     per_scale_per_channel_statistics[channel_index][scale_index];
@@ -455,6 +458,19 @@ void draw_box(const IntegralChannelsFeature::rectangle_t &box, string png_filena
     return;
 }
 
+
+class stages_size_visitor: public boost::static_visitor<size_t>
+{
+public:
+
+    template<typename T>
+    size_t operator()(const T &stages) const
+    {
+        return stages.size();
+    }
+}; // end of visitor class stages_size_visitor
+
+
 void DetectorsComparisonTestApplication::update_channels_statistics(
     const size_t current_scale_index,
     const IntegralChannelsDetector &chnftrs_detector,
@@ -484,10 +500,11 @@ void DetectorsComparisonTestApplication::update_channels_statistics(
 
 
     // both classifiers should have the same artificial cascade
-    const SoftCascadeOverIntegralChannelsModel::stages_t  &cascade_stages =
+    const SoftCascadeOverIntegralChannelsModel::variant_stages_t  &cascade_stages =
             chnftrs_detector.cascade_model_p->get_stages();
 
-    BOOST_REQUIRE(cascade_stages.size() == 10);
+    const size_t cascade_stages_size = boost::apply_visitor(stages_size_visitor(), cascade_stages);
+    BOOST_REQUIRE(cascade_stages_size == 10);
 
     const bool chnftrs_is_bigger_than_fpdw =
             (chnftrs_detector.scaled_search_range.max_y > fpdw_detector.scaled_search_range.max_y);
@@ -513,16 +530,19 @@ void DetectorsComparisonTestApplication::update_channels_statistics(
     // the search radius used for each pixel in the large image (which all map to a single pixel in the small image)
     const int search_radius = static_cast<int>(ceil(small_to_large_ratio/2));
 
-    for(size_t channel_index = 0; channel_index < cascade_stages.size(); channel_index += 1)
+    for(size_t channel_index = 0; channel_index < cascade_stages_size; channel_index += 1)
     {
         // compute the feature values ---
         feature_values_t chnftrs_feature_values, fpdw_feature_values;
 
+        typedef SoftCascadeOverIntegralChannelsModel::plain_stages_t plain_stages_t;
+        const plain_stages_t
+                &chnftrs_stages = boost::get<plain_stages_t>(chnftrs_detector.actual_cascade_stages),
+                &fpdw_stages = boost::get<plain_stages_t>(fpdw_detector.actual_cascade_stages);
+
         const IntegralChannelsFeature
-                &chnftrs_feature =
-                chnftrs_detector.actual_cascade_stages[channel_index].weak_classifier.level1_node.feature,
-                &fpdw_feature =
-                fpdw_detector.actual_cascade_stages[channel_index].weak_classifier.level1_node.feature;
+                &chnftrs_feature = chnftrs_stages[channel_index].weak_classifier.level1_node.feature,
+                &fpdw_feature = fpdw_stages[channel_index].weak_classifier.level1_node.feature;
 
         compute_feature_values(chnftrs_detector, chnftrs_feature, chnftrs_feature_values);
         compute_feature_values(fpdw_detector, fpdw_feature, fpdw_feature_values);
@@ -611,7 +631,7 @@ void DetectorsComparisonTestApplication::update_channels_statistics(
                         continue;
                     }
 
-                    for(int t_x=large_x-search_radius; t_x < (large_y+search_radius); t_x+=1)
+                    for(int t_x=large_x-search_radius; t_x < (large_x+search_radius); t_x+=1)
                     {
                         if((t_x < 0) or (t_x >= static_cast<int>(large_image_p->shape()[1])))
                         {
@@ -752,37 +772,37 @@ void DetectorsComparisonTestApplication::process_frame(const AbstractVideoInput:
     fpdw_detector_p->set_image(input_view);
 
     // check that the search ranges are identical
-    BOOST_REQUIRE_MESSAGE(chnftrs_detector_p->search_ranges == fpdw_detector_p->search_ranges,
+    BOOST_REQUIRE_MESSAGE(chnftrs_detector_p->search_ranges_data == fpdw_detector_p->search_ranges_data,
                           "The search ranges of the two detectors is not identical, but should have been");
 
-    BOOST_REQUIRE(chnftrs_detector_p->search_ranges.empty() == false);
+    BOOST_REQUIRE(chnftrs_detector_p->search_ranges_data.empty() == false);
 
     BOOST_REQUIRE(fpdw_detector_p->integral_channels_scales.size() == 1);
     BOOST_REQUIRE(fpdw_detector_p->integral_channels_scales[0] == 1.0f);
 
     if((per_scale_per_channel_statistics.shape()[0] != 10) or
-            (per_scale_per_channel_statistics.shape()[1] < chnftrs_detector_p->search_ranges.size()))
+            (per_scale_per_channel_statistics.shape()[1] < chnftrs_detector_p->search_ranges_data.size()))
     {
-        per_scale_per_channel_statistics.resize(boost::extents[10][chnftrs_detector_p->search_ranges.size()]);
+        per_scale_per_channel_statistics.resize(boost::extents[10][chnftrs_detector_p->search_ranges_data.size()]);
     }
 
-    if(first_call and chnftrs_detector_p->search_ranges.size() < 10)
+    if(first_call and chnftrs_detector_p->search_ranges_data.size() < 10)
     {
         printf("Going to search for detection window scales: ");
-        BOOST_FOREACH(const DetectorSearchRange &search_range, chnftrs_detector_p->search_ranges)
+        BOOST_FOREACH(const DetectorSearchRangeMetaData &search_range_data, chnftrs_detector_p->search_ranges_data)
         {
-            printf("%.3f, ", search_range.detection_window_scale);
+            printf("%.3f, ", search_range_data.detection_window_scale);
         }
         printf("\n");
     }
 
     fpdw_detector_p->compute_integral_channels();
 
-    // already checked chnftrs_detector_p->search_ranges == fpdw_detector_p->search_ranges
+    // already checked chnftrs_detector_p->search_ranges_data == fpdw_detector_p->search_ranges_data
 
     int current_scale_index = 0;
     // for each range search
-    for(size_t search_range_index=0; search_range_index < chnftrs_detector_p->search_ranges.size(); search_range_index +=1)
+    for(size_t search_range_index=0; search_range_index < chnftrs_detector_p->search_ranges_data.size(); search_range_index +=1)
     {
         // run on both methods, for this specific scale --
         chnftrs_detector_p->compute_detections_at_specific_scale(search_range_index,

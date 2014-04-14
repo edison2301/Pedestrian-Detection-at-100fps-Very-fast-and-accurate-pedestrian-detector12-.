@@ -21,7 +21,7 @@ protected:
 
 public:
 
-    static boost::program_options::options_description get_args_options(void);
+    static boost::program_options::options_description get_args_options();
 
     AbstractStereoBlockMatcher(const boost::program_options::variables_map &options);
     virtual ~AbstractStereoBlockMatcher();

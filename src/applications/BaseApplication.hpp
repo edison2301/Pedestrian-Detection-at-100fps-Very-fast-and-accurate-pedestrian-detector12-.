@@ -41,7 +41,7 @@ public:
     int main(int argc, char *argv[]);
 
     /// helper method used by the user interfaces when recording screenshots
-    const boost::filesystem::path &get_recording_path() const;
+    const boost::filesystem::path &get_recording_path();
 
     /// helper method used by the user interfaces when recording screenshots
     /// this number is expected to change with that same frequency that update_gui is called
@@ -76,7 +76,7 @@ protected:
     bool update_gui();
 
     boost::filesystem::path recording_path;
-    void create_recording_path() const;
+    void create_recording_path();
 
     boost::program_options::variables_map options;
     void record_program_options() const;

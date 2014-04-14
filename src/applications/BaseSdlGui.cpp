@@ -368,7 +368,7 @@ void  BaseSdlGui::save_screenshot()
     using namespace boost::filesystem;
     const boost::filesystem::path &recording_path = base_application.get_recording_path();
 
-    if(save_all_screenshots == true && recorded_first_image == false)
+    if(save_all_screenshots == true and recorded_first_image == false)
     {
         recorded_first_image = true;
         printf("Will save all the screenshots in the recordings directory\n");

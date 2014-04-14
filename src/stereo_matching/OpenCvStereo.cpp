@@ -89,7 +89,7 @@ using namespace boost::gil;
 
 BOOST_STATIC_ASSERT(CV_MAJOR_VERSION == 2);
 
-program_options::options_description OpenCvStereo::get_args_options(void)
+program_options::options_description OpenCvStereo::get_args_options()
 {
     program_options::options_description desc("OpenCvStereo options");
 

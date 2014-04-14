@@ -10,11 +10,13 @@
 
 #include "helpers/Log.hpp"
 #include "helpers/gpu/cuda_safe_call.hpp"
+#include "helpers/fill_multi_array.hpp"
 
+#include <boost/type_traits/is_same.hpp>
 #include <boost/gil/typedefs.hpp>
 #include <boost/gil/image_view_factory.hpp>
 #include <boost/gil/extension/opencv/ipl_image_wrapper.hpp>
-#include <boost/type_traits/is_same.hpp>
+#include <boost/gil/extension/io/png_io.hpp>
 
 #include <cudatemplates/hostmemoryreference.hpp>
 #include <cudatemplates/copy.hpp>
@@ -172,6 +174,9 @@ protected:
     hog_input_gpu_mat,
     luv_gpu_mat;
 
+    cv::gpu::CudaMem input_rgb8_gpu_mem; // allows for faster data upload
+    cv::Mat input_rgb8_gpu_mem_mat; // allows for faster data upload
+
     /// helper variable to avoid doing memory re-allocations for each channel shrinking
     GpuMat shrink_channel_buffer_a, shrink_channel_buffer_b;
 
@@ -192,7 +197,7 @@ protected:
     /// these are the shrunk channels
     gpu_channels_t shrunk_channels;
 
-    /// integral channels are computed over the shrinked channels
+    /// integral channels are computed over the shrunk channels
     gpu_integral_channels_t integral_channels;
 };
 
@@ -203,6 +208,7 @@ typedef GpuIntegralChannelsForPedestriansImplementation::filter_shared_pointer_t
 filter_shared_pointer_t
 create_pre_smoothing_gpu_filter()
 {
+    //const int binomial_filter_degree = 0;
     const int binomial_filter_degree = 1;
     //const int binomial_filter_degree = 2;
 
@@ -220,9 +226,15 @@ create_pre_smoothing_gpu_filter()
     if(use_2d_kernel)
     {
         const cv::Mat binomial_kernel_2d =  binomial_kernel_1d * binomial_kernel_1d.t();
+
+        const cv::Point default_anchor = cv::Point(-1,-1);
+        const int border_type = BORDER_DEFAULT;
+        //const int border_type = BORDER_REPLICATE;
+        //const int border_type = BORDER_REFLECT;
         pre_smoothing_filter_p =
-                cv::gpu::createLinearFilter_GPU(CV_8UC4, CV_8UC4, binomial_kernel_2d);
+                cv::gpu::createLinearFilter_GPU(CV_8UC4, CV_8UC4, binomial_kernel_2d, default_anchor, border_type);
     }
+
 
     return pre_smoothing_filter_p;
 }
@@ -231,10 +243,10 @@ create_pre_smoothing_gpu_filter()
 implementation_t::GpuIntegralChannelsForPedestriansImplementation(GpuIntegralChannelsForPedestrians &parent_)
     : parent(parent_)
 {
-
     pre_smoothing_filter_p = create_pre_smoothing_gpu_filter();
     return;
 }
+
 
 implementation_t::~GpuIntegralChannelsForPedestriansImplementation()
 {
@@ -242,84 +254,49 @@ implementation_t::~GpuIntegralChannelsForPedestriansImplementation()
     return;
 }
 
+
 void implementation_t::set_image(const boost::gil::rgb8c_view_t &input_view)
 {
-
-    static int warnings_count = 0;
-
-    if(warnings_count <50){
-        log_warning() << "Called GpuIntegralChannelsForPedestriansImplementation::set_image(...), "
-                         "which provides a slow implementation (see GpuIntegralChannelsDetector::set_image instead)"
-                      << std::endl;
-        warnings_count +=1;
-    }
-    else if(warnings_count==50){
-        warnings_count +=1;
-        log_warning() << "Too many warnings, going silent!"
-                      << std::endl;
-
-    }else{
-        //nothing to do
-    }
-
     // transfer image into GPU --
     boost::gil::opencv::ipl_image_wrapper input_ipl =
             boost::gil::opencv::create_ipl_image(input_view);
 
     cv::Mat input_mat(input_ipl.get());
 
-    input_rgb8_gpu_mat.upload(input_mat);  // from CPU to GPU
+    const bool use_cuda_write_combined = true;
+    if(use_cuda_write_combined)
+    {
+        if((input_rgb8_gpu_mem.rows != input_mat.rows) or (input_rgb8_gpu_mem.cols != input_mat.cols))
+        {
+            // lazy allocate the cuda memory
+            // using WRITE_COMBINED, in theory allows for 40% speed-up in the upload,
+            // (but reading this memory from host will be _very slow_)
+            // tests on the laptop show no speed improvement (maybe faster on desktop ?)
+            input_rgb8_gpu_mem.create(input_mat.size(), input_mat.type(), cv::gpu::CudaMem::ALLOC_WRITE_COMBINED);
+            input_rgb8_gpu_mem_mat = input_rgb8_gpu_mem.createMatHeader();
+        }
+
+        input_mat.copyTo(input_rgb8_gpu_mem_mat); // copy to write_combined host memory
+        input_rgb8_gpu_mat.upload(input_rgb8_gpu_mem_mat);  // fast transfer from CPU to GPU
+    }
+    else
+    {
+        input_rgb8_gpu_mat.upload(input_mat);  // from CPU to GPU
+    }
 
     // most tasks in GPU are optimized for CV_8UC1 and CV_8UC4, so we set the input as such
     cv::gpu::cvtColor(input_rgb8_gpu_mat, input_gpu_mat, CV_RGB2RGBA); // GPU type conversion
 
+    if(input_gpu_mat.type() != CV_8UC4)
+    {
+        throw std::runtime_error("cv::gpu::cvtColor did not work as expected");
+    }
+
     allocate_channels(input_view.width(), input_view.height());
-    /*
-    Cuda::HostMemoryReference2D<pixel_t> host_image(
-                input_view.width(), input_view.height(),
-                boost::gil::interleaved_view_get_raw_data(input_view));
-
-    if((device_image_array.size[0] != input_view.width())
-            or (device_image_array.size[1] != input_view.height()))
-    {
-        device_image_array.realloc(input_view.width(), input_view.height());
-    }
-
-    // move data from CPU to GPU
-    Cuda::copy(device_image, host_image);
-
-    input_image_texture.filterMode = cudaFilterModeLinear; // versus cudaFilterModePoint
-    device_image.bindTexture(input_image_texture);
-*/
-
-
-    /*
-    Cuda::GilReference2D<pixel_t>::gil_image_t input_image(the_input_view.dimensions());
-
-    right_image(right.dimensions());
-    boost::gil::copy_pixels(left, boost::gil::view(left_image));
-    boost::gil::copy_pixels(right, boost::gil::view(right_image));
-
-    Cuda::GilReference2D<uchar1>::gil_image_t disparity_visualization(left.dimensions());
-
-    Cuda::GilReference2D<pixel_t> left_ref(left_image), right_ref(right_image);
-    Cuda::GilReference2D<uchar1> disparity_visualization_ref(disparity_visualization);
-
-    const bool be_verbose = first_disparity_map_computation;
-    const float computation_time_in_seconds =
-            winner_take_all::gpu_stereo(left_ref, right_ref, gpu_method, gpu_options, disparity_visualization_ref, be_verbose);
-
-    if(first_disparity_map_computation)
-    {
-        printf("winner_take_all::gpu_stereo computation time %.5f [s] == %.1f [fps]\n", computation_time_in_seconds, 1.0 / computation_time_in_seconds);
-    }
-
-    //gil::png_write_view("output_gpu_disparity_map.visualization.png", gil::const_view(disparity_visualization));
-    boost::gil::copy_pixels(gil::const_view(disparity_visualization), this->disparity_map_view);
-*/
 
     return;
 }
+
 
 void implementation_t::set_image(const cv::gpu::GpuMat &input_image)
 {
@@ -350,6 +327,7 @@ void implementation_t::set_image(const cv::gpu::GpuMat &input_image)
     return;
 }
 
+
 template <typename T>
 void allocate_integral_channels(const size_t /*shrunk_channel_size_x*/,
                                 const size_t /*shrunk_channel_size_y*/,
@@ -359,6 +337,7 @@ void allocate_integral_channels(const size_t /*shrunk_channel_size_x*/,
     throw std::runtime_error("Called alloc_integral_channels<> with an unhandled integral channel type");
     return;
 }
+
 
 template <>
 void allocate_integral_channels<implementation_t::gpu_3d_integral_channels_t>(
@@ -382,6 +361,8 @@ void allocate_integral_channels<implementation_t::gpu_2d_integral_channels_t>(
 {
     integral_channels.alloc(shrunk_channel_size_x+1, (shrunk_channel_size_y*num_channels)+1);
     // size0 == x/cols, size1 == y/rows, size2 == num_channels
+
+    integral_channels.height = shrunk_channel_size_y;
     return;
 }
 
@@ -492,7 +473,18 @@ void implementation_t::compute_smoothed_image_v0()
 {
     // smooth the input image --
     smoothed_input_gpu_mat.create(input_gpu_mat.size(), input_gpu_mat.type());
-    pre_smoothing_filter_p->apply(input_gpu_mat, smoothed_input_gpu_mat);
+
+    if(pre_smoothing_filter_p)
+    {
+        // we need to force the filter to be applied to the borders
+        // (by default it omits them)
+        const Rect region_of_interest = Rect(0,0, input_gpu_mat.cols, input_gpu_mat.rows);
+        pre_smoothing_filter_p->apply(input_gpu_mat, smoothed_input_gpu_mat, region_of_interest);
+    }
+    else
+    {
+        input_gpu_mat.copyTo(smoothed_input_gpu_mat); // simple copy, no filtering
+    }
 
     return;
 }
@@ -978,6 +970,43 @@ void implementation_t::resize_and_integrate_channels_v2()
     // first we shrink all the channels ---
     {
         doppia::integral_channels::shrink_channels(channels, shrunk_channels, parent.resizing_factor);
+
+        const bool save_shrunk_channels = false;
+        if(save_shrunk_channels)
+        {
+            const gpu_channels_t& gpu_channels = shrunk_channels;
+            const Cuda::Size<3> &data_size = gpu_channels.getLayout().size;
+
+            typedef GpuIntegralChannelsForPedestrians::channels_t  channels_t;
+            channels_t cpu_shrunk_channels;
+            // resize the CPU memory storage
+            // Cuda::DeviceMemoryPitched3D store the size indices in reverse order with respect to boost::multi_array
+            cpu_shrunk_channels.resize(boost::extents[data_size[2]][data_size[1]][data_size[0]]);
+
+            // create cudatemplates reference
+            Cuda::HostMemoryReference3D<channels_t::element>
+                    cpu_channels_reference(data_size, cpu_shrunk_channels.origin());
+
+            // copy from GPU to CPU --
+            Cuda::copy(cpu_channels_reference, gpu_channels);
+
+            const size_t
+                    gpu_channels_width = cpu_shrunk_channels.shape()[2],
+                    gpu_channels_height = cpu_shrunk_channels.shape()[0]*cpu_shrunk_channels.shape()[1];
+
+            const boost::gil::gray8c_view_t shrunk_channels_view =
+                    boost::gil::interleaved_view(
+                        gpu_channels_width, gpu_channels_height,
+                        reinterpret_cast<boost::gil::gray8c_pixel_t *>(cpu_shrunk_channels.data()),
+                        sizeof(gpu_channels_t::Type)*gpu_channels_width);
+
+
+            boost::gil::png_write_view("gpu_shrunk_channels_v2.png", shrunk_channels_view);
+
+            throw std::runtime_error("implementation_t::resize_and_integrate_channels_v2 "
+                                     "Stopping everything so you can inspect "
+                                     "the created file gpu_shrunk_channels_v2.png");
+        } // end of "save the shrunk channels"
     }
 
     {
@@ -1037,9 +1066,13 @@ void implementation_t::compute_v1()
     {
         resize_and_integrate_channels_v1();
     }
-    else
+    else if(boost::is_same<gpu_integral_channels_t, gpu_2d_integral_channels_t>::value)
     {
         resize_and_integrate_channels_v2();
+    }
+    else
+    {
+        throw std::invalid_argument("Received an unknown gpu_integral_channels_t");
     }
 
     return;
@@ -1200,48 +1233,93 @@ void integral_channels_gpu_to_cpu(
 
 template <>
 void integral_channels_gpu_to_cpu <GpuIntegralChannelsForPedestrians::gpu_2d_integral_channels_t> (
-        const GpuIntegralChannelsForPedestrians::gpu_2d_integral_channels_t &/*gpu_integral_channels*/,
-        GpuIntegralChannelsForPedestrians::integral_channels_t &/*integral_channels*/)
+        const GpuIntegralChannelsForPedestrians::gpu_2d_integral_channels_t &gpu_integral_channels,
+        GpuIntegralChannelsForPedestrians::integral_channels_t &integral_channels)
 { // special code for the 2d case
 
-    throw std::runtime_error("integral_channels_gpu_to_cpu is not yet implemented for the 2d case");
-/*
     const Cuda::Size<2> &data_size = gpu_integral_channels.getLayout().size;
+    const size_t
+            width_plus_one = data_size[0],
+            height = gpu_integral_channels.height,
+            num_channels = (data_size[1] - 1)/height;
+    // the 2d integral channel height is = (channel_height*num_channels) + 1;
+    // the +1 is due to the discrete integral.
+
+    if((data_size[1] % height) != 1)
+    {
+        printf("data_size == %zu, %zu; height == %zu; data_size[1] %% height == %zu =?= 1\n",
+               data_size[0], data_size[1], height, data_size[1] % height);
+        throw std::runtime_error("integral_channels_gpu_to_cpu "
+                                 "received 2d gpu integral channels with unexpected dimensions");
+    }
 
     // resize the CPU memory storage --
-    // Cuda::DeviceMemoryPitched3D store the size indices in reverse order with respect to boost::multi_array
-    integral_channels.resize(boost::extents[data_size[2]][data_size[1]][data_size[0]]);
+    typedef boost::multi_array<GpuIntegralChannelsForPedestrians::integral_channels_t::element, 2>
+            cpu_2d_integral_channels_t;
+    cpu_2d_integral_channels_t long_integral_channels;
+    // Cuda::DeviceMemoryPitched2D store the size indices in reverse order with respect to boost::multi_array
+    long_integral_channels.resize(boost::extents[data_size[1]][data_size[0]]);
 
     // create cudatemplates reference --
-    Cuda::HostMemoryReference3D<integral_channels_t::element>
-            integral_channels_host_reference(data_size, integral_channels.origin());
+    Cuda::HostMemoryReference2D<cpu_2d_integral_channels_t::element>
+            integral_channels_host_reference(data_size, long_integral_channels.origin());
 
     // copy from GPU to CPU --
     Cuda::copy(integral_channels_host_reference, gpu_integral_channels);
 
+
+    // we need to create the full size integral channels, and copy the small one into it
+    integral_channels.resize(boost::extents[num_channels][height+1][width_plus_one]);
+
+    for(size_t channel_index=0; channel_index < num_channels; channel_index+=1)
+    {
+        typedef GpuIntegralChannelsForPedestrians::integral_channels_t::reference integral_channel_ref_t;
+        typedef GpuIntegralChannelsForPedestrians::integral_channels_t::const_reference integral_channel_const_ref_t;
+        typedef boost::multi_array_types::index_range range_t;
+
+        // ranges are non-inclusive for the max value, i.e. [start_index, bound_index)
+        const range_t vertical_range(channel_index*height, (channel_index+1)*height + 1);
+        integral_channel_const_ref_t::array_view<2>::type
+                const_integral_channel = long_integral_channels[ boost::indices[vertical_range][range_t()] ];
+
+        integral_channel_ref_t::array_view<2>::type small_view =
+                integral_channels[ boost::indices[channel_index][range_t(0, height + 1)][range_t()] ];
+
+        // we copy the core content -
+        small_view = const_integral_channel;
+
+    } // end of "for each channel"
+
+
     const bool print_sizes = false;
     if(print_sizes)
     {
-        printf("gpu_integral_channels layout size == [%zi, %zi]\n",
+        printf("gpu_integral_channels layout size == [%zu, %zu]\n",
                data_size[0], data_size[1]);
 
         const Cuda::Size<2> &data_stride = gpu_integral_channels.getLayout().stride;
-        printf("gpu_integral_channels layout stride == [%zi, %zi, %zi]\n",
+        printf("gpu_integral_channels layout stride == [%zu, %zu]\n",
                data_stride[0], data_stride[1]);
 
-        printf("integral_channels shape == [%zi, %zi, %zi]\n",
+        printf("long_integral_channels shape == [%zu, %zu]; strides == [%zu, %zu]\n",
+               long_integral_channels.shape()[0],
+               long_integral_channels.shape()[1],
+               long_integral_channels.strides()[0],
+               long_integral_channels.strides()[1]);
+
+        printf("integral_channels shape == [%zu, %zu, %zu]\n",
                integral_channels.shape()[0],
                integral_channels.shape()[1],
                integral_channels.shape()[2]);
 
-        printf("integral_channels strides == [%zi, %zi, %zi]\n",
+        printf("integral_channels strides == [%zu, %zu, %zu]\n",
                integral_channels.strides()[0],
                integral_channels.strides()[1],
                integral_channels.strides()[2]);
 
         throw std::runtime_error("Stopping everything so you can inspect the last printed values");
     }
-*/
+
     return;
 }
 

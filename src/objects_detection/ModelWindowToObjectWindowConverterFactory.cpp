@@ -22,6 +22,8 @@ ModelWindowToObjectWindowConverterFactory::new_instance(const model_window_size_
     if(false)
     {
         printf("object_center x,y == %i, %i\n", object_center_x, object_center_y);
+        printf("object_window min x,y ==%i,%i, object_window max x,y ==%i,%i\n", object_window.min_corner().x(), object_window.min_corner().y()
+               , object_window.max_corner().x(), object_window.max_corner().y());
         printf("model_window_size x,y == %i, %i\n", model_window_size.x(), model_window_size.y());
     }
 
@@ -36,12 +38,12 @@ ModelWindowToObjectWindowConverterFactory::new_instance(const model_window_size_
         windows_are_centered = true;
     }
 
-
     if(windows_are_centered)
     {
         return new FastModelWindowToObjectWindowConverter(model_window_size, object_window);
     }
     // else
+
     return new ModelWindowToObjectWindowConverter(model_window_size, object_window);
 }
 

@@ -255,7 +255,7 @@ void FastStixelWorldEstimator::compute()
 
     if((silent_mode == false) and ((num_iterations % num_iterations_for_timing) == 0))
     {
-        printf("Average FastStixelWorldEstimator::compute speed  %.2lf [Hz] (in the last %i iterations)\n",
+        printf("FastStixelWorldEstimator::compute speed \033[36m%.2lf [Hz]\033[0m (average in the last %i iterations)\n",
                num_iterations / cumulated_time, num_iterations );
     }
 

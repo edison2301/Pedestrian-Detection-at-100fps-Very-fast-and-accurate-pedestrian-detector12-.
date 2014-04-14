@@ -71,7 +71,7 @@ void AbstractStereoMatcher::set_rectified_images_pair( any_image<input_images_t>
 
 
     // convert and copy --
-    if (convert_from_rgb_to_gray && (left.current_type_is<rgb8c_view_t>() == true) )
+    if (convert_from_rgb_to_gray and (left.current_type_is<rgb8c_view_t>() == true) )
     {
 
         // cast to color view
