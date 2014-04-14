@@ -5,7 +5,7 @@
 
 #include "helpers/Log.hpp"
 
-#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include <boost/gil/extension/numeric/sampler.hpp>
 #include <boost/math/special_functions/round.hpp>

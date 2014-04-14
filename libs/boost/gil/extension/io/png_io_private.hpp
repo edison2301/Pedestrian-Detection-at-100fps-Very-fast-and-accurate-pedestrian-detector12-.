@@ -1,6 +1,6 @@
 /*
     Copyright 2005-2007 Adobe Systems Incorporated
-   
+
     Use, modification and distribution are subject to the Boost Software License,
     Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
     http://www.boost.org/LICENSE_1_0.txt).
@@ -26,7 +26,9 @@
 #include <png.h>
 
 #define png_infopp_NULL (png_infopp)NULL
+#if !defined(int_p_NULL)
 #define int_p_NULL (int*)NULL
+#endif
 namespace boost { namespace gil {
 
 namespace detail {
@@ -188,13 +190,13 @@ public:
                      NULL, NULL);
         io_error_if(((png_uint_32)view.width()!=width || (png_uint_32)view.height()!= height),
                     "png_read_view: input view size does not match PNG file size");
-        
+
         if(png_read_support_private<typename channel_type<View>::type,
                                     typename color_space_type<View>::type>::bit_depth!=bit_depth ||
            png_read_support_private<typename channel_type<View>::type,
                                     typename color_space_type<View>::type>::color_type!=color_type)
             io_error("png_read_view: input view type is incompatible with the image type");
-        
+
         std::vector<pixel<typename channel_type<View>::type,
                           layout<typename color_space_type<View>::type> > > row(width);
         for(png_uint_32 y=0;y<height;++y) {

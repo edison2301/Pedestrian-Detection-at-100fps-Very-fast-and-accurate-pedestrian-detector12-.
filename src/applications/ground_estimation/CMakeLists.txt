@@ -36,6 +36,15 @@ pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(libjpeg REQUIRED libjpeg)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
 
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+    opencv_gpu
+   ) # quick hack for opencv2.4 support
+
 # ----------------------------------------------------------------------
 # Setup link and include directories
 
@@ -65,7 +74,7 @@ include_directories("${doppia_root}/libs/" "${doppia_root}/src"
 set(doppia_src "${doppia_root}/src")
 set(doppia_stereo "${doppia_root}/src/stereo_matching")
 
-file(GLOB SrcCpp 
+file(GLOB SrcCpp
   "./*.cpp"
   "${doppia_src}/*.cpp"
   "${doppia_src}/applications/*.cpp"
@@ -95,7 +104,11 @@ file(GLOB SrcCpp
   "${doppia_src}/video_input/preprocessing/*.cpp"
   #"${doppia_src}/features_tracking/*.cpp"
   "${doppia_src}/image_processing/*.cpp"
-  "${doppia_src}/drawing/gil/*.cpp"
+  "${doppia_src}/drawing/gil/draw_the_ground_corridor.cpp"
+  "${doppia_src}/drawing/gil/*line.cpp"
+  "${doppia_src}/drawing/gil/colors.cpp"
+  "${doppia_src}/drawing/gil/hsv_to_rgb.cpp"
+  "${doppia_src}/drawing/gil/draw_matrix.cpp"
 )
 
 file(GLOB HelpersCpp
@@ -104,7 +117,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
   "${doppia_src}/helpers/Log.cpp"
-  "${doppia_src}/helpers/loggers.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
 )
 
@@ -134,6 +147,6 @@ target_link_libraries(ground_estimation
    #${google_perftools_LIBS}
    # faster malloc and non intrusive profiler
    # via http://google-perftools.googlecode.com
-)   
+)
 
 # ----------------------------------------------------------------------

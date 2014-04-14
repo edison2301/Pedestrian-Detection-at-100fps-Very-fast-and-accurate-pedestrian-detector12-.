@@ -42,11 +42,6 @@ private:
 
     void draw_video_input();
     void draw_ground_plane_estimation();
-    //void draw_stixel_world();
-
-    void draw_ground_plane_estimator(const GroundPlaneEstimator &);
-    void draw_ground_plane_estimator(const FastGroundPlaneEstimator &);
-
 };
 
 } // end of namespace doppia
