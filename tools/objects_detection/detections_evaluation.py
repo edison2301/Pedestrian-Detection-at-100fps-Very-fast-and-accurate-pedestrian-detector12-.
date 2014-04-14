@@ -119,6 +119,7 @@ def open_data_sequence(data_filepath):
     
     return data_sequence_reader(the_data_sequence)    
     
+    
 def rectify_left_detection(stereo_rectification, detection):
 
     box = detection.bounding_box
@@ -130,6 +131,7 @@ def rectify_left_detection(stereo_rectification, detection):
     detection.bounding_box.max_corner.x = max(int(rectified_box[2]),0)
     detection.bounding_box.max_corner.y = max(int(rectified_box[3]),0)
     return detection
+    
 
 def rectify_left_detections(stereo_rectification, detections_sequence):
     
