@@ -3,10 +3,12 @@
 
 from __future__ import print_function
 
+import os.path
 import sys
-sys.path.append("..")
-sys.path.append("../data_sequence")
-sys.path.append("../helpers")
+local_dir = os.path.dirname(sys.argv[0])
+sys.path.append(os.path.join(local_dir, ".."))
+sys.path.append(os.path.join(local_dir, "../data_sequence"))
+sys.path.append(os.path.join(local_dir, "../helpers"))
  
 from detections_pb2 import Detections, Detection
 from data_sequence import DataSequence

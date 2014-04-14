@@ -2,6 +2,7 @@ function [crop, meany] = get_crop_and_mean(folder, resultfolder, range, show)
     dirs=get_sorted_dirnames(folder);
     colors = varycolor(17);
     lims=[3e-3 1e1 .025 1];
+    show=false;
     if show
         figure(123); hold on; grid;
          axis( lims ); lgdLoc='sw'; plot([1 1],[eps 1],'-k','HandleVisibility','off');

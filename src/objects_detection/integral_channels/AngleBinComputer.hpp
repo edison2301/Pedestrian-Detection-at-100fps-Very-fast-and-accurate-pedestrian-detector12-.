@@ -49,7 +49,8 @@ AngleBinComputer<num_bins>::AngleBinComputer()
     return;
 }
 
-// this method is speed sensistive
+
+/// this method is speed sensistive
 template <int num_bins>
 inline
 int AngleBinComputer<num_bins>::operator()(const float &y, const float &x) const
@@ -61,7 +62,7 @@ int AngleBinComputer<num_bins>::operator()(const float &y, const float &x) const
     float max_dot_product = std::abs(x*bin_vectors[0][0] + y*bin_vectors[0][1]);
 
     // let us hope this gets unrolled
-    for(int i=1; i < num_bins; i+=1)
+    for(int i = 1; i < num_bins; i += 1)
     {
         const float dot_product = std::abs(x*bin_vectors[i][0] + y*bin_vectors[i][1]);
         if(dot_product > max_dot_product)
@@ -70,6 +71,7 @@ int AngleBinComputer<num_bins>::operator()(const float &y, const float &x) const
             index = i;
         }
     } // end of "for each bin"
+
     return index;
 }
 
@@ -88,6 +90,6 @@ float AngleBinComputer<num_bins>::soft_binning(const float &y, const float &x, c
     return dot_product;
 }
 
-} // namespace doppia
+} // end of namespace doppia
 
 #endif // BICLOP_ANGLEBINCOMPUTER_HPP

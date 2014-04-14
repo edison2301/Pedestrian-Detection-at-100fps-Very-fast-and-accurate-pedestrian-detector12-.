@@ -3,17 +3,17 @@
 #
 # progressbar  - Text progressbar library for python.
 # Copyright (c) 2005 Nilton Volpato
-# 
+#
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
 # version 2.1 of the License, or (at your option) any later version.
-# 
+#
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Lesser General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
@@ -54,7 +54,8 @@ __version__ = "2.2"
 # 2004-??-??: v0.1 first version
 
 
-import sys, time
+import sys
+import time
 from array import array
 try:
     from fcntl import ioctl
@@ -82,14 +83,15 @@ class ProgressBarWidget(object):
         At least this function must be overriden."""
         pass
 
+
 class SimpleMessageWidget(ProgressBarWidget):
     "A message to be printed"
-    
+
     message = ""
-    
+
     def __init__(self, message=""):
         self.message = message
-        
+
     def update(self, pbar):
         return self.message
 
@@ -131,6 +133,7 @@ class ETA(ProgressBarWidget):
             eta = elapsed * pbar.maxval / pbar.currval - elapsed
             return 'ETA:  %s' % self.format_time(eta)
 
+
 class FileTransferSpeed(ProgressBarWidget):
     "Widget for showing the transfer speed (useful for file transfers)."
     def __init__(self):
@@ -148,6 +151,7 @@ class FileTransferSpeed(ProgressBarWidget):
             spd /= 1000
         return self.fmt % (spd, u+'/s')
 
+
 class RotatingMarker(ProgressBarWidget):
     "A rotating marker for filling the bar of progress."
     def __init__(self, markers='|/-\\'):
@@ -159,10 +163,12 @@ class RotatingMarker(ProgressBarWidget):
         self.curmark = (self.curmark + 1)%len(self.markers)
         return self.markers[self.curmark]
 
+
 class Percentage(ProgressBarWidget):
     "Just the percentage done."
     def update(self, pbar):
         return '%3d%%' % pbar.percentage()
+
 
 class Bar(ProgressBarWidgetHFill):
     "The bar of progress. It will strech to fill the line."
@@ -246,7 +252,7 @@ class ProgressBar(object):
         self.prev_percentage = -1
         self.start_time = None
         self.seconds_elapsed = 0
-        
+
         self.update_lock = threading.Lock()
 
     def handle_resize(self, signum, frame):
@@ -286,22 +292,22 @@ class ProgressBar(object):
 
     def update(self, value, backwards_allowed = False):
         "Updates the progress bar to a new value."
-        
+
         # make sure no two threads update the bar at the same time
         #print("Acquiring ProgressBar.update lock")
-        self.update_lock.acquire() 
+        self.update_lock.acquire()
 
         assert 0 <= value <= self.maxval
-        
+
         if self.currval < value:
             do_update = True
-        elif self.currval > value and backwards_allowed:  
+        elif self.currval > value and backwards_allowed:
             do_update = True
         else:
             do_update = False
-        
+
         if do_update:
-    
+
             self.currval = value
             if not self._need_update() or self.finished:
                 #print("Releasing ProgressBar.update lock")
@@ -319,7 +325,7 @@ class ProgressBar(object):
         else:
             # no update needed
             pass
-        
+
         #print("Releasing ProgressBar.update lock")
         self.update_lock.release()
         return
@@ -343,34 +349,34 @@ class ProgressBar(object):
         self.update(self.maxval)
         if self.signal_set:
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
-        
+
 
 
 class ProgressBarWithMessage():
-    
+
     def __init__(self, maxval, message=""):
         self.bar_message = SimpleMessageWidget(message)
         bar_widgets = [Percentage(), self.bar_message, Bar(), ETA()]
-        self.bar = ProgressBar(widgets = bar_widgets, maxval=maxval)            
-        return       
-       
+        self.bar = ProgressBar(widgets = bar_widgets, maxval=maxval)
+        return
+
     def start(self,):
         return self.bar.start()
 
     def finish(self):
         return self.bar.finish()
-        
+
     def set_message(self, message):
         return self.bar_message.update(message)
 
     def update(self, value):
         return self.bar.update(value)
-        
+
 # end of class ProgressBarWithMessage
 
 
 if __name__=='__main__':
-   
+
     def example1():
         widgets = ['Test: ', Percentage(), ' ', Bar(marker=RotatingMarker()),
                    ' ', ETA(), ' ', FileTransferSpeed()]

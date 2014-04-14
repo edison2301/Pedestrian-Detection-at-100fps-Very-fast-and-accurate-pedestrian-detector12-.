@@ -100,8 +100,12 @@ def create_multiscales_model(input_paths, output_path):
                                 "Instead received '%s'" % training_dataset_name)
         else:
             detectors_datasets.append(split_dataset_name[0])
-        
-        model_scale = 2**float(split_dataset_name[-1])
+        if split_dataset_name[-1] == "0.5":
+            model_scale = 2**float(0.5849625)
+        else:
+            model_scale = 2**float(split_dataset_name[-1])
+        print("Model %s is at scale %.3f (dataset name == %s)" % (
+              input_path, model_scale, split_dataset_name))
         if model_scale in scales:
             raise RuntimeError("The input models define twice the scale %.2f, " \
                                 "there should be only one model per scale" % model_scale)

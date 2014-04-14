@@ -1,4 +1,4 @@
-close all;
+%close all;
 clear
 
 green = [115 210 22]/255;
@@ -26,6 +26,7 @@ resultfolder='/users/visics/rbenenso/data/bertan_datasets/CalTechEvaluation/data
 
 %full baseline
 folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/left22222seed/baseline/';
+folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/baselineLeft';
 [crop, meany] = get_crop_and_mean(folder, resultfolder,range, show);
 plot(crop,meany,'o','color',red, 'markersize', 5, 'markerfacecolor', red,'HandleVisibility','off');
 
@@ -36,19 +37,26 @@ b = [b(2:end); b(end)];
 s = stairs(a,b,'Color', red,'lineWidth',3);
 
 baselineArea = getArea(crop, meany);
-baselineLegend='brute force 100%';
+baselineLegend='Brute-force 100%';
+
 
 %plot fillup
 folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/left22222seed/fillup';
+folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/fillinLeft';
 [crop, meany] = get_crop_and_mean(folder, resultfolder,range, show);
-fillupArea = plotStairs(figure_h, crop, meany,baselineArea, 3, green);
-fillupLegend=['fill-up ' sprintf('%.0f',fillupArea) '%'];
+[fillupArea, fillupHandle] = plotStairs(figure_h, crop, meany,baselineArea, 3, green);
+fillupLegend=['Filled-up ' sprintf('%.0f',fillupArea) '%'];
 
 %plot compound
 folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/left22222seed/franken_final';
+folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/frankenLeft';
 [crop, meany] = get_crop_and_mean(folder, resultfolder,range, show);
-compoundArea = plotStairs(figure_h, crop, meany,baselineArea, 3, orange);
-compoundLegend=['compound ' sprintf('%.0f',compoundArea) '%'];
+[compoundArea, compoundHandle] = plotStairs(figure_h, crop, meany,baselineArea, 3, orange);
+compoundLegend=['Franken ' sprintf('%.0f',compoundArea) '%'];
+
+
+
+
 
 %baseline 2
 aa = [a(1) a(1) a(9) a(9) a(17)];
@@ -60,22 +68,27 @@ baseline2Legend=['3 classifiers '  sprintf('%.0f',baseline2Area/baselineArea*100
 
 %plot biased
 folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/left22222seed/artificial_franken';
+folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/biasedLeft';
+folder ='/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/biased_reweight/';
 [crop, meany] = get_crop_and_mean(folder, resultfolder,range, show);
-biasedArea=plotStairs(figure_h, crop, meany,baselineArea, 3, blue)
-biasedLegend=['biased '  sprintf('%.0f',biasedArea) '%'];
+[biasedArea, biasedHandle] =plotStairs(figure_h, crop, meany,baselineArea, 3, blue)
+biasedLegend=['Biased '  sprintf('%.0f',biasedArea) '%'];
 
 
 
 %naive
 folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/left22222seed/artificial_normal/';
+folder = '/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/naiveLeft';
+%folder ='/users/visics/mmathias/devel/doppia/src/applications/objects_detection/59166seed/cvprtmp/biased_reweight/';
 [crop, meany] = get_crop_and_mean(folder, resultfolder,range, show);
-naiveArea = plotStairs(figure_h, crop, meany,baselineArea, 3, purple);
-naiveLegend=['naive '  sprintf('%.0f',naiveArea) '%'];
+[naiveArea , naiveHandle]= plotStairs(figure_h, crop, meany,baselineArea, 3, purple);
+naiveLegend=['Naive '  sprintf('%.0f',naiveArea) '%'];
 
 
+h_legend = legend([s compoundHandle fillupHandle biasedHandle b2 naiveHandle], baselineLegend, compoundLegend,fillupLegend, biasedLegend,baseline2Legend,   naiveLegend,'Location','SouthEast');
 
 
-h_legend = legend(baselineLegend, fillupLegend, compoundLegend,baseline2Legend, biasedLegend , naiveLegend,'Location','SouthEast');
+%h_legend = legend(baselineLegend,  compoundLegend,fillupLegend,baseline2Legend, biasedLegend , naiveLegend,'Location','SouthEast');
 set(h_legend,'FontSize',15);
 uistack(s, 'top') 
 uistack(b2, 'bottom') 
