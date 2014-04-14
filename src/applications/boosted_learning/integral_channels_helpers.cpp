@@ -50,10 +50,10 @@ void get_integral_channels(const integral_channels_t &in,
 
     for (size_t ch = 0; ch < in.shape()[0]; ch += 1)
     {
-        for (size_t yy = y; yy < (y + h + 1); yy += 1)
+        for (size_t yy = y; yy < static_cast<size_t>(y + h + 1); yy += 1)
         {
             //std::copy(&(integral_channels[ch][yy][x]), &(integral_channels[ch][yy][x+w+1]), out[ch][yy-y].begin());
-            for (size_t xx = x; xx < (x + w + 1); xx += 1)
+            for (size_t xx = x; xx < static_cast<size_t>(x + w + 1); xx += 1)
             {
                 out[ch][yy-y][xx-x] = in[ch][yy][xx];
             } // end of "for each column"

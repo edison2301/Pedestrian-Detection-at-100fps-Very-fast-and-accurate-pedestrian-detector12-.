@@ -75,8 +75,8 @@ protected:
     /// @returns false if the application should stop
     bool update_gui();
 
-    boost::filesystem::path recording_path;
-    void create_recording_path();
+    boost::filesystem::path recordings_path;
+    void create_recordings_path();
 
     boost::program_options::variables_map options;
     void record_program_options() const;

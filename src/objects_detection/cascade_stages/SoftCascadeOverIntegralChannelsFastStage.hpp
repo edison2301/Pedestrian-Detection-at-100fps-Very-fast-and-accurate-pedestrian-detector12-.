@@ -88,7 +88,8 @@ public:
 /// however the data is stored a different format that allows
 /// faster detections at runtime (both in cpu and gpu versions)
 /// @see SoftCascadeOverIntegralChannelsModel.hpp
-class __align__(16) SoftCascadeOverIntegralChannelsFastStage
+class //__align__(16)
+SoftCascadeOverIntegralChannelsFastStage
 {
 public:
 

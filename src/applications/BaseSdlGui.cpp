@@ -4,18 +4,17 @@
 
 #include "video_input/AbstractVideoInput.hpp"
 
-#include "SDL/SDL.h"
-
 #include "helpers/Log.hpp"
 #include "helpers/get_option_value.hpp"
-#include "helpers/for_each.hpp"
+
+#include "SDL/SDL.h"
 
 #include <boost/format.hpp>
-
+#include <boost/filesystem.hpp>
 #include <boost/bind.hpp>
 #include <boost/gil/extension/io/png_io.hpp>
 
-#include <boost/filesystem.hpp>
+
 
 namespace
 {

@@ -13,15 +13,17 @@
 #include "applications/objects_detection/ObjectsDetectionApplication.hpp"
 #include "objects_detection/integral_channels/AngleBinComputer.hpp"
 
-#include <boost/gil/image_view.hpp>
-#include <boost/gil/image_view_factory.hpp>
-#include <boost/gil/extension/opencv/ipl_image_wrapper.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-
 #include <boost/random.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/multi_array.hpp>
 #include <boost/cstdint.hpp>
+#include <boost/foreach.hpp>
+#include <boost/tuple/tuple.hpp>
+
+#include <boost/gil/image_view.hpp>
+#include <boost/gil/image_view_factory.hpp>
+#include <boost/gil/extension/opencv/ipl_image_wrapper.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/gpu/gpu.hpp>
@@ -467,3 +469,111 @@ BOOST_AUTO_TEST_CASE(CpuResizeTestCase)
 
 } // end of "BOOST_AUTO_TEST_CASE CpuResizeTestCase"
 
+
+
+
+BOOST_AUTO_TEST_CASE(GpuVsCpuResizeTestCase)
+{
+    // This test is critical.
+    // Our experiment have shown that the classification performance is _very_ sensitive to the resizing methods.
+    // As such _every_ image resizing (in any python or C++ program) should be done
+    // in exactly the same way to ensure top performance.
+
+    // GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels
+    // is the method that "dictates" what should be used everywhere.
+    // Current version uses
+    // cv::gpu::resize(input_gpu_mat, resized_input_gpu_mat, scaled_size);
+    // I assume we use "vanilla resize" for performance reasons.
+    // (although when resizing images, we are already dropping speed significantly)
+    // Seems like a reasonable "let us keep it simple" choice.
+
+
+    const std::string test_image_path = "resizing_test_image.png";
+    cv::Mat input_rgb_image = cv::imread(test_image_path);
+
+    cv::gpu::GpuMat input_gpu_mat, resized_input_gpu_mat;
+
+    cv::Mat cpu_resized_image, gpu_resized_image;
+
+    float
+            image_width = input_rgb_image.cols,
+            image_height = input_rgb_image.rows;
+
+    std::vector<float> scaling_factors;
+    scaling_factors.push_back(0.3);
+    scaling_factors.push_back(0.5);
+    scaling_factors.push_back(1.0);
+    scaling_factors.push_back(1.3);
+    scaling_factors.push_back(1.5);
+    scaling_factors.push_back(2);
+    scaling_factors.push_back(3);
+
+    typedef boost::tuple<float, cv::Size> factor_and_size_t;
+    std::vector<factor_and_size_t> factor_and_sizes;
+
+    BOOST_FOREACH(const float factor, scaling_factors)
+    {
+        factor_and_sizes.push_back(
+                    boost::make_tuple(factor,
+                                      cv::Size(image_width * factor,
+                                               image_height * factor))
+                    );
+    } // end of "for each scaling factor"
+
+
+    BOOST_FOREACH(const factor_and_size_t &factor_and_size, factor_and_sizes)
+    {
+
+        const float scaling_factor = factor_and_size.get<0>();
+        const cv::Size &destination_size = factor_and_size.get<1>();
+
+        // resize via cpu --
+        cv::resize(input_rgb_image, cpu_resized_image, destination_size);
+
+        // resize via gpu --
+        input_gpu_mat.upload(input_rgb_image);
+        cv::gpu::resize(input_gpu_mat, resized_input_gpu_mat, destination_size);
+        resized_input_gpu_mat.download(gpu_resized_image);
+
+
+        // are they both the same ? --
+        {
+            cv::Mat cpu_gpu_diff, cpu_gpu_diff_normalized;
+
+            cv::absdiff(cpu_resized_image, gpu_resized_image, cpu_gpu_diff);
+
+            cv::Scalar total_sum = cv::sum(cpu_gpu_diff);
+
+            // cv::Scalar has at most 4 elements, all initialized to zero
+            const float
+                    summed_diff = total_sum[0] + total_sum[1] + total_sum[2] + total_sum[3];
+
+            if(summed_diff > 0)
+            {
+                printf("Resizing towards (%i, %i, factor %.3f) failed. summed_diff == %.3f\n",
+                       destination_size.width, destination_size.height, scaling_factor, summed_diff);
+
+                if(false)
+                {
+                    cv::normalize(cpu_gpu_diff, cpu_gpu_diff_normalized, 255, 0, cv::NORM_MINMAX, CV_32FC1);
+                    cv::imwrite("resize_diff.png", cpu_gpu_diff_normalized);
+
+                    cv::imwrite("resize_cpu.png", cpu_resized_image);
+                    cv::imwrite("resize_gpu.png", gpu_resized_image);
+
+                    printf("Created resize_diff.png, resize_cpu.png and resize_gpu.png to visualize the differences\n");
+                }
+            }
+            else
+            {
+                printf("Resizing towards (%i, %i, factor %.3f) passed\n",
+                       destination_size.width, destination_size.height, scaling_factor);
+            }
+            BOOST_CHECK(summed_diff == 0);
+            //BOOST_REQUIRE(summed_diff == 0);
+        }
+
+    } // end of "for each destination size"
+
+
+} // end of "BOOST_AUTO_TEST_CASE GpuVsCpuResizeTestCase"

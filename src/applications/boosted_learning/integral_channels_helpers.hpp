@@ -1,7 +1,7 @@
 #ifndef INTEGRAL_CHANNELS_HELPERS_HPP
 #define INTEGRAL_CHANNELS_HELPERS_HPP
 
-#include "IntegralChannelsComputer.hpp"
+#include "applications/bootstrapping_lib/IntegralChannelsComputer.hpp"
 #include "helpers/geometry.hpp"
 
 namespace boosted_learning {

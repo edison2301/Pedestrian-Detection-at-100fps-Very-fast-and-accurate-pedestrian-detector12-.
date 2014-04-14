@@ -8,17 +8,10 @@
 #endif
 
 #if defined(USE_GPU_INTEGRAL_CHANNELS_COMPUTER)
-#include "GpuIntegralChannelsForPedestrians.hpp"
+#include "objects_detection/integral_channels/GpuIntegralChannelsForPedestrians.hpp"
 #else
-#include "IntegralChannelsForPedestrians.hpp"
+#include "objects_detection/integral_channels/IntegralChannelsForPedestrians.hpp"
 #endif
-
-namespace doppia
-{
-// forward declarations
-class GpuIntegralChannelsForPedestrians;
-class IntegralChannelsForPedestrians;
-}
 
 namespace bootstrapping
 {

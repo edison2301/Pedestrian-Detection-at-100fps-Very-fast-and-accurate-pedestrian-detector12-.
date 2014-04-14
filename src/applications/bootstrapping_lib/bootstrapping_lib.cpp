@@ -3,7 +3,9 @@
 #include "objects_detection/ObjectsDetectorFactory.hpp"
 #include "objects_detection/non_maximal_suppression/GreedyNonMaximalSuppression.hpp"
 
+
 #if defined(USE_GPU)
+#include "cudatemplates/error.hpp"
 #include "objects_detection/GpuIntegralChannelsDetector.hpp"
 #else
 #include "objects_detection/IntegralChannelsDetector.hpp"
@@ -12,9 +14,11 @@
 #include "objects_detection/SoftCascadeOverIntegralChannelsModel.hpp"
 
 #include "video_input/ImagesFromDirectory.hpp" // for the open_image helper method
+#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
 #include "video_input/preprocessing/AddBorderFunctor.hpp"
 
 #include "helpers/add_to_parsed_options.hpp"
+#include "helpers/get_option_value.hpp"
 
 #include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
@@ -67,11 +71,13 @@ ImagesFromList::ImagesFromList(const vector<std::string> &files_list_)
     return;
 }
 
+
 ImagesFromList::~ImagesFromList()
 {
     // nothing to do here
     return;
 }
+
 
 bool ImagesFromList::next_frame()
 {
@@ -98,15 +104,18 @@ bool ImagesFromList::next_frame()
     return true;
 }
 
+
 const ImagesFromList::input_image_view_t &ImagesFromList::get_image() const
 {
     return input_image_view;
 }
 
+
 const string &ImagesFromList::get_image_name() const
 {
     return input_image_name;
 }
+
 
 const path ImagesFromList::get_image_path() const
 {
@@ -122,6 +131,7 @@ namespace bootstrapping
 using namespace std;
 using namespace doppia;
 using namespace boost;
+using boost::filesystem::path;
 
 typedef doppia::IntegralChannelsDetector::detections_t detections_t;
 typedef doppia::IntegralChannelsDetector::detection_t detection_t;
@@ -159,11 +169,13 @@ void get_integral_channels_subimage(
     return;
 }
 
+
 #if defined(USE_GPU)
 typedef GpuIntegralChannelsDetector FalsePositivesDataCollectorBaseClass;
 #else
 typedef IntegralChannelsDetector FalsePositivesDataCollectorBaseClass;
 #endif
+
 
 class FalsePositivesDataCollector: public FalsePositivesDataCollectorBaseClass
 {
@@ -232,6 +244,7 @@ FalsePositivesDataCollector::~FalsePositivesDataCollector()
     return;
 }
 
+
 /// these tuples store the detection, the non rescaled detection, and the DetectorSearchRange index
 typedef boost::tuples::tuple<detection_t, detection_t, size_t> detection_with_search_range_t;
 typedef std::vector<detection_with_search_range_t> detections_with_search_range_t;
@@ -241,6 +254,7 @@ bool has_higher_score(const detection_with_search_range_t &a, const detection_wi
 {
     return a.get<0>().score > b.get<0>().score;
 }
+
 
 bool has_higher_search_range_index(const detection_with_search_range_t &a, const detection_with_search_range_t &b)
 {
@@ -309,7 +323,6 @@ void select_subset_of_detections(detections_with_search_range_t &detections)
 }
 
 
-
 void FalsePositivesDataCollector::compute()
 {
     added_false_positives_on_current_image = 0;
@@ -327,8 +340,8 @@ void FalsePositivesDataCollector::compute()
     // search for all false positives --
     {
         // for each range search
-        //BOOST_FOREACH(const DetectorSearchRange &search_range, this->search_ranges)
-        for(size_t scale_index=0; scale_index < search_ranges.size(); scale_index +=1)
+        //BOOST_FOREACH(const DetectorSearchRange &search_range, this->search_ranges_data)
+        for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index +=1)
         {
             // we clear the detections at each range,
             // we store them anyway inside detections_with_search_range
@@ -336,9 +349,20 @@ void FalsePositivesDataCollector::compute()
             non_rescaled_detections.clear();
 
 #if defined(USE_GPU)
-            compute_detections_at_specific_scale_v0(scale_index, save_score_image, first_call);
-            // FIXME v1 does not work properly. NEEDS to be checked again (major changes in v1)
-            //compute_detections_at_specific_scale_v1(scale_index, first_call);
+            try
+            {
+                compute_detections_at_specific_scale_v0(scale_index, save_score_image, first_call);
+                // FIXME v1 does not work properly. NEEDS to be checked again (major changes in v1)
+                //compute_detections_at_specific_scale_v1(scale_index, first_call);
+            }
+            catch(::Cuda::Error &e)
+            {
+                printf("compute_detections_at_specific_scale_v0 failed at %zi, skipping detections at this scale.\n%s\n",
+                       scale_index, e.what());
+                detections.clear();
+                non_rescaled_detections.clear();
+            }
+
 #else
             compute_detections_at_specific_scale(scale_index, save_score_image, first_call);
 #endif
@@ -382,7 +406,6 @@ void FalsePositivesDataCollector::compute()
         // last_search_range_index != = detections_with_search_range[0]
         last_search_range_index = detections_with_search_range[0].get<2>() + 1;
     }
-
 
     // we now recompute the integral channels and retrieve the false positives data
     BOOST_FOREACH(const detection_with_search_range_t &detection_with_search_range,
@@ -489,11 +512,13 @@ PushBackFunctor::PushBackFunctor(std::vector<meta_datum_t> &meta_data_,
     return;
 }
 
+
 PushBackFunctor::~PushBackFunctor()
 {
     // nothing to do here
     return;
 }
+
 
 void PushBackFunctor::operator()(const meta_datum_t &meta_datum, const integral_channels_t &integral_image)
 {
@@ -515,7 +540,8 @@ void bootstrap(const path &classifier_model_filepath,
                const float min_ratio, const float max_ratio, const int num_ratios,
                const bool use_less_memory,
                std::vector<meta_datum_t> &meta_data,
-               std::vector<integral_channels_t> &integral_images)
+               std::vector<integral_channels_t> &integral_images,
+const boost::program_options::variables_map &options)
 {
     append_result_functor_t the_functor = PushBackFunctor(meta_data, integral_images);
     bootstrap(classifier_model_filepath, negative_image_paths_to_explore,
@@ -523,9 +549,11 @@ void bootstrap(const path &classifier_model_filepath,
               min_scale, max_scale, num_scales,
               min_ratio, max_ratio, num_ratios,
               use_less_memory,
-              the_functor);
+              the_functor,
+options);
     return;
 }
+
 
 /// Given the path to a classifier and set of negative images,
 /// and a maximum number of false positive to find, will search for false positives
@@ -537,7 +565,8 @@ void bootstrap(const path &classifier_model_filepath,
                const float min_scale, const float max_scale, const int num_scales,
                const float min_ratio, const float max_ratio, const int num_ratios,
                const bool use_less_memory,
-               append_result_functor_t &functor)
+               append_result_functor_t &functor,
+const boost::program_options::variables_map &options)
 {
     // open the classifier_model_file --
     if(filesystem::exists(classifier_model_filepath) == false)
@@ -574,6 +603,7 @@ void bootstrap(const path &classifier_model_filepath,
     //desc.add(AbstractObjectsDetector::get_args_options());
     //desc.add(IntegralChannelsDetector::get_args_options());
     desc.add(ObjectsDetectorFactory::get_args_options()); // may add more than we need, but should be ok
+    desc.add(IntegralChannelsComputerFactory::get_args_options());
 
     const bool print_options = false;
     if(print_options)
@@ -594,6 +624,8 @@ void bootstrap(const path &classifier_model_filepath,
     add_to_parsed_options(the_parsed_options, "objects_detector.min_ratio", min_ratio);
     add_to_parsed_options(the_parsed_options, "objects_detector.max_ratio", max_ratio);
     add_to_parsed_options(the_parsed_options, "objects_detector.num_ratios", num_ratios);
+
+    //add_to_parsed_options(the_parsed_options, "channels.num_hog_angle_bins", get_option_value<int>(options, "channels.num_hog_angle_bins"));
 
 #if defined(USE_GPU)
     // enable/disable lower memory usage option (traded off for slower speed too)
@@ -628,7 +660,7 @@ void bootstrap(const path &classifier_model_filepath,
 
     size_t false_positives_found = 0;
     int images_visited = 0;
-    
+
     {
         boost::progress_display progress_bar(max_false_positives);
         // for each input image
@@ -638,10 +670,29 @@ void bootstrap(const path &classifier_model_filepath,
             input_view = images_source.get_image();
             input_view = add_border(input_view);
 
-            // find the false positives
-            chnftrs_detector.set_image(input_view);
-            chnftrs_detector.current_image_path = images_source.get_image_path();
-            chnftrs_detector.compute();
+            try
+            {
+                // FIXME harcoded values
+                const size_t
+                        expected_channels_size = input_view.size()*10,
+                        max_texture_size = 134217728; // 2**27 for CUDA capability 2.x
+                if(expected_channels_size > max_texture_size)
+                {
+                    throw std::invalid_argument("The image is monstruously big!");
+                }
+
+                // find the false positives
+                chnftrs_detector.set_image(input_view);
+                chnftrs_detector.current_image_path = images_source.get_image_path();
+                chnftrs_detector.compute();
+            }
+            catch(std::exception &e)
+            {
+                printf("Processing of image %s \033[1;31mfailed\033[0m (size %zix%zi). Skipping it. Error was:\n%s\n",
+                       images_source.get_image_path().string().c_str(),
+                       input_view.width(), input_view.height(),
+                       e.what());
+            }
 
             // update the progress_bar
             progress_bar += chnftrs_detector.num_false_positives_found() - false_positives_found;
