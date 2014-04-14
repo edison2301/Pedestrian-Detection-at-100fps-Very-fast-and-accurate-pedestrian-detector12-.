@@ -1,6 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -10,10 +11,11 @@
 
 #include <algorithm>
 
-
 #include <boost/geometry/algorithms/detail/ring_identifier.hpp>
 #include <boost/geometry/algorithms/detail/overlay/copy_segment_point.hpp>
 #include <boost/geometry/algorithms/detail/overlay/turn_info.hpp>
+
+#include <boost/geometry/geometries/segment.hpp>
 
 
 namespace boost { namespace geometry
@@ -91,6 +93,7 @@ private :
     }
 
 
+#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
     inline void debug_consider(int order, Indexed const& left,
             Indexed const& right, std::string const& header,
             bool skip = true,
@@ -99,8 +102,6 @@ private :
     {
         if (skip) return;
 
-
-#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
         point_type pi, pj, ri, rj, si, sj;
         geometry::copy_segment_points<Reverse1, Reverse2>(m_geometry1, m_geometry2,
             left.subject.seg_id,
@@ -149,14 +150,21 @@ private :
             std::cout << " " << extra << " " << (ret ? "true" : "false");
         }
         std::cout << std::endl;
-#endif
     }
+#else
+    inline void debug_consider(int, Indexed const& ,
+            Indexed const& , std::string const& ,
+            bool = true,
+            std::string const& = "", bool = false
+        ) const
+    {}
+#endif
 
 
     // ux/ux
     inline bool consider_ux_ux(Indexed const& left,
             Indexed const& right
-            , std::string const& header
+            , std::string const& // header
         ) const
     {
         bool ret = left.index < right.index;
@@ -175,9 +183,9 @@ private :
         }
         else
         {
-//#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
+#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
             std::cout << "ux/ux unhandled" << std::endl;
-//#endif
+#endif
         }
 
         //debug_consider(0, left, right, header, false, "-> return ", ret);
@@ -188,7 +196,7 @@ private :
     inline bool consider_iu_ux(Indexed const& left,
             Indexed const& right,
             int order // 1: iu first, -1: ux first
-            , std::string const& header
+            , std::string const& // header
         ) const
     {
         bool ret = false;
@@ -219,7 +227,7 @@ private :
         else
         {
 #ifdef BOOST_GEOMETRY_DEBUG_ENRICH
-            // TODO: this still happens in the traverse.cpp test
+            // this still happens in the traverse.cpp test
             std::cout << " iu/ux unhandled" << std::endl;
 #endif
             ret = order == 1;
@@ -232,7 +240,7 @@ private :
     inline bool consider_iu_ix(Indexed const& left,
             Indexed const& right,
             int order // 1: iu first, -1: ix first
-            , std::string const& header
+            , std::string const& // header
         ) const
     {
         //debug_consider(order, left, right, header, false, "iu/ix");
@@ -303,9 +311,9 @@ private :
                 debug_consider(0, left, right, header, false, "opp.", ret);
                 return ret;
             }
-//#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
+#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
             std::cout << " iu/iu coming from opposite unhandled" << std::endl;
-//#endif
+#endif
         }
 
         // We need EXTRA information here: are p/r/s overlapping?
@@ -358,10 +366,10 @@ private :
             }
         }
 
-//#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
+#ifdef BOOST_GEOMETRY_DEBUG_ENRICH
         std::cout << " iu/iu unhandled" << std::endl;
         debug_consider(0, left, right, header, false, "unhandled", left.index < right.index);
-//#endif
+#endif
         return left.index < right.index;
     }
 
@@ -505,9 +513,9 @@ template
 >
 inline void inspect_cluster(Iterator begin_cluster, Iterator end_cluster,
             TurnPoints& turn_points,
-            operation_type for_operation,
-            Geometry1 const& geometry1, Geometry2 const& geometry2,
-            Strategy const& strategy)
+            operation_type ,
+            Geometry1 const& , Geometry2 const& ,
+            Strategy const& )
 {
     int count = 0;
 

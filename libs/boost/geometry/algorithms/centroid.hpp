@@ -1,8 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
-// Copyright (c) 2009 Mateusz Loskot <mateusz@loskot.net>
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -22,16 +26,17 @@
 #include <boost/geometry/core/exception.hpp>
 #include <boost/geometry/core/exterior_ring.hpp>
 #include <boost/geometry/core/interior_rings.hpp>
+#include <boost/geometry/core/tag_cast.hpp>
 
 #include <boost/geometry/algorithms/convert.hpp>
 #include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/geometries/concepts/check.hpp>
-#include <boost/geometry/iterators/segment_returning_iterator.hpp>
 #include <boost/geometry/strategies/centroid.hpp>
 #include <boost/geometry/strategies/concepts/centroid_concept.hpp>
 #include <boost/geometry/views/closeable_view.hpp>
 
 #include <boost/geometry/util/for_each_coordinate.hpp>
+#include <boost/geometry/util/select_coordinate_type.hpp>
 
 
 
@@ -169,7 +174,7 @@ inline bool range_ok(Range const& range, Point& centroid)
     \brief Calculate the centroid of a ring.
 */
 template<typename Ring, closure_selector Closure, typename Strategy>
-struct centroid_ring_state
+struct centroid_range_state
 {
     static inline void apply(Ring const& ring,
             Strategy const& strategy, typename Strategy::state_type& state)
@@ -186,76 +191,31 @@ struct centroid_ring_state
             it != end;
             ++previous, ++it)
         {
-            Strategy::apply(*previous, *it, state);
+            strategy.apply(*previous, *it, state);
         }
     }
 };
 
-template<typename Ring, typename Point, closure_selector Closure, typename Strategy>
-struct centroid_ring
+template<typename Range, typename Point, closure_selector Closure, typename Strategy>
+struct centroid_range
 {
-    static inline void apply(Ring const& ring, Point& centroid,
+    static inline void apply(Range const& range, Point& centroid,
             Strategy const& strategy)
     {
-        if (range_ok(ring, centroid))
+        if (range_ok(range, centroid))
         {
             typename Strategy::state_type state;
-            centroid_ring_state
+            centroid_range_state
                 <
-                    Ring,
+                    Range,
                     Closure,
                     Strategy
-                >::apply(ring, strategy, state);
-            Strategy::result(state, centroid);
+                >::apply(range, strategy, state);
+            strategy.result(state, centroid);
         }
     }
 };
 
-/*!
-    \brief Centroid of a linestring.
-*/
-template<typename Linestring, typename Point, typename Strategy>
-struct centroid_linestring
-{
-    static inline void apply(Linestring const& line, Point& centroid,
-            Strategy const& strategy)
-    {
-        if (range_ok(line, centroid))
-        {
-            // First version, should
-            // - be moved to a strategy
-            // - be made dim-agnostic
-
-            typedef typename point_type<Linestring>::type point_type;
-            typedef typename boost::range_iterator<Linestring const>::type point_iterator_type;
-            typedef segment_returning_iterator<point_iterator_type, point_type> segment_iterator;
-
-            typedef typename geometry::distance_result<Linestring>::type distance_type;
-            distance_type length = distance_type();
-            std::pair<distance_type, distance_type> average_sum;
-
-            segment_iterator it(boost::begin(line), boost::end(line));
-            segment_iterator end(boost::end(line));
-            while (it != end)
-            {
-
-                distance_type const d = geometry::distance(it->first, it->second);
-                length += d;
-
-                distance_type two(2);
-
-                distance_type const mx = (get<0>(it->first) + get<0>(it->second)) / two;
-                distance_type const my = (get<1>(it->first) + get<1>(it->second)) / two;
-                average_sum.first += d * mx;
-                average_sum.second += d * my;
-                ++it;
-            }
-
-            set<0>(centroid, average_sum.first / length );
-            set<1>(centroid, average_sum.second / length );
-        }
-    }
-};
 
 /*!
     \brief Centroid of a polygon.
@@ -270,7 +230,7 @@ struct centroid_polygon_state
     static inline void apply(Polygon const& poly,
             Strategy const& strategy, typename Strategy::state_type& state)
     {
-        typedef centroid_ring_state
+        typedef centroid_range_state
             <
                 ring_type,
                 geometry::closure<ring_type>::value,
@@ -302,7 +262,7 @@ struct centroid_polygon
                     Polygon,
                     Strategy
                 >::apply(poly, strategy, state);
-            Strategy::result(state, centroid);
+            strategy.result(state, centroid);
         }
     }
 };
@@ -347,7 +307,7 @@ struct centroid<box_tag, Box, Point, Strategy>
 
 template <typename Ring, typename Point, typename Strategy>
 struct centroid<ring_tag, Ring, Point, Strategy>
-    : detail::centroid::centroid_ring
+    : detail::centroid::centroid_range
         <
             Ring,
             Point,
@@ -358,7 +318,13 @@ struct centroid<ring_tag, Ring, Point, Strategy>
 
 template <typename Linestring, typename Point, typename Strategy>
 struct centroid<linestring_tag, Linestring, Point, Strategy>
-    : detail::centroid::centroid_linestring<Linestring, Point, Strategy>
+    : detail::centroid::centroid_range
+        <
+            Linestring,
+            Point,
+            closed,
+            Strategy
+        >
  {};
 
 template <typename Polygon, typename Point, typename Strategy>
@@ -383,10 +349,7 @@ struct centroid<polygon_tag, Polygon, Point, Strategy>
 
 \qbk{distinguish,with strategy}
 \qbk{[include reference/algorithms/centroid.qbk]}
-
-\qbk{
-[heading Available Strategies]
-\* [link geometry.reference.strategies.strategy_centroid_bashein_detmer Bashein Detmer (cartesian)]
+\qbk{[include reference/algorithms/centroid_strategies.qbk]}
 }
 
 */
@@ -415,13 +378,18 @@ inline void centroid(Geometry const& geometry, Point& c,
 /*!
 \brief \brief_calc{centroid}
 \ingroup centroid
-\details \details_calc{centroid,geometric center (or: center of mass)}
+\details \details_calc{centroid,geometric center (or: center of mass)}. \details_default_strategy
 \tparam Geometry \tparam_geometry
 \tparam Point \tparam_point
 \param geometry \param_geometry
-\param c the calculated centroid will be assigned to this point reference
+\param c The calculated centroid will be assigned to this point reference
 
 \qbk{[include reference/algorithms/centroid.qbk]}
+\qbk{
+[heading Example]
+[centroid]
+[centroid_output]
+}
  */
 template<typename Geometry, typename Point>
 inline void centroid(Geometry const& geometry, Point& c)
@@ -431,7 +399,13 @@ inline void centroid(Geometry const& geometry, Point& c)
     typedef typename strategy::centroid::services::default_strategy
         <
             typename cs_tag<Geometry>::type,
-            typename tag<Geometry>::type,
+            typename tag_cast
+                <
+                    typename tag<Geometry>::type,
+                    pointlike_tag,
+                    linear_tag,
+                    areal_tag
+                >::type,
             dimension<Geometry>::type::value,
             Point,
             Geometry
@@ -444,15 +418,16 @@ inline void centroid(Geometry const& geometry, Point& c)
 /*!
 \brief \brief_calc{centroid}
 \ingroup centroid
-\details \details_calc{centroid,geometric center (or: center of mass)}. \details_make{centroid}.
+\details \details_calc{centroid,geometric center (or: center of mass)}. \details_return{centroid}.
 \tparam Point \tparam_point
 \tparam Geometry \tparam_geometry
 \param geometry \param_geometry
 \return \return_calc{centroid}
+
 \qbk{[include reference/algorithms/centroid.qbk]}
  */
 template<typename Point, typename Geometry>
-inline Point make_centroid(Geometry const& geometry)
+inline Point return_centroid(Geometry const& geometry)
 {
     concept::check_concepts_and_equal_dimensions<Point, Geometry const>();
 
@@ -464,7 +439,7 @@ inline Point make_centroid(Geometry const& geometry)
 /*!
 \brief \brief_calc{centroid} \brief_strategy
 \ingroup centroid
-\details \details_calc{centroid,geometric center (or: center of mass)}. \details_make{centroid}. \details_strategy_reasons
+\details \details_calc{centroid,geometric center (or: center of mass)}. \details_return{centroid}. \details_strategy_reasons
 \tparam Point \tparam_point
 \tparam Geometry \tparam_geometry
 \tparam Strategy \tparam_strategy{centroid}
@@ -474,15 +449,10 @@ inline Point make_centroid(Geometry const& geometry)
 
 \qbk{distinguish,with strategy}
 \qbk{[include reference/algorithms/centroid.qbk]}
-
-\qbk{
-[heading Available Strategies]
-\* [link geometry.reference.strategies.strategy_centroid_bashein_detmer Bashein Detmer (cartesian)]
-}
-
+\qbk{[include reference/algorithms/centroid_strategies.qbk]}
  */
 template<typename Point, typename Geometry, typename Strategy>
-inline Point make_centroid(Geometry const& geometry, Strategy const& strategy)
+inline Point return_centroid(Geometry const& geometry, Strategy const& strategy)
 {
     //BOOST_CONCEPT_ASSERT( (geometry::concept::CentroidStrategy<Strategy>) );
 

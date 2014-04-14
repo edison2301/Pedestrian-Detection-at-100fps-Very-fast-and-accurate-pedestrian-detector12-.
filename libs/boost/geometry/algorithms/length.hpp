@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -23,9 +28,10 @@
 
 #include <boost/geometry/algorithms/assign.hpp>
 #include <boost/geometry/algorithms/detail/calculate_null.hpp>
+// #include <boost/geometry/algorithms/detail/throw_on_empty_input.hpp>
 #include <boost/geometry/views/closeable_view.hpp>
 #include <boost/geometry/strategies/distance.hpp>
-#include <boost/geometry/strategies/length_result.hpp>
+#include <boost/geometry/strategies/default_length_result.hpp>
 
 
 namespace boost { namespace geometry
@@ -40,13 +46,13 @@ namespace detail { namespace length
 template<typename Segment, typename Strategy>
 struct segment_length
 {
-    static inline typename length_result<Segment>::type apply(
+    static inline typename default_length_result<Segment>::type apply(
             Segment const& segment, Strategy const& strategy)
     {
         typedef typename point_type<Segment>::type point_type;
         point_type p1, p2;
-        assign_point_from_index<0>(segment, p1);
-        assign_point_from_index<1>(segment, p2);
+        geometry::detail::assign_point_from_index<0>(segment, p1);
+        geometry::detail::assign_point_from_index<1>(segment, p2);
         return strategy.apply(p1, p2);
     }
 };
@@ -60,7 +66,7 @@ struct segment_length
 template<typename Range, typename Strategy, closure_selector Closure>
 struct range_length
 {
-    typedef typename length_result<Range>::type return_type;
+    typedef typename default_length_result<Range>::type return_type;
 
     static inline return_type apply(
             Range const& range, Strategy const& strategy)
@@ -103,7 +109,7 @@ namespace dispatch
 template <typename Tag, typename Geometry, typename Strategy>
 struct length : detail::calculate_null
     <
-        typename length_result<Geometry>::type,
+        typename default_length_result<Geometry>::type,
         Geometry,
         Strategy
     >
@@ -141,10 +147,12 @@ struct length<segment_tag, Geometry, Strategy>
 \qbk{[length] [length_output]}
  */
 template<typename Geometry>
-inline typename length_result<Geometry>::type length(
+inline typename default_length_result<Geometry>::type length(
         Geometry const& geometry)
 {
     concept::check<Geometry const>();
+
+    // detail::throw_on_empty_input(geometry);
 
     typedef typename strategy::distance::services::default_strategy
         <
@@ -175,11 +183,13 @@ inline typename length_result<Geometry>::type length(
 \qbk{[length_with_strategy] [length_with_strategy_output]}
  */
 template<typename Geometry, typename Strategy>
-inline typename length_result<Geometry>::type length(
+inline typename default_length_result<Geometry>::type length(
         Geometry const& geometry, Strategy const& strategy)
 {
     concept::check<Geometry const>();
 
+    // detail::throw_on_empty_input(geometry);
+    
     return dispatch::length
         <
             typename tag<Geometry>::type,

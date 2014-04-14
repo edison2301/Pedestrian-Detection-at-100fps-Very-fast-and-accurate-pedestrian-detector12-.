@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -35,7 +41,6 @@ struct closing_view
         : m_range(r)
     {}
 
-
     typedef closing_iterator<Range> iterator;
     typedef closing_iterator<Range const> const_iterator;
 
@@ -54,10 +59,17 @@ private :
 
 
 /*!
-\brief View on a range, either closing or not closing
-\tparam Range original range
-\tparam Close specifying if it should be closed or not
-\ingroup ranges
+\brief View on a range, either closing it or leaving it as it is
+\details The closeable_view is used internally by the library to handle all rings,
+    either closed or open, the same way. The default method is closed, all 
+    algorithms process rings as if they are closed. Therefore, if they are opened,
+    a view is created which closes them.
+    The closeable_view might be used by library users, but its main purpose is
+    internally.
+\tparam Range Original range
+\tparam Close Specifies if it the range is closed, if so, nothing will happen.
+    If it is open, it will iterate the first point after the last point.
+\ingroup views
 */
 template <typename Range, closure_selector Close>
 struct closeable_view {};

@@ -1,12 +1,14 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2011, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
 #ifndef BOOST_GEOMETRY_ALGORITHMS_DETAIL_OVERLAY_OVERLAY_HPP
 #define BOOST_GEOMETRY_ALGORITHMS_DETAIL_OVERLAY_OVERLAY_HPP
+
 
 #include <deque>
 #include <map>
@@ -28,8 +30,6 @@
 #include <boost/geometry/algorithms/num_points.hpp>
 #include <boost/geometry/algorithms/reverse.hpp>
 
-#include <boost/geometry/iterators/range_type.hpp>
-
 #include <boost/geometry/algorithms/detail/overlay/add_rings.hpp>
 #include <boost/geometry/algorithms/detail/overlay/assign_parents.hpp>
 #include <boost/geometry/algorithms/detail/overlay/ring_properties.hpp>
@@ -37,7 +37,7 @@
 
 
 #ifdef BOOST_GEOMETRY_DEBUG_ASSEMBLE
-#  include <boost/geometry/util/write_dsv.hpp>
+#  include <boost/geometry/io/dsv/write.hpp>
 #endif
 
 
@@ -103,8 +103,10 @@ inline OutputIterator return_if_one_input_is_empty(Geometry1 const& geometry1,
             Geometry2 const& geometry2,
             OutputIterator out)
 {
-    typedef typename geometry::range_type<GeometryOut>::type ring_type;
-    typedef std::deque<ring_type> ring_container_type;
+    typedef std::deque
+        <
+            typename geometry::ring_type<GeometryOut>::type
+        > ring_container_type;
 
     typedef ring_properties<typename geometry::point_type<Geometry1>::type> properties;
 
@@ -121,7 +123,7 @@ inline OutputIterator return_if_one_input_is_empty(Geometry1 const& geometry1,
     std::map<ring_identifier, int> empty;
     std::map<ring_identifier, properties> all_of_one_of_them;
 
-    select_rings<Direction>(geometry1, geometry2, empty, all_of_one_of_them);
+    select_rings<Direction>(geometry1, geometry2, empty, all_of_one_of_them, false);
     ring_container_type rings;
     assign_parents(geometry1, geometry2, rings, all_of_one_of_them);
     return add_rings<GeometryOut>(all_of_one_of_them, geometry1, geometry2, rings, out);
@@ -143,21 +145,11 @@ struct overlay
                 OutputIterator out,
                 Strategy const& )
     {
-        if (geometry::num_points(geometry1) == 0 && geometry::num_points(geometry2) == 0)
+        if (geometry::num_points(geometry1) == 0
+            && geometry::num_points(geometry2) == 0)
         {
             return out;
         }
-
-        typedef typename geometry::point_type<GeometryOut>::type point_type;
-        typedef detail::overlay::traversal_turn_info<point_type> turn_info;
-        typedef std::deque<turn_info> container_type;
-
-        // "Use" rangetype for ringtype:
-        // -> for polygon, it is the type of the exterior ring.
-        // -> for ring, it is the ring itself.
-        // -> for multi-polygon, it is also the type of the ring.
-        typedef typename geometry::range_type<GeometryOut>::type ring_type;
-        typedef std::deque<ring_type> ring_container_type;
 
         if (geometry::num_points(geometry1) == 0
             || geometry::num_points(geometry2) == 0)
@@ -167,6 +159,15 @@ struct overlay
                     GeometryOut, Direction, ReverseOut
                 >(geometry1, geometry2, out);
         }
+
+        typedef typename geometry::point_type<GeometryOut>::type point_type;
+        typedef detail::overlay::traversal_turn_info<point_type> turn_info;
+        typedef std::deque<turn_info> container_type;
+
+        typedef std::deque
+            <
+                typename geometry::ring_type<GeometryOut>::type
+            > ring_container_type;
 
         container_type turn_points;
 
@@ -211,11 +212,14 @@ std::cout << "traverse" << std::endl;
         // Note that these rings are always in clockwise order, even in CCW polygons,
         // and are marked as "to be reversed" below
         ring_container_type rings;
-        geometry::traverse<Reverse1, Reverse2>(geometry1, geometry2,
-                Direction == overlay_union
-                    ? geometry::detail::overlay::operation_union
-                    : geometry::detail::overlay::operation_intersection,
-                turn_points, rings);
+        traverse<Reverse1, Reverse2, Geometry1, Geometry2>::apply
+                (
+                    geometry1, geometry2,
+                    Direction == overlay_union
+                        ? geometry::detail::overlay::operation_union
+                        : geometry::detail::overlay::operation_intersection,
+                    turn_points, rings
+                );
 
 #ifdef BOOST_GEOMETRY_TIME_OVERLAY
         std::cout << "traverse: " << timer.elapsed() << std::endl;
@@ -229,10 +233,10 @@ std::cout << "traverse" << std::endl;
         std::cout << "map_turns: " << timer.elapsed() << std::endl;
 #endif
 
-        typedef ring_properties<typename geometry::point_type<Geometry1>::type> properties;
+        typedef ring_properties<typename geometry::point_type<GeometryOut>::type> properties;
 
         std::map<ring_identifier, properties> selected;
-        select_rings<Direction>(geometry1, geometry2, map, selected);
+        select_rings<Direction>(geometry1, geometry2, map, selected, ! turn_points.empty());
 
 #ifdef BOOST_GEOMETRY_TIME_OVERLAY
         std::cout << "select_rings: " << timer.elapsed() << std::endl;
@@ -247,7 +251,7 @@ std::cout << "traverse" << std::endl;
                     it != boost::end(rings);
                     ++it)
             {
-                selected[id] = properties(*it);
+                selected[id] = properties(*it, true);
                 selected[id].reversed = ReverseOut;
                 id.multi_index++;
             }

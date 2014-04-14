@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -100,10 +106,15 @@ struct reverse<polygon_tag, Polygon>
 
 
 /*!
-\brief Reverses a geometry
+\brief Reverses the points within a geometry
+\details Generic function to reverse a geometry. It resembles the std::reverse
+   functionality, but it takes the geometry type into account. Only for a ring
+   or for a linestring it is the same as the std::reverse.
 \ingroup reverse
 \tparam Geometry \tparam_geometry
 \param geometry \param_geometry which will be reversed
+
+\qbk{[include reference/algorithms/reverse.qbk]}
 */
 template <typename Geometry>
 inline void reverse(Geometry& geometry)

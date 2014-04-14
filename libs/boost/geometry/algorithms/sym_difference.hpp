@@ -1,6 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -17,12 +18,17 @@
 namespace boost { namespace geometry
 {
 
+#ifndef DOXYGEN_NO_DETAIL
+namespace detail { namespace sym_difference
+{
+
+
 
 /*!
 \brief \brief_calc2{symmetric difference}  \brief_strategy
 \ingroup sym_difference
 \details \details_calc2{symmetric difference, spatial set theoretic symmetric difference (XOR)}
-    \brief_strategy. \details_inserter{sym_difference}
+    \brief_strategy. \details_insert{sym_difference}
 \tparam GeometryOut output geometry type, must be specified
 \tparam Geometry1 \tparam_geometry
 \tparam Geometry2 \tparam_geometry
@@ -43,7 +49,7 @@ template
     typename OutputIterator,
     typename Strategy
 >
-inline OutputIterator sym_difference_inserter(Geometry1 const& geometry1,
+inline OutputIterator sym_difference_insert(Geometry1 const& geometry1,
             Geometry2 const& geometry2, OutputIterator out,
             Strategy const& strategy)
 {
@@ -51,10 +57,38 @@ inline OutputIterator sym_difference_inserter(Geometry1 const& geometry1,
     concept::check<Geometry2 const>();
     concept::check<GeometryOut>();
 
-    out = detail::intersection::inserter<GeometryOut, true, overlay_difference>(
-            geometry1, geometry2, out, strategy);
-    out = detail::intersection::inserter<GeometryOut, true, overlay_difference>(
-            geometry2, geometry1, out, strategy);
+    out = geometry::dispatch::intersection_insert
+        <
+            typename geometry::tag<Geometry1>::type,
+            typename geometry::tag<Geometry2>::type,
+            typename geometry::tag<GeometryOut>::type,
+            geometry::is_areal<Geometry1>::value,
+            geometry::is_areal<Geometry2>::value,
+            geometry::is_areal<GeometryOut>::value,
+            Geometry1, Geometry2,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry1>::value>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry2>::value, true>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<GeometryOut>::value>::value,
+            OutputIterator, GeometryOut,
+            overlay_difference,
+            Strategy
+        >::apply(geometry1, geometry2, out, strategy);
+    out = geometry::dispatch::intersection_insert
+        <
+            typename geometry::tag<Geometry2>::type,
+            typename geometry::tag<Geometry1>::type,
+            typename geometry::tag<GeometryOut>::type,
+            geometry::is_areal<Geometry2>::value,
+            geometry::is_areal<Geometry1>::value,
+            geometry::is_areal<GeometryOut>::value,
+            Geometry2, Geometry1,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry2>::value>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry1>::value, true>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<GeometryOut>::value>::value,
+            OutputIterator, GeometryOut,
+            overlay_difference,
+            Strategy
+        >::apply(geometry2, geometry1, out, strategy);
     return out;
 }
 
@@ -63,7 +97,7 @@ inline OutputIterator sym_difference_inserter(Geometry1 const& geometry1,
 \brief \brief_calc2{symmetric difference}
 \ingroup sym_difference
 \details \details_calc2{symmetric difference, spatial set theoretic symmetric difference (XOR)}
-    \details_inserter{sym_difference}
+    \details_insert{sym_difference}
 \tparam GeometryOut output geometry type, must be specified
 \tparam Geometry1 \tparam_geometry
 \tparam Geometry2 \tparam_geometry
@@ -80,7 +114,7 @@ template
     typename Geometry2,
     typename OutputIterator
 >
-inline OutputIterator sym_difference_inserter(Geometry1 const& geometry1,
+inline OutputIterator sym_difference_insert(Geometry1 const& geometry1,
             Geometry2 const& geometry2, OutputIterator out)
 {
     concept::check<Geometry1 const>();
@@ -95,8 +129,11 @@ inline OutputIterator sym_difference_inserter(Geometry1 const& geometry1,
             typename geometry::point_type<GeometryOut>::type
         > strategy_type;
 
-    return sym_difference_inserter<GeometryOut>(geometry1, geometry2, out, strategy_type());
+    return sym_difference_insert<GeometryOut>(geometry1, geometry2, out, strategy_type());
 }
+
+}} // namespace detail::sym_difference
+#endif // DOXYGEN_NO_DETAIL
 
 
 /*!
@@ -128,7 +165,7 @@ inline void sym_difference(Geometry1 const& geometry1,
     typedef typename boost::range_value<Collection>::type geometry_out;
     concept::check<geometry_out>();
 
-    sym_difference_inserter<geometry_out>(
+    detail::sym_difference::sym_difference_insert<geometry_out>(
             geometry1, geometry2,
             std::back_inserter(output_collection));
 }

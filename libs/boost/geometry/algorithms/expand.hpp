@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -262,7 +267,6 @@ struct expand<segment_tag, Box, Segment, StrategyLess, StrategyGreater>
 \param strategy_less
 \param strategy_greater
 \note Strategy is currently ignored
-\todo Handle strategy
  *
 template
 <
@@ -287,12 +291,14 @@ inline void expand(Box& box, Geometry const& geometry,
 
 
 /*!
-\brief Expands a box using the extend (envelope) of another geometry (box, point)
+\brief Expands a box using the bounding box (envelope) of another geometry (box, point)
 \ingroup expand
 \tparam Box type of the box
 \tparam Geometry \tparam_geometry
-\param box box to expand another geometry with, might be changed
-\param geometry \param_geometry
+\param box box to be expanded using another geometry, mutable
+\param geometry \param_geometry geometry which envelope (bounding box) will be added to the box
+
+\qbk{[include reference/algorithms/expand.qbk]}
  */
 template <typename Box, typename Geometry>
 inline void expand(Box& box, Geometry const& geometry)

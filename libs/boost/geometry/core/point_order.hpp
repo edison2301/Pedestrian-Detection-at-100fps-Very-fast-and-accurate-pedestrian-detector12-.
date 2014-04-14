@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -23,11 +29,11 @@ namespace boost { namespace geometry
 /*!
 \brief Enumerates options for the order of points within polygons
 \ingroup enum
-\details The enumeration order_selector describes options for the order of points
-    within a polygon. Polygons can be ordered either clockwise or counterclockwise.
-    The specific order of a polygon type is defined by the point_order metafunction.
-    The point_order metafunction defines a value, which is one of the values enumerated
-    in the order_selector
+\details The enumeration order_selector describes options for the order of 
+    points within a polygon. Polygons can be ordered either clockwise or 
+    counterclockwise. The specific order of a polygon type is defined by the 
+    point_order metafunction. The point_order metafunction defines a value, 
+    which is one of the values enumerated in the order_selector
 
 \qbk{
 [heading See also]
@@ -40,7 +46,8 @@ enum order_selector
     clockwise = 1,
     /// Points are ordered counter clockwise
     counterclockwise = 2,
-    /// Points might be stored in any order, the algorithm will find out (not yet supported)
+    /// Points might be stored in any order, algorithms will determine it on the
+    /// fly (not yet supported)
     order_undetermined = 0
 };
 
@@ -113,7 +120,8 @@ struct point_order<linestring_tag, LineString>
 template <typename Ring>
 struct point_order<ring_tag, Ring>
 {
-    static const order_selector value = geometry::traits::point_order<Ring>::value;
+    static const order_selector value 
+        = geometry::traits::point_order<Ring>::value;
 };
 
 // Specialization for polygon: the order is the order of its rings
@@ -132,19 +140,16 @@ struct point_order<polygon_tag, Polygon>
 
 
 /*!
-\brief Metafunction which defines point order of a geometry type
+\brief \brief_meta{value, point order (clockwise\, counterclockwise), 
+    \meta_geometry_type}
+\tparam Geometry \tparam_geometry
 \ingroup core
-\details
 
-\qbk{
-[heading See also]
-[link geometry.reference.enumerations.closure_selector The closure_selector enumeration]
-}
+\qbk{[include reference/core/point_order.qbk]}
 */
 template <typename Geometry>
 struct point_order
 {
-    /// metafunction implementation
     static const order_selector value = core_dispatch::point_order
         <
             typename tag<Geometry>::type,

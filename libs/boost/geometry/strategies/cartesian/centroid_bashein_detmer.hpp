@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -14,6 +19,7 @@
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/type_traits.hpp>
 
+#include <boost/geometry/arithmetic/determinant.hpp>
 #include <boost/geometry/core/coordinate_type.hpp>
 #include <boost/geometry/core/point_type.hpp>
 #include <boost/geometry/strategies/centroid.hpp>
@@ -147,17 +153,11 @@ private :
             , sum_y(calculation_type())
         {
             typedef calculation_type ct;
-            //std::cout << "-> calctype: " << typeid(ct).name()
-            //    << " size: " << sizeof(ct)
-            //    << " init: " << sum_a2
-            //    << std::endl;
         }
     };
 
 public :
     typedef sums state_type;
-    typedef Point point_type;
-    typedef PointOfSegment segment_point_type;
 
     static inline void apply(PointOfSegment const& p1,
             PointOfSegment const& p2, sums& state)
@@ -178,7 +178,7 @@ public :
         calculation_type const y1 = boost::numeric_cast<calculation_type>(get<1>(p1));
         calculation_type const x2 = boost::numeric_cast<calculation_type>(get<0>(p2));
         calculation_type const y2 = boost::numeric_cast<calculation_type>(get<1>(p2));
-        calculation_type const ai = x1 * y2 - x2 * y1;
+        calculation_type const ai = geometry::detail::determinant<calculation_type>(p1, p2);
         state.count++;
         state.sum_a2 += ai;
         state.sum_x += ai * (x1 + x2);
@@ -188,7 +188,7 @@ public :
     static inline bool result(sums const& state, Point& centroid)
     {
         calculation_type const zero = calculation_type();
-        if (state.count > 0 && state.sum_a2 != zero)
+        if (state.count > 0 && ! math::equals(state.sum_a2, zero))
         {
             calculation_type const v3 = 3;
             calculation_type const a3 = v3 * state.sum_a2;
@@ -215,19 +215,9 @@ public :
 namespace services
 {
 
-// Register this strategy for rings and polygons, in two dimensions
+// Register this strategy for rings and (multi)polygons, in two dimensions
 template <typename Point, typename Geometry>
-struct default_strategy<cartesian_tag, ring_tag, 2, Point, Geometry>
-{
-    typedef bashein_detmer
-        <
-            Point,
-            typename point_type<Geometry>::type
-        > type;
-};
-
-template <typename Point, typename Geometry>
-struct default_strategy<cartesian_tag, polygon_tag, 2, Point, Geometry>
+struct default_strategy<cartesian_tag, areal_tag, 2, Point, Geometry>
 {
     typedef bashein_detmer
         <

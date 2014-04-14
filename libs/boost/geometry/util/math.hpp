@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -27,25 +32,61 @@ namespace detail
 {
 
 
-template <typename T, bool Floating>
+template <typename Type, bool IsFloatingPoint>
 struct equals
 {
-    static inline bool apply(T const& a, T const& b)
+    static inline bool apply(Type const& a, Type const& b)
     {
         return a == b;
     }
 };
 
-template <typename T>
-struct equals<T, true>
+template <typename Type>
+struct equals<Type, true>
 {
-    static inline bool apply(T const& a, T const& b)
+	static inline Type get_max(Type const& a, Type const& b, Type const& c)
+	{
+		return (std::max)((std::max)(a, b), c);
+	}
+
+    static inline bool apply(Type const& a, Type const& b)
     {
+		if (a == b)
+		{
+			return true;
+		}
+
         // See http://www.parashift.com/c++-faq-lite/newbie.html#faq-29.17,
         // FUTURE: replace by some boost tool or boost::test::close_at_tolerance
-        return std::abs(a - b) <= std::numeric_limits<T>::epsilon() * std::abs(a);
+        return std::abs(a - b) <= std::numeric_limits<Type>::epsilon() * get_max(std::abs(a), std::abs(b), 1.0);
     }
 };
+
+template <typename Type, bool IsFloatingPoint>
+struct smaller
+{
+    static inline bool apply(Type const& a, Type const& b)
+    {
+        return a < b;
+    }
+};
+
+template <typename Type>
+struct smaller<Type, true>
+{
+    static inline bool apply(Type const& a, Type const& b)
+    {
+		if (equals<Type, true>::apply(a, b))
+		{
+			return false;
+		}
+		return a < b;
+    }
+};
+
+
+template <typename Type, bool IsFloatingPoint> 
+struct equals_with_epsilon : public equals<Type, IsFloatingPoint> {};
 
 
 /*!
@@ -95,6 +136,40 @@ inline bool equals(T1 const& a, T2 const& b)
             boost::is_floating_point<select_type>::type::value
         >::apply(a, b);
 }
+
+template <typename T1, typename T2>
+inline bool equals_with_epsilon(T1 const& a, T2 const& b)
+{
+    typedef typename select_most_precise<T1, T2>::type select_type;
+    return detail::equals_with_epsilon
+        <
+            select_type, 
+            boost::is_floating_point<select_type>::type::value
+        >::apply(a, b);
+}
+
+template <typename T1, typename T2>
+inline bool smaller(T1 const& a, T2 const& b)
+{
+    typedef typename select_most_precise<T1, T2>::type select_type;
+    return detail::smaller
+        <
+            select_type,
+            boost::is_floating_point<select_type>::type::value
+        >::apply(a, b);
+}
+
+template <typename T1, typename T2>
+inline bool larger(T1 const& a, T2 const& b)
+{
+    typedef typename select_most_precise<T1, T2>::type select_type;
+    return detail::smaller
+        <
+            select_type,
+            boost::is_floating_point<select_type>::type::value
+        >::apply(b, a);
+}
+
 
 
 double const d2r = geometry::math::pi<double>() / 180.0;

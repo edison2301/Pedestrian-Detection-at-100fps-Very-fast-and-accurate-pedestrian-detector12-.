@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Bruno Lalande 2008, 2009
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2008-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -16,10 +21,8 @@
 #include <boost/geometry/core/access.hpp>
 
 #include <boost/geometry/strategies/distance.hpp>
-#include <boost/geometry/strategies/distance_result.hpp>
 
-#include <boost/geometry/util/select_calculation_type.hpp>
-#include <boost/geometry/util/promote_floating_point.hpp>
+#include <boost/geometry/util/calculation_type.hpp>
 
 
 
@@ -78,7 +81,8 @@ template
 class pythagoras
 {
 public :
-    typedef typename select_calculation_type
+
+    typedef typename util::calculation_type::geometric::binary
             <
                 Point1,
                 Point2,
@@ -132,10 +136,14 @@ class pythagoras
 {
     typedef comparable::pythagoras<Point1, Point2, CalculationType> comparable_type;
 public :
-    typedef typename promote_floating_point
-        <
-            typename services::return_type<comparable_type>::type
-        >::type calculation_type;
+    typedef typename util::calculation_type::geometric::binary
+            <
+                Point1,
+                Point2,
+                CalculationType,
+                double,
+                double // promote integer to double
+            >::type calculation_type;
 
     /*!
     \brief applies the distance calculation using pythagoras
@@ -215,7 +223,7 @@ struct get_comparable<pythagoras<Point1, Point2, CalculationType> >
 {
     typedef comparable::pythagoras<Point1, Point2, CalculationType> comparable_type;
 public :
-    static inline comparable_type apply(pythagoras<Point1, Point2, CalculationType> const& input)
+    static inline comparable_type apply(pythagoras<Point1, Point2, CalculationType> const& )
     {
         return comparable_type();
     }
@@ -299,7 +307,7 @@ struct get_comparable<comparable::pythagoras<Point1, Point2, CalculationType> >
 {
     typedef comparable::pythagoras<Point1, Point2, CalculationType> comparable_type;
 public :
-    static inline comparable_type apply(comparable::pythagoras<Point1, Point2, CalculationType> const& input)
+    static inline comparable_type apply(comparable::pythagoras<Point1, Point2, CalculationType> const& )
     {
         return comparable_type();
     }

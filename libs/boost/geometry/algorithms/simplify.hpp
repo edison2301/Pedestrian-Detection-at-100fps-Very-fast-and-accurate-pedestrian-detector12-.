@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -39,7 +44,7 @@ namespace detail { namespace simplify
 {
 
 template<typename Range, typename Strategy>
-struct simplify_range_inserter
+struct simplify_range_insert
 {
     template <typename OutputIterator, typename Distance>
     static inline void apply(Range const& range, OutputIterator out,
@@ -62,7 +67,7 @@ struct simplify_copy
 {
     template <typename Distance>
     static inline void apply(Range const& range, Range& out,
-                    Distance const& max_distance, Strategy const& strategy)
+                    Distance const& , Strategy const& )
     {
         std::copy
             (
@@ -103,7 +108,7 @@ struct simplify_range
         }
         else
         {
-            simplify_range_inserter<Range, Strategy>::apply
+            simplify_range_insert<Range, Strategy>::apply
                 (
                     range, std::back_inserter(out), max_distance, strategy
                 );
@@ -174,7 +179,7 @@ struct simplify<point_tag, Point, Strategy>
 {
     template <typename Distance>
     static inline void apply(Point const& point, Point& out,
-                    Distance const& max_distance, Strategy const& strategy)
+                    Distance const& , Strategy const& )
     {
         geometry::convert(point, out);
     }
@@ -215,14 +220,14 @@ struct simplify<polygon_tag, Polygon, Strategy>
 
 
 template <typename Tag, typename Geometry, typename Strategy>
-struct simplify_inserter
+struct simplify_insert
 {
 };
 
 
 template <typename Linestring, typename Strategy>
-struct simplify_inserter<linestring_tag, Linestring, Strategy>
-    : detail::simplify::simplify_range_inserter
+struct simplify_insert<linestring_tag, Linestring, Strategy>
+    : detail::simplify::simplify_range_insert
             <
                 Linestring,
                 Strategy
@@ -230,8 +235,8 @@ struct simplify_inserter<linestring_tag, Linestring, Strategy>
 {};
 
 template <typename Ring, typename Strategy>
-struct simplify_inserter<ring_tag, Ring, Strategy>
-    : detail::simplify::simplify_range_inserter
+struct simplify_insert<ring_tag, Ring, Strategy>
+    : detail::simplify::simplify_range_insert
             <
                 Ring,
                 Strategy
@@ -316,6 +321,11 @@ inline void simplify(Geometry const& geometry, Geometry& out,
 }
 
 
+#ifndef DOXYGEN_NO_DETAIL
+namespace detail { namespace simplify
+{
+
+
 /*!
 \brief Simplify a geometry, using an output iterator
     and a specified strategy
@@ -332,13 +342,13 @@ inline void simplify(Geometry const& geometry, Geometry& out,
 \qbk{[include reference/algorithms/simplify.qbk]}
 */
 template<typename Geometry, typename OutputIterator, typename Distance, typename Strategy>
-inline void simplify_inserter(Geometry const& geometry, OutputIterator out,
+inline void simplify_insert(Geometry const& geometry, OutputIterator out,
                               Distance const& max_distance, Strategy const& strategy)
 {
     concept::check<Geometry const>();
     BOOST_CONCEPT_ASSERT( (geometry::concept::SimplifyStrategy<Strategy>) );
 
-    dispatch::simplify_inserter
+    dispatch::simplify_insert
         <
             typename tag<Geometry>::type,
             Geometry,
@@ -355,10 +365,10 @@ inline void simplify_inserter(Geometry const& geometry, OutputIterator out,
 \param max_distance distance (in units of input coordinates) of a vertex
     to other segments to be removed
 
-\qbk{[include reference/algorithms/simplify_inserter.qbk]}
+\qbk{[include reference/algorithms/simplify_insert.qbk]}
  */
 template<typename Geometry, typename OutputIterator, typename Distance>
-inline void simplify_inserter(Geometry const& geometry, OutputIterator out,
+inline void simplify_insert(Geometry const& geometry, OutputIterator out,
                               Distance const& max_distance)
 {
     typedef typename point_type<Geometry>::type point_type;
@@ -377,13 +387,17 @@ inline void simplify_inserter(Geometry const& geometry, OutputIterator out,
             point_type, ds_strategy_type
         > strategy_type;
 
-    dispatch::simplify_inserter
+    dispatch::simplify_insert
         <
             typename tag<Geometry>::type,
             Geometry,
             strategy_type
         >::apply(geometry, out, max_distance, strategy_type());
 }
+
+}} // namespace detail::simplify
+#endif // DOXYGEN_NO_DETAIL
+
 
 
 }} // namespace boost::geometry

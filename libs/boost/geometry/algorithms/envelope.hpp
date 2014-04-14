@@ -1,7 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2007-2009, Geodan, Amsterdam, the Netherlands.
-// Copyright Bruno Lalande 2008, 2009
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -14,7 +19,7 @@
 
 #include <boost/numeric/conversion/cast.hpp>
 
-#include <boost/geometry/algorithms/convert.hpp>
+#include <boost/geometry/algorithms/assign.hpp>
 #include <boost/geometry/algorithms/expand.hpp>
 #include <boost/geometry/core/cs.hpp>
 #include <boost/geometry/core/exterior_ring.hpp>
@@ -211,14 +216,7 @@ struct envelope
 \param geometry \param_geometry
 \param mbr \param_box \param_set{envelope}
 
-\par Example:
-Example showing envelope calculation, using point_ll latlong points
-\dontinclude doxygen_1.cpp
-\skip example_envelope_polygon
-\line {
-\until }
-
-
+\qbk{[include reference/algorithms/envelope.qbk]}
 \qbk{
 [heading Example]
 [envelope] [envelope_output]
@@ -242,19 +240,20 @@ inline void envelope(Geometry const& geometry, Box& mbr)
 /*!
 \brief \brief_calc{envelope}
 \ingroup envelope
-\details \details_calc{make_envelope,\det_envelope}. \details_make{envelope}
+\details \details_calc{return_envelope,\det_envelope}. \details_return{envelope}
 \tparam Box \tparam_box
 \tparam Geometry \tparam_geometry
 \param geometry \param_geometry
 \return \return_calc{envelope}
 
+\qbk{[include reference/algorithms/envelope.qbk]}
 \qbk{
 [heading Example]
-[make_envelope] [make_envelope_output]
+[return_envelope] [return_envelope_output]
 }
 */
 template<typename Box, typename Geometry>
-inline Box make_envelope(Geometry const& geometry)
+inline Box return_envelope(Geometry const& geometry)
 {
     concept::check<Geometry const>();
     concept::check<Box>();

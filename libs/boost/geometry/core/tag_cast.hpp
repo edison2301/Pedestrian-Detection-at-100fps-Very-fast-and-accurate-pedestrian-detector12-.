@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2011, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+// Copyright (c) 2009-2012 Mateusz Loskot, London, UK.
+
+// Parts of Boost.Geometry are redesigned from Geodan's Geographic Library
+// (geolib/GGL), copyright (c) 1995-2010 Geodan, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -15,7 +21,25 @@
 namespace boost { namespace geometry
 {
 
-/// Generic tag_cast utility
+/*!
+\brief Metafunction defining a type being either the specified tag, or one
+    of the specified basetags if the type inherits from them.
+\details Tags can inherit each other. A multi_point inherits, for example,
+    both the multi_tag and the pointlike tag. Often behaviour can be shared
+    between different geometry types. A tag, found by the metafunction tag,
+    can be casted to a more basic tag, and then dispatched by that tag.
+\ingroup core    
+\tparam Tag The tag to be casted to one of the base tags
+\tparam BaseTag First base tag
+\tparam BaseTag2 Optional second base tag
+\tparam BaseTag3 Optional third base tag
+\tparam BaseTag4 Optional fourth base tag
+\tparam BaseTag5 Optional fifth base tag
+\tparam BaseTag6 Optional sixth base tag
+\tparam BaseTag7 Optional seventh base tag
+
+\qbk{[include reference/core/tag_cast.qbk]}
+*/
 template
 <
     typename Tag,
@@ -42,6 +66,8 @@ struct tag_cast
         >::type type;
 };
 
+#ifndef DOXYGEN_NO_SPECIALIZATIONS
+
 // Specialization for last one
 template <typename Tag>
 struct tag_cast<Tag, void, void, void, void, void, void, void>
@@ -49,6 +75,8 @@ struct tag_cast<Tag, void, void, void, void, void, void, void>
     // If not found, take specified tag, so do not cast
     typedef Tag type;
 };
+
+#endif // DOXYGEN_NO_SPECIALIZATIONS
 
 
 }} // namespace boost::geometry

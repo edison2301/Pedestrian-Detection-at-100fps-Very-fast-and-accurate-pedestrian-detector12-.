@@ -1,6 +1,7 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
-//
-// Copyright Barend Gehrels 2010, Geodan, Amsterdam, the Netherlands.
+
+// Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
@@ -10,16 +11,19 @@
 
 #include <algorithm>
 
-#include <boost/geometry/algorithms/intersection_inserter.hpp>
+#include <boost/geometry/algorithms/detail/overlay/intersection_insert.hpp>
 
 namespace boost { namespace geometry
 {
 
+#ifndef DOXYGEN_NO_DETAIL
+namespace detail { namespace difference
+{
 
 /*!
 \brief_calc2{difference} \brief_strategy
 \ingroup difference
-\details \details_calc2{difference_inserter, spatial set theoretic difference}
+\details \details_calc2{difference_insert, spatial set theoretic difference}
     \brief_strategy. \details_inserter{difference}
 \tparam GeometryOut output geometry type, must be specified
 \tparam Geometry1 \tparam_geometry
@@ -42,25 +46,37 @@ template
     typename OutputIterator,
     typename Strategy
 >
-inline OutputIterator difference_inserter(Geometry1 const& geometry1,
+inline OutputIterator difference_insert(Geometry1 const& geometry1,
             Geometry2 const& geometry2, OutputIterator out,
             Strategy const& strategy)
 {
     concept::check<Geometry1 const>();
     concept::check<Geometry2 const>();
     concept::check<GeometryOut>();
-
-    return detail::intersection::inserter<GeometryOut, true, overlay_difference>(
-            geometry1, geometry2,
-            out,
-            strategy);
+    
+    return geometry::dispatch::intersection_insert
+        <
+            typename geometry::tag<Geometry1>::type,
+            typename geometry::tag<Geometry2>::type,
+            typename geometry::tag<GeometryOut>::type,
+            geometry::is_areal<Geometry1>::value,
+            geometry::is_areal<Geometry2>::value,
+            geometry::is_areal<GeometryOut>::value,
+            Geometry1, Geometry2,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry1>::value>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<Geometry2>::value, true>::value,
+            geometry::detail::overlay::do_reverse<geometry::point_order<GeometryOut>::value>::value,
+            OutputIterator, GeometryOut,
+            overlay_difference,
+            Strategy
+        >::apply(geometry1, geometry2, out, strategy);
 }
 
 /*!
 \brief_calc2{difference}
 \ingroup difference
-\details \details_calc2{difference_inserter, spatial set theoretic difference}.
-    \details_inserter{difference}
+\details \details_calc2{difference_insert, spatial set theoretic difference}.
+    \details_insert{difference}
 \tparam GeometryOut output geometry type, must be specified
 \tparam Geometry1 \tparam_geometry
 \tparam Geometry2 \tparam_geometry
@@ -70,7 +86,7 @@ inline OutputIterator difference_inserter(Geometry1 const& geometry1,
 \param out \param_out{difference}
 \return \return_out
 
-\qbk{[include reference/algorithms/difference_inserter.qbk]}
+\qbk{[include reference/algorithms/difference_insert.qbk]}
 */
 template
 <
@@ -79,7 +95,7 @@ template
     typename Geometry2,
     typename OutputIterator
 >
-inline OutputIterator difference_inserter(Geometry1 const& geometry1,
+inline OutputIterator difference_insert(Geometry1 const& geometry1,
             Geometry2 const& geometry2, OutputIterator out)
 {
     concept::check<Geometry1 const>();
@@ -94,9 +110,14 @@ inline OutputIterator difference_inserter(Geometry1 const& geometry1,
             typename geometry::point_type<GeometryOut>::type
         > strategy;
 
-    return difference_inserter<GeometryOut>(geometry1, geometry2,
+    return difference_insert<GeometryOut>(geometry1, geometry2,
             out, strategy());
 }
+
+
+}} // namespace detail::difference
+#endif // DOXYGEN_NO_DETAIL
+
 
 
 /*!
@@ -127,7 +148,7 @@ inline void difference(Geometry1 const& geometry1,
     typedef typename boost::range_value<Collection>::type geometry_out;
     concept::check<geometry_out>();
 
-    difference_inserter<geometry_out>(
+    detail::difference::difference_insert<geometry_out>(
             geometry1, geometry2,
             std::back_inserter(output_collection));
 }
