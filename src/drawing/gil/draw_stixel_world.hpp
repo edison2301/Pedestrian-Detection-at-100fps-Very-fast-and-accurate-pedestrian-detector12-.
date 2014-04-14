@@ -18,26 +18,11 @@ namespace doppia {
 class MetricCamera;
 class StereoCameraCalibration;
 class StixelWorldApplication;
-class GroundPlaneEstimator;
-class GroundPlane;
-class FastGroundPlaneEstimator;
 class StixelsEstimator;
 class ImagePlaneStixelsEstimator;
 class AbstractStixelWorldEstimator;
 class AbstractStixelMotionEstimator;
 
-
-void draw_ground_plane_estimator(const FastGroundPlaneEstimator &ground_plane_estimator,
-                                 const AbstractVideoInput::input_image_view_t &input_view,
-                                 const StereoCameraCalibration &stereo_calibration, boost::gil::rgb8_view_t &screen_view);
-
-void draw_ground_plane_estimator(const GroundPlaneEstimator &ground_plane_estimator,
-                                 const AbstractVideoInput::input_image_view_t &input_view,
-                                 const StereoCameraCalibration &stereo_calibration, boost::gil::rgb8_view_t &screen_view);
-
-void draw_the_ground_corridor(boost::gil::rgb8_view_t &view,
-                              const MetricCamera& camera,
-                              const GroundPlane &ground_plane);
 
 void draw_stixels_estimation(const StixelsEstimator &stixels_estimator,
                              const AbstractVideoInput::input_image_view_t &left_input_view,

@@ -130,7 +130,7 @@ This is the simplest program and should make sure that your cmake + C++ pipeline
 1. To compile any program in doppia simply go to the corresponding application directory,  
    `cd doppia/src/applications/ground_estimation`
 
-2. Run `cmake . && make`.  
+2. Run `cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo . && make`.  
    If you know what you are doing you can run `ccmake .` first and setup things right.  
    If you know that you have enough memory you can run `cmake . && make -j5` (or `-j10`) to make things go faster.
 

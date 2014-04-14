@@ -43,6 +43,7 @@ set(VISICS_MACHINES
 set(D2_GPU_MACHINES
   "wks-12-31" "wks-12-32" "wks-12-33" # new high end work stations
   "wks-12-23"
+  "ruegen"
   "ganymede"
 )
 
@@ -75,7 +76,7 @@ if(HOSTED_AT_VISICS GREATER -1)
   #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/users/visics/rbenenso/no_backup/usr/local/lib/pkgconfig)
 
   #set(OPT_CXX_FLAGS "-fopenmp -march=native -mtune=native -ffast-math -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2") # just for testing
-  
+
   option(USE_GPU "Should the GPU be used ?" ON)
   #option(USE_GPU "Should the GPU be used ?" OFF) # set to false for testing purposes only
   set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
@@ -248,6 +249,95 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
   link_directories(
    # "/home/rodrigob/code/references/libwebp-0.3.0-linux-x86-64/lib"
   )
+
+elseif(HOSTED_AT_D2_GPU GREATER -1)
+
+  message(STATUS "Using d2 with gpu optimisation options")
+
+  # add local compiled opencv trunk in the pkg-config paths
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
+  set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+
+  # work around to use gcc-4.4 instead of 4.5
+  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_21)
+
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/lib/x86_64-linux-gnu/")
+  #set(local_CUDA_LIB_DIR "/usr/lib64/")
+  set(cuda_LIBS "")
+  #set(cutil_LIB "cutil")
+  set(cutil_LIB "") # no cutil
+
+  include_directories(
+    /BS/mohomran-projects/work/Software/protobuf-2.5.0/build/include
+    #/home/mfritz/local/include
+  )
+
+  link_directories(
+    /BS/mohomran-projects/work/Software/protobuf-2.5.0/build/lib
+    #/home/mfritz/local/lib
+  )
+
+  # faster malloc, and a good profiler via http://google-perftools.googlecode.com
+  set(google_perftools_LIBS tcmalloc profiler)
+  set(EUROPA_SVN "/home/rodrigob/code/europa_svn/code")
+
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+
+  if(USE_GPU)
+    #set(opencv_INCLUDE_DIRS "/home/local/opencv_2.4.3/include/")
+    #set(opencv_LIBRARY_DIRS "/home/mfritz/local/opencv_2.4.3/lib/")
+
+    set(opencv_INCLUDE_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.5/install/include")
+    set(opencv_LIBRARY_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.5/install/lib")
+  else()
+    #message("Using no gpu opencv on a GPU capable machine")
+    set(opencv_INCLUDE_DIRS "/home/benenson/projects/work/local/opencv_2.4.3_no_gpu/include")
+    set(opencv_LIBRARY_DIRS "/home/benenson/projects/work/local/opencv_2.4.3_no_gpu/lib")
+  endif()
+
+
+elseif(HOSTED_AT_D2_NO_GPU GREATER -1)
+  message(STATUS "Using d2 no gpu optimisation options")
+
+  # add local compiled opencv trunk in the pkg-config paths
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
+  set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
+
+  option(USE_GPU "Should the GPU be used ?" FALSE)
+  #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+
+  set(opencv_INCLUDE_DIRS "/home/benenson/projects/work/local/opencv_2.4.3_no_gpu/include")
+  set(opencv_LIBRARY_DIRS "/home/benenson/projects/work/local/opencv_2.4.3_no_gpu/lib")
+
+  #set(opencv_INCLUDE_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.1/install/include")
+  #set(opencv_LIBRARY_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.1/install/lib")
+
+  include_directories(
+    /home/mfritz/software/protobuf-read-only
+    /home/mfritz/local/include
+    /home/benenson/code/references/libwebp-0.3.0-linux-x86-64/include
+  )
+
+  link_directories(
+    /home/mfritz/local/lib
+    /home/benenson/code/references/libwebp-0.3.0-linux-x86-64/lib
+  )
+
+  # faster malloc, and a good profiler via http://google-perftools.googlecode.com
+  set(google_perftools_LIBS tcmalloc profiler)
+
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+
 
 else ()
   message(FATAL_ERROR, "Unknown machine, please add your configuration inside doppia/common_settings.cmake")

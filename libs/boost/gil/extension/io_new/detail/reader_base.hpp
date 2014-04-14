@@ -24,7 +24,7 @@
 namespace boost { namespace gil { namespace detail {
 
 /// Reader Base Class
-/// 
+///
 /// It provides some basic functionality which is shared for all readers.
 /// For instance, it recreates images when necessary. It checks whether
 /// user supplied coordinates are valid.
@@ -126,11 +126,10 @@ private:
     }
 
 protected:
+    ConversionPolicy _cc_policy;
 
     image_read_settings< FormatTag > _settings;
     image_read_info< FormatTag >     _info;
-
-    ConversionPolicy _cc_policy;
 };
 
 } // namespace detail
