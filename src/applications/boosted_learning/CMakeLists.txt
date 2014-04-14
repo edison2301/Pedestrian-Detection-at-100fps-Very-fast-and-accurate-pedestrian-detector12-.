@@ -43,7 +43,15 @@ include(${doppia_root}/common_settings.cmake)
 # ----------------------------------------------------------------------
 # Setup required libraries
 pkg_check_modules(libpng REQUIRED libpng)
-pkg_check_modules(opencv REQUIRED opencv>=2.3)
+#pkg_check_modules(opencv REQUIRED opencv>=2.3)
+
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup link and include directories
@@ -90,10 +98,18 @@ include_directories(
 
 set(doppia_src "${doppia_root}/src")
 
-file(GLOB SrcCpp 
+file(GLOB SrcCpp
   "./*.*pp"
+
+  "${doppia_src}/applications/Abstract*.cpp"
+  "${doppia_src}/applications/BaseApplication.cpp"
+  "${doppia_src}/applications/EmptyGui.cpp"
+
   #"${doppia_src}/*.cpp"
+  "${doppia_src}/boosted_learning/WeakClassifier.cpp"
   "${doppia_src}/objects_detection/*.pb.c*"
+  "${doppia_src}/boosted_learning/*.cpp"
+  "${doppia_src}/boosted_learning/Node.hpp"
    #"${doppia_src}/applications/*.cpp"
 )
 
@@ -102,8 +118,10 @@ file(GLOB HelpersCpp
   #"${doppia_src}/helpers/data/*.c*"
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/Log.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/replace_environment_variables.cpp"
+  "${doppia_src}/helpers/progress_display_*.cpp"
 )
 
 
@@ -118,10 +136,11 @@ add_executable(boosted_learning
 target_link_libraries(boosted_learning
 
    bootstrapping
-   linear
+   linear blas
 
    boost_program_options-mt
    boost_filesystem-mt boost_system-mt
+   boost_serialization-mt
    boost_thread-mt pthread
    protobuf
    SDL X11 Xext #Xrandr
@@ -130,6 +149,6 @@ target_link_libraries(boosted_learning
    ${opencv_LIBRARIES}
 
    #${google_perftools_LIBS}
-)   
+)
 
 # ----------------------------------------------------------------------

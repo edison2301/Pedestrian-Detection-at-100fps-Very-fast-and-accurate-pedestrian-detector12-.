@@ -252,13 +252,13 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
 
     const size_t magnitude_channel_index = 6;
     float
-            max_magnitude_diff=-std::numeric_limits<float>::max(),
-            min_magnitude_diff=std::numeric_limits<float>::max();
+            max_magnitude_diff = -std::numeric_limits<float>::max(),
+            min_magnitude_diff = std::numeric_limits<float>::max();
 
     Eigen::MatrixXf cpu_channel, gpu_channel;
 
     bool found_one_difference = false;
-    for(size_t channel_index=0; channel_index < cpu_integral_channels.shape()[0]; channel_index +=1 )
+    for(size_t channel_index = 0; channel_index < cpu_integral_channels.shape()[0]; channel_index += 1)
     {
         // reconstruct "non integral image" from integral image
         get_channel_matrix(cpu_integral_channels, channel_index, cpu_channel);
@@ -268,11 +268,11 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
         BOOST_REQUIRE(cpu_channel.rows() == gpu_channel.rows());
 
         bool stop_this_channel = false;
-        for(size_t row_index=0;
+        for(size_t row_index = 0;
             (row_index < static_cast<size_t>(cpu_channel.rows())) and (not stop_this_channel);
             row_index +=1 )
         {
-            for(size_t col_index=0;
+            for(size_t col_index = 0;
                 (col_index < static_cast<size_t>(cpu_channel.cols())) and (not stop_this_channel);
                 col_index +=1 )
             {

@@ -25,7 +25,15 @@ project (BootstrappingLib)
 include(${doppia_root}/common_settings.cmake)
 
 pkg_check_modules(libpng REQUIRED libpng)
-pkg_check_modules(opencv REQUIRED opencv>=2.3)
+#pkg_check_modules(opencv REQUIRED opencv>=2.3)
+
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -35,8 +43,9 @@ if(USE_GPU)
 endif(USE_GPU)
 
 # ----------------------------------------------------------------------
-set(local_INCLUDE_DIRS 
-    "${doppia_root}/libs" 
+set(local_INCLUDE_DIRS
+    "${doppia_root}/libs"
+    "${doppia_root}/libs/eigen3"
     "${doppia_root}/src"
     "${doppia_root}/src/applications/boosted_learning"
     #"/usr/include/eigen2"
@@ -46,7 +55,7 @@ set(local_INCLUDE_DIRS
     #"/users/visics/mmathias/devel/chFeatDet/" # include mmathias code
     "/usr/local/cuda/include"
     )
-    
+
 include_directories(
  ${local_INCLUDE_DIRS}
  "${doppia_root}/libs/cudatemplates/include"
@@ -56,7 +65,7 @@ include_directories(
 link_directories(
   "/usr/local/lib"
   "/users/visics/rbenenso/no_backup/usr/local/lib"
-  ${libpng_LIBRARY_DIRS} 
+  ${libpng_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
 )
 
@@ -71,7 +80,7 @@ add_definitions(-DBOOTSTRAPPING_LIB)
 
 set(doppia_src "${doppia_root}/src")
 
-file(GLOB SrcCpp 
+file(GLOB SrcCpp
   "./*.*pp"
   #"${doppia_src}/objects_detection/*.c*"
   "${doppia_src}/objects_detection/Abstract*.c*"
@@ -81,13 +90,16 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/Detection*.c*"
   "${doppia_src}/objects_detection/*Model.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
-  "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/Integral*.c*"
+  "${doppia_src}/objects_detection/VeryFastIntegral*.c*"
+  "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
   "${doppia_src}/objects_detection/integral_channels/Integral*.c*"
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
   "${doppia_src}/objects_detection/*.pb.c*"
   "${doppia_src}/objects_detection/Greedy*.c*"
+  "${doppia_src}/objects_detection/cascade_stages/*.c*"
   "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
 
 
@@ -98,7 +110,7 @@ file(GLOB SrcCpp
   "${doppia_src}/video_input/calibration/*.c*"
   "${doppia_src}/video_input/preprocessing/*.cpp"
   "${doppia_src}/image_processing/*.cpp"
-  
+
 )
 
 file(GLOB HelpersCpp
@@ -111,6 +123,7 @@ file(GLOB HelpersCpp
   #"${doppia_src}/helpers/AlignedImage.cpp"
   #"${doppia_src}/drawing/gil/*.cpp"
   "${doppia_src}/drawing/gil/draw_matrix.cpp"
+  "${doppia_src}/drawing/gil/colors.cpp"
   "${doppia_src}/helpers/objects_detection/*.cpp"
 )
 

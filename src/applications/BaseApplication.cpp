@@ -1,9 +1,14 @@
 #include "BaseApplication.hpp"
 
-
 // import bug fixed version file
 #include "../libs/boost/gil/color_base_algorithm.hpp"
 #include "../libs/boost/gil/pixel.hpp"
+
+#include "BaseApplication.hpp"
+
+#include "helpers/Log.hpp"
+#include "helpers/get_option_value.hpp"
+#include "helpers/any_to_string.hpp"
 
 #include <boost/gil/gil_all.hpp>
 #include <boost/gil/extension/io/png_io.hpp>
@@ -12,13 +17,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/format.hpp>
-
-#include "BaseApplication.hpp"
-
-#include "helpers/Log.hpp"
-#include "helpers/get_option_value.hpp"
-#include "helpers/any_to_string.hpp"
-#include "helpers/for_each.hpp"
+#include <boost/foreach.hpp>
 
 #include <omp.h>
 
@@ -63,16 +62,16 @@ BaseApplication::BaseApplication()
     using namespace boost::posix_time;
     const ptime current_time(second_clock::local_time());
 
-    recording_path = boost::str( boost::format("%i_%02i_%02i_%i_recordings")
-                                 % current_time.date().year()
-                                 % current_time.date().month().as_number()
-                                 % current_time.date().day()
-                                 % current_time.time_of_day().total_seconds() );
+    recordings_path = boost::str( boost::format("%i_%02i_%02i_%i_recordings")
+                                  % current_time.date().year()
+                                  % current_time.date().month().as_number()
+                                  % current_time.date().day()
+                                  % current_time.time_of_day().total_seconds() );
 
-    if(boost::filesystem::exists(recording_path) == true)
+    if(boost::filesystem::exists(recordings_path) == true)
     {
         // this should never happen
-        printf("images_recording_path == %s\n", recording_path.string().c_str());
+        printf("images_recording_path == %s\n", recordings_path.string().c_str());
         throw std::runtime_error("Image recording path already exists. Please wait one second and try again.");
     }
 
@@ -90,7 +89,7 @@ BaseApplication::~BaseApplication()
 
 
 int BaseApplication::main(int argc, char *argv[])
-{    
+{
     cout << get_application_title() << endl;
 
     program_options::variables_map options_values;
@@ -114,9 +113,9 @@ int BaseApplication::main(int argc, char *argv[])
         return_value = EXIT_FAILURE;
     }
 
-    if(exists(recording_path))
+    if(exists(recordings_path))
     {
-        cout << "Results were saved inside " << recording_path << endl;
+        cout << "Results were saved inside " << recordings_path << endl;
     }
     cout << "End of game, have a nice day." << endl;
     return return_value;
@@ -127,17 +126,18 @@ program_options::options_description BaseApplication::get_args_options(const std
     program_options::options_description desc("BaseApplication options");
     desc.add_options()
 
-    ("configuration_file,c", program_options::value<string>(), "indicate the filename of the configuration .ini file")
+            ("configuration_file,c", program_options::value<string>(),
+             "indicate the filename of the configuration .ini file")
 
-    ("log", program_options::value<string>()->default_value(application_name + ".out.txt"),
-     "where should the data log be recorded.\n" \
-     "if 'stdout' is indicated, all the messages will be written to the console\n" \
-     "if 'none' is indicate, no message will be shown nor recorded")
-    ("recording_path", program_options::value<string>()->default_value("none"),
-             "overwrites the default recording path (year_month_day_timestamp_recordings).\n" \
-             )
+            ("log", program_options::value<string>()->default_value(application_name + ".out.txt"),
+             "where should the data log be recorded.\n"
+             "if 'stdout' is indicated, all the messages will be written to the console\n"
+             "if 'none' is indicate, no message will be shown nor recorded")
 
-    ;
+            ("recordings_path", program_options::value<string>()->default_value("none"),
+             "overwrites the default recordings path (year_month_day_timestamp_recordings).\n")
+
+            ;
 
     return desc;
 }
@@ -257,8 +257,7 @@ bool BaseApplication::parse_arguments(int argc, char *argv[], program_options::v
     }
 
     return arguments_correctly_parsed;
-}
-
+} // end of BaseApplication::parse_arguments
 
 
 /// helper method called by setup_problem
@@ -281,7 +280,6 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
     rules_for_stdout.add_rule(logging::InfoMessage, "graphics");
     rules_for_stdout.add_rule(logging::InfoMessage, "detector");
     logging::get_log().set_console_stream(std::cout, rules_for_stdout);
-
 
 
     const string log_option_value = get_option_value<string>(options, "log");
@@ -322,9 +320,8 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
 
     }
 
-
     return;
-}
+} // end of BaseApplication::setup_logging
 
 
 
@@ -349,6 +346,7 @@ bool BaseApplication::update_gui()
     }
 }
 
+
 void BaseApplication::save_solution()
 {
 
@@ -356,33 +354,37 @@ void BaseApplication::save_solution()
     return;
 }
 
-void  BaseApplication::create_recording_path()
+
+void  BaseApplication::create_recordings_path()
 {
 
     //allow for fixed output filenames
-    string new_recording_path = get_option_value<string>(options, "recording_path");
-    if (new_recording_path != "none"){
-        this->recording_path = boost::filesystem::path(new_recording_path);
+    string new_recordings_path = get_option_value<string>(options, "recordings_path");
+    if (new_recordings_path != "none"){
+        this->recordings_path = boost::filesystem::path(new_recordings_path);
     }
 
-    if(exists(recording_path) == false)
+    if(exists(recordings_path) == false)
     {
         // create the directory
-        create_directory(recording_path);
+        create_directory(recordings_path);
         log_info() << boost::str(boost::format("Created recordings directory %s")
-                                 % recording_path.string()) << std::endl;
+                                 % recordings_path.string()) << std::endl;
         record_program_options();
     }
     return;
 }
 
+
 void BaseApplication::record_program_options() const
 {
 
-    const string fout_filename = (recording_path / "program_options.txt").string();
+    const string fout_filename = (recordings_path / "program_options.txt").string();
     ofstream fout(fout_filename.c_str());
+
     program_options::variables_map::const_iterator options_it;
-    for_each(options_it, options)
+    //BOOST_FOREACH(const program_options::variables_map::const_iterator options_it, options)
+    for(options_it = options.begin(); options_it != options.end(); ++options_it)
     {
         const program_options::variables_map::value_type &option = *options_it;
         fout << option.first << " = " << any_to_string(option.second.value());
@@ -401,15 +403,11 @@ void BaseApplication::record_program_options() const
 }
 
 
-
 const boost::filesystem::path &BaseApplication::get_recording_path()
 {
-    create_recording_path();
-    return recording_path;
+    create_recordings_path();
+    return recordings_path;
 }
-
-
-
 
 
 } // end of namespace doppia

@@ -2,6 +2,7 @@
 #include "bootstrapping_lib.hpp"
 
 #include "helpers/get_option_value.hpp"
+#include "helpers/Log.hpp"
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -19,7 +20,9 @@ namespace {
 
 using namespace std;
 using namespace boost;
+using boost::filesystem::path;
 using namespace bootstrapping;
+
 
 class TestSimpleBootstrappingApplication
 {
@@ -44,7 +47,7 @@ public:
 
     void setup_problem(const program_options::variables_map &options);
 
-    void compute_solution();
+    void compute_solution(const program_options::variables_map &options);
 
     void save_solution();
 
@@ -88,7 +91,7 @@ int TestSimpleBootstrappingApplication::main(int argc, char *argv[])
     program_options::variables_map options = parse_arguments(argc, argv);
     setup_problem(options);
 
-    compute_solution();
+    compute_solution(options);
 
     save_solution();
 
@@ -96,6 +99,7 @@ int TestSimpleBootstrappingApplication::main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+
 
 program_options::options_description TestSimpleBootstrappingApplication::get_args_options(void)
 {
@@ -114,6 +118,7 @@ program_options::options_description TestSimpleBootstrappingApplication::get_arg
 
     return desc;
 }
+
 
 program_options::variables_map TestSimpleBootstrappingApplication::parse_arguments(int argc, char *argv[])
 {
@@ -154,8 +159,22 @@ program_options::variables_map TestSimpleBootstrappingApplication::parse_argumen
     return options;
 }
 
+
 void TestSimpleBootstrappingApplication::setup_problem(const program_options::variables_map &options)
 {
+    const bool print_log_messages = false;
+    if(print_log_messages)
+    {
+        logging::get_log().clear(); // we reset previously existing options
+
+        logging::LogRuleSet logging_rules;
+        logging_rules.add_rule(logging::DebugMessage, "*");
+        logging_rules.add_rule(logging::WarningMessage, "*");
+        logging_rules.add_rule(logging::InfoMessage, "*");
+        logging_rules.add_rule(logging::EveryMessage, "*");
+
+        logging::get_log().add(std::cout, logging_rules);
+    }
 
     using namespace boost::filesystem;
 
@@ -197,11 +216,12 @@ void TestSimpleBootstrappingApplication::setup_problem(const program_options::va
     return;
 }
 
-void TestSimpleBootstrappingApplication::compute_solution()
+
+void TestSimpleBootstrappingApplication::compute_solution(const program_options::variables_map &options)
 {
     printf("Processing, please wait...\n");
 
-    const float
+/*    const float
             min_scale = 0.5,
             max_scale = 3;
     const int num_scales = 10;
@@ -211,8 +231,25 @@ void TestSimpleBootstrappingApplication::compute_solution()
             max_ratio = 2;
     const int num_ratios = 10;
 
-    const size_t original_size = integral_images.size();
+*/
+
+    // same parameters as when training/testing on INRIA
+    const float
+            min_scale = 0.6,
+            max_scale = 8.6;
+            //max_scale = 3;
+    const int num_scales = 55;
+
+
+    const float
+            min_ratio = 1,
+            max_ratio = 1;
+    const int num_ratios = 1;
+
     const bool use_less_memory = false;
+
+
+    const size_t original_size = integral_images.size();
     bootstrapping::bootstrap(
                 classifier_model_filepath,
                 negative_image_paths_to_explore,
@@ -221,13 +258,13 @@ void TestSimpleBootstrappingApplication::compute_solution()
                 min_ratio, max_ratio, num_ratios,
                 use_less_memory,
                 meta_data,
-                integral_images);
+                integral_images,
+options);
 
     if(meta_data.size() != integral_images.size())
     {
         throw std::runtime_error("bootstrapping::bootstrap has an bug, meta_data.size() != integral_images.size()");
     }
-
 
 
     const bool save_integral_images = false;
@@ -265,6 +302,7 @@ void TestSimpleBootstrappingApplication::compute_solution()
 
     return;
 }
+
 
 void TestSimpleBootstrappingApplication::save_solution()
 {
