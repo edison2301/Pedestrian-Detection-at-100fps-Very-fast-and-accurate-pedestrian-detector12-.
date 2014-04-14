@@ -57,7 +57,7 @@ StereoCameraCalibration::StereoCameraCalibration(const string &calibration_file_
 
 
     // parse the protocol buffer file
-    fstream input_stream(calibration_file_path.c_str(), ios::in /*| ios::text*/);
+    fstream input_stream(calibration_file_path.c_str(), ios::in); // text is default stream format
 
     io::ZeroCopyInputStream *zci_stream_p = new io::IstreamInputStream(&input_stream);
 
@@ -161,7 +161,7 @@ CameraCalibration &StereoCameraCalibration::get_right_camera_calibration()
 
 const CameraCalibration &StereoCameraCalibration::get_camera_calibration(const int camera_index) const
 {
-    if(camera_index < 0 || camera_index > 1)
+    if(camera_index < 0 or camera_index > 1)
     {
         throw std::runtime_error("On a stereo camera, camera_index can only be 0 or 1");
     }

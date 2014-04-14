@@ -306,8 +306,8 @@ void parse_using_boost_spirit(std::ifstream &model_file, float &bias, Eigen::Vec
 
         log_debug() << "Read w of size " << w.size() << std::endl << w << std::endl;
 
-        //if (!result or first != last)
-        //if (!result or content_begin != content_end)
+        //if (not result or first != last)
+        //if (not result or content_begin != content_end)
         if (result == false)
         { // fail if we did not get a full match
             throw std::runtime_error("LibSVM model parsing failed");

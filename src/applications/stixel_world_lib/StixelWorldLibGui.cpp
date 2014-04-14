@@ -476,5 +476,4 @@ void StixelWorldLibGui::draw_stixels_estimation()
 } // end of StixelWorldLibGui::draw_stixels_estimation
 
 
-
 } // end of namespace init_stixel_world

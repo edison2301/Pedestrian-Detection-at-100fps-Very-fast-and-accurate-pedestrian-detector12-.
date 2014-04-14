@@ -33,8 +33,6 @@ protected:
 
     void compute_extra_data_per_scale(const size_t input_width, const size_t input_height);
 
-    std::vector<fractional_cascade_stages_t> fractional_detection_cascade_per_scale;
-
 public:
 
     bool should_shuffle_the_scales;
@@ -42,6 +40,12 @@ public:
     /// Helper debug variable
     std::vector<size_t> detector_index_per_scale;
 
+protected:
+    /// obtain the 'final' search range including scale, occlusion, detector size and shrinking factor information
+    DetectorSearchRange compute_scaled_search_range(const size_t scale_index) const;
+
+    /// helper function that validates the internal consistency of the extra_data_per_scale
+    void check_extra_data_per_scale();
 };
 
 /// Helper method used in both CPU and GPU versions

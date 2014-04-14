@@ -171,7 +171,7 @@ const StereoCameraCalibration& CpuPreprocessor::get_post_processing_calibration(
 void CpuPreprocessor::run(const input_image_view_t& input, const int camera_index, const output_image_view_t &output)
 {
 
-    if(camera_index < 0 || camera_index > 1)
+    if(camera_index < 0 or camera_index > 1)
     {
         throw std::runtime_error("On a stereo camera, camera_index can only be 0 or 1");
     }
@@ -214,7 +214,7 @@ void CpuPreprocessor::run(const input_image_view_t& input, const int camera_inde
 const point2<float> CpuPreprocessor::run(const point2<int> &point, const int camera_index) const
 {
 
-    if(camera_index < 0 || camera_index > 1)
+    if(camera_index < 0 or camera_index > 1)
     {
         throw std::runtime_error("On a stereo camera, camera_index can only be 0 or 1");
     }
@@ -229,15 +229,17 @@ const point2<float> CpuPreprocessor::run(const point2<int> &point, const int cam
     return t_point;
 }
 
+/**
+Smooth given image with a Gaussian
 
-/// Smooth given image with a Gaussian
-///
-/// @param im image to smooth
-/// @param sigma sigma of Gaussian
-/// @param fsize size of filter mask
-
+ @param im image to smooth
+ @param sigma sigma of Gaussian
+ @param fsize size of filter mask
+*/
 void CpuPreprocessor::compute_smoothing(const input_image_view_t &src, const output_image_view_t &dst)
 {
+    // see toyota/lib/graphics/ImageSmooth.hpp
+
     // FIXME hardcoded value
     //const int num_iterations = 20;
     //const int num_iterations = 5;
@@ -255,11 +257,11 @@ void CpuPreprocessor::compute_smoothing(const input_image_view_t &src, const out
         cvSmooth(ipl_dst.get(), ipl_dst.get(), CV_BLUR,3);
     }
 
+
     return;
 }
 
-
-/// Return focal point of camera
+/// @returns focal point of camera
 Vector3f get_focal_point(const Pose &pose)
 {
     return -pose.R.transpose() * pose.t;
@@ -312,8 +314,8 @@ void CpuPreprocessor::compute_rectification_homographies(
     R_new.row(1) = v2;
     R_new.row(2) = v3;
 
-    log_debug() << "v1 == " << v1 << std::endl;
-    log_debug() << "R1 set with v1, v2, v3 == " << R_new << std::endl;
+    log_debug() << "v1 == " << v1.transpose() << std::endl;
+    log_debug() << "R1 set with v1, v2, v3 ==\n" << R_new << std::endl;
 
 
     // find best offset --
@@ -373,13 +375,13 @@ void CpuPreprocessor::compute_rectification_homographies(
                                        + compute_rectification(bottom_right, KR_new_left).x
                                        )*0.5),
                     right_margin_a = dimensions.x -
-                                     ((compute_rectification(top_right, KR_new_right).x
-                                       + compute_rectification(bottom_right, KR_new_right).x
-                                       )*0.5),
+                    ((compute_rectification(top_right, KR_new_right).x
+                      + compute_rectification(bottom_right, KR_new_right).x
+                      )*0.5),
                     right_margin_b =-(
-                                        (compute_rectification(top_left, KR_new_right).x
-                                         + compute_rectification(bottom_left, KR_new_right).x
-                                         )*0.5);
+                        (compute_rectification(top_left, KR_new_right).x
+                         + compute_rectification(bottom_left, KR_new_right).x
+                         )*0.5);
 
 
             const float
@@ -586,7 +588,7 @@ void CpuPreprocessor::compute_harris_corners()
 {
 
 
-    if ((m_pstages & PREPROCESS_HARRIS) && harris != NULL)
+    if ((m_pstages & PREPROCESS_HARRIS) and harris != NULL)
     {
         Image< float > gim(im.width(), im.height());
 
@@ -611,7 +613,7 @@ void CpuPreprocessor::compute_harris_corners()
             {
                 (*harris)(x,y) = gx(x,y)*gy(x,y) - gxy(x,y)*gxy(x,y) -
                                  0.04*(gx(x,y) + gy(x,y))*(gx(x,y) + gy(x,y));
-                if ((*harris)(x, y) < 0 || x < 3 || y < 3 || x > gim.width() - 4 || y > gim.height() - 4)
+                if ((*harris)(x, y) < 0 or x < 3 or y < 3 or x > gim.width() - 4 or y > gim.height() - 4)
                     (*harris)(x, y) = 0;
             }
     }

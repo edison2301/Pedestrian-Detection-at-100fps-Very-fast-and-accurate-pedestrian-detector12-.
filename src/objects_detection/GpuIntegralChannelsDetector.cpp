@@ -4,6 +4,7 @@
 
 #include "helpers/get_option_value.hpp"
 #include "helpers/Log.hpp"
+#include "helpers/gpu/select_gpu_device.hpp"
 
 #include <cudatemplates/hostmemoryheap.hpp>
 #include <cudatemplates/copy.hpp>
@@ -11,6 +12,9 @@
 #include <boost/gil/extension/opencv/ipl_image_wrapper.hpp>
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/round.hpp>
+#include <boost/variant/static_visitor.hpp>
+#include <boost/variant/apply_visitor.hpp>
+#include <boost/variant/get.hpp>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -48,7 +52,6 @@ using namespace boost;
 using namespace boost::program_options;
 
 typedef GpuIntegralChannelsDetector::cascade_stages_t cascade_stages_t;
-typedef cascade_stages_t::value_type cascade_stage_t;
 
 typedef AbstractObjectsDetector::detections_t detections_t;
 typedef AbstractObjectsDetector::detection_t detection_t;
@@ -72,6 +75,10 @@ GpuIntegralChannelsDetector::get_args_options()
              "If frugal memory usage is enabled, we will reduce the memory usage, "
              "at the cost of longer computation time.")
 
+            ("gpu.device_id",
+             program_options::value<int>()->default_value(0),
+             "select which GPU use for detection.")
+
             ;
 
     return desc;
@@ -86,9 +93,10 @@ GpuIntegralChannelsDetector::GpuIntegralChannelsDetector(
     : BaseIntegralChannelsDetector(options, cascade_model_p, non_maximal_suppression_p,
                                    score_threshold, additional_border),
       frugal_memory_usage(get_option_value<bool>(options, "objects_detector.gpu.frugal_memory_usage")),
-      previous_resized_input_gpu_matrix_index(0),
-      use_stump_cascades(false)
+      previous_resized_input_gpu_matrix_index(0)
 {
+    const int gpu_device_id = get_option_value<int>(options, "gpu.device_id");
+    set_gpu_device(gpu_device_id);
 
     // create the integral channels computer
     integral_channels_computer_p.reset(new GpuIntegralChannelsForPedestrians());
@@ -168,14 +176,12 @@ void GpuIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &inpu
     }
 
     // set default search range --
-    if(input_dimensions_changed or search_ranges.empty())
+    if(input_dimensions_changed or search_ranges_data.empty())
     {
         log_debug() << boost::str(boost::format("::set_image resizing the search_ranges using input size (%i,%i)")
                                   % input_view.width() % input_view.height()) << std::endl;
 
-        compute_search_ranges(input_view.dimensions(),
-                              scale_one_detection_window_size,
-                              search_ranges);
+        compute_search_ranges_meta_data(search_ranges_data);
 
         // update the detection cascades
         compute_scaled_detection_cascades();
@@ -185,9 +191,126 @@ void GpuIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &inpu
         compute_extra_data_per_scale(input_view.width(), input_view.height());
 
         // resize helper array
-        resized_input_gpu_matrices.resize(search_ranges.size());
+        resized_input_gpu_matrices.resize(search_ranges_data.size());
     } // end of "set default search range"
 
+    return;
+}
+
+
+class stages_are_empty: public boost::static_visitor<size_t>
+{
+public:
+
+    template<typename T>
+    bool operator()(const T &stages) const
+    {
+        return stages.empty();
+    }
+}; // end of visitor class stages_are_empty
+
+
+
+class set_gpu_scale_detection_cascades_visitor: public boost::static_visitor<void>
+{
+
+public:
+
+    typedef GpuIntegralChannelsDetector::variant_stages_t variant_stages_t;
+    typedef std::vector<cascade_stages_t> cpu_variant_cascade_per_scale_t;
+    cpu_variant_cascade_per_scale_t &cpu_variant_cascade_per_scale;
+
+    typedef GpuIntegralChannelsDetector::gpu_detection_variant_cascade_per_scale_t gpu_variant_cascade_per_scale_t;
+    gpu_variant_cascade_per_scale_t &gpu_variant_cascade_per_scale;
+
+    set_gpu_scale_detection_cascades_visitor(
+            cpu_variant_cascade_per_scale_t &cpu_variant_cascade_per_scale_,
+            gpu_variant_cascade_per_scale_t &gpu_variant_cascade_per_scale_)
+        :
+          cpu_variant_cascade_per_scale(cpu_variant_cascade_per_scale_),
+          gpu_variant_cascade_per_scale(gpu_variant_cascade_per_scale_)
+    {
+        // nothing to do here
+        return;
+    }
+
+    typedef SoftCascadeOverIntegralChannelsModel::plain_stages_t plain_stages_t;
+    typedef SoftCascadeOverIntegralChannelsModel::fast_fractional_stages_t fast_fractional_stages_t;
+
+    /// we use this visitor as a trick to obtain the concrete stages type,
+    /// we will actually operate only on the constructor arguments
+    template<typename CpuCascadeType>
+    void operator()(const CpuCascadeType &) const;
+
+}; // end of visitor class set_gpu_scale_detection_cascades_visitor
+
+
+/// we use this visitor as a trick to obtain the concrete stages type,
+/// we will actually operate only on the constructor arguments
+template<typename CpuCascadeType>
+void set_gpu_scale_detection_cascades_visitor::operator()(const CpuCascadeType &) const
+{
+    typedef typename CpuCascadeType::value_type cascade_stage_t;
+
+    typedef Cuda::DeviceMemoryLinear2D<cascade_stage_t> gpu_cascade_per_scale_t;
+
+    if(boost::get<gpu_cascade_per_scale_t>(&gpu_variant_cascade_per_scale) == NULL)
+    {
+        // only set the variable if the object did not exist before, otherwise, reuse
+        // (not doing this, create an ugly memory leak when having variable size input images)
+        gpu_variant_cascade_per_scale = gpu_cascade_per_scale_t();
+    }
+    gpu_cascade_per_scale_t &gpu_cascade_per_scale = boost::get<gpu_cascade_per_scale_t>(gpu_variant_cascade_per_scale);
+
+
+    // cpu_cascade_per_scale is in "stl like" containers,
+    // while host_cascade_per_scale is a Cuda::HostMemory type
+    const size_t
+            cascades_length = boost::get<CpuCascadeType>(cpu_variant_cascade_per_scale[0]).size(),
+            num_cascades = cpu_variant_cascade_per_scale.size();
+
+    Cuda::HostMemoryHeap2D<cascade_stage_t> host_cascade_per_scale(cascades_length, num_cascades);
+
+    for(size_t cascade_index=0; cascade_index < num_cascades; cascade_index+=1)
+    {
+        const CpuCascadeType &t_cpu_cascade = boost::get<CpuCascadeType>(cpu_variant_cascade_per_scale[cascade_index]);
+
+        if(cascades_length != t_cpu_cascade.size())
+        {
+            throw std::invalid_argument("Current version of GpuIntegralChannelsDetector requires "
+                                        "multiscales models with equal number of weak classifiers");
+            // FIXME how to fix this ?
+            // Using cascade_score_threshold to stop when reached the "last stage" ?
+            // Adding dummy stages with zero weight ?
+        }
+
+        for(size_t stage_index =0; stage_index < cascades_length; stage_index += 1)
+        {
+            const size_t index = stage_index + cascade_index*host_cascade_per_scale.stride[0];
+            host_cascade_per_scale[index] = t_cpu_cascade[stage_index];
+        } // end of "for each stage in the cascade"
+    } // end of "for each cascade"
+
+    if(false and ((num_cascades*cascades_length) > 0))
+    {
+        printf("GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades "
+               "Cascade 0, stage 0 cascade_threshold == %3.f\n",
+               host_cascade_per_scale[0].cascade_threshold);
+    }
+
+    gpu_cascade_per_scale.alloc(cascades_length, num_cascades);
+    Cuda::copy(gpu_cascade_per_scale, host_cascade_per_scale);
+
+    return;
+}
+
+
+template<>
+void set_gpu_scale_detection_cascades_visitor::operator()
+<set_gpu_scale_detection_cascades_visitor::plain_stages_t>(
+        const set_gpu_scale_detection_cascades_visitor::plain_stages_t &) const
+{
+    throw std::runtime_error("plain_stages_t not yet supported");
     return;
 }
 
@@ -204,82 +327,16 @@ void GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades()
     if((detection_cascade_per_scale.empty() == false)
        and (detection_cascade_per_scale.front().empty() == false))
     {
-        const size_t
-                cascades_length = detection_cascade_per_scale[0].size(),
-                num_cascades = detection_cascade_per_scale.size();
+        set_gpu_scale_detection_cascades_visitor
+                visitor(
+                    detection_cascade_per_scale,
+                    gpu_detection_variant_cascade_per_scale);
 
-        Cuda::HostMemoryHeap2D<cascade_stage_t> cpu_detection_cascade_per_scale(cascades_length, num_cascades);
+        // we pass the first cascade only as a trick to define the type,
+        // the *_cascade_per_scale are the objects modified.
+        boost::apply_visitor(visitor, detection_cascade_per_scale.front());
 
-        for(size_t cascade_index=0; cascade_index < num_cascades; cascade_index+=1)
-        {
-            if(cascades_length != detection_cascade_per_scale[cascade_index].size())
-            {
-                throw std::invalid_argument("Current version of GpuIntegralChannelsDetector requires "
-                                            "multiscales models with equal number of weak classifiers");
-                // FIXME how to fix this ?
-                // Using cascade_score_threshold to stop when reached the "last stage" ?
-                // Adding dummy stages with zero weight ?
-            }
-
-            for(size_t stage_index =0; stage_index < cascades_length; stage_index += 1)
-            {
-                const size_t index = stage_index + cascade_index*cpu_detection_cascade_per_scale.stride[0];
-                cpu_detection_cascade_per_scale[index] = detection_cascade_per_scale[cascade_index][stage_index];
-            } // end of "for each stage in the cascade"
-        } // end of "for each cascade"
-
-        if(false and ((num_cascades*cascades_length) > 0))
-        {
-            printf("GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades "
-                   "Cascade 0, stage 0 cascade_threshold == %3.f\n",
-                   cpu_detection_cascade_per_scale[0].cascade_threshold);
-        }
-
-        gpu_detection_cascade_per_scale.alloc(cascades_length, num_cascades);
-        Cuda::copy(gpu_detection_cascade_per_scale, cpu_detection_cascade_per_scale);
-    }
-
-    // set the gpu_stump_detection_cascade_per_scale --
-    if((detection_stump_cascade_per_scale.empty() == false)
-       and (detection_stump_cascade_per_scale.front().empty() == false))
-    {
-        const size_t
-                cascades_length = detection_stump_cascade_per_scale[0].size(),
-                num_cascades = detection_stump_cascade_per_scale.size();
-
-        use_stump_cascades = true;
-
-        Cuda::HostMemoryHeap2D<stump_cascade_stage_t> cpu_detection_stump_cascade_per_scale(cascades_length, num_cascades);
-
-        for(size_t cascade_index=0; cascade_index < num_cascades; cascade_index+=1)
-        {
-            if(cascades_length != detection_stump_cascade_per_scale[cascade_index].size())
-            {
-                throw std::invalid_argument("Current version of GpuIntegralChannelsDetector requires "
-                                            "multiscales models with equal number of weak classifiers");
-                // FIXME how to fix this ?
-                // Using cascade_score_threshold to stop when reached the "last stage" ?
-                // Adding dummy stages with zero weight ?
-            }
-
-            for(size_t stage_index =0; stage_index < cascades_length; stage_index += 1)
-            {
-                const size_t index = stage_index + cascade_index*cpu_detection_stump_cascade_per_scale.stride[0];
-                cpu_detection_stump_cascade_per_scale[index] = detection_stump_cascade_per_scale[cascade_index][stage_index];
-            } // end of "for each stage in the cascade"
-        } // end of "for each cascade"
-
-        if(false and ((num_cascades*cascades_length) > 0))
-        {
-            printf("GpuIntegralChannelsDetector::set_gpu_scale_detection_cascades "
-                   "Cascade 0, stump stage 0 cascade_threshold == %3.f\n",
-                   cpu_detection_stump_cascade_per_scale[0].cascade_threshold);
-        }
-
-        //printf("(re)Allocating %zix%zi cascade stumps\n", cascades_length, num_cascades);
-        gpu_detection_stump_cascade_per_scale.alloc(cascades_length, num_cascades);
-        Cuda::copy(gpu_detection_stump_cascade_per_scale, cpu_detection_stump_cascade_per_scale);
-    }
+    } // end of "if detection_cascade_per_scale not empty"
 
     return;
 }
@@ -307,7 +364,7 @@ void GpuIntegralChannelsDetector::compute()
     static bool first_call = true;
 
     assert(integral_channels_computer_p);
-    assert(gpu_detection_cascade_per_scale.getBuffer() != NULL);
+    //assert(gpu_detection_variant_cascade_per_scale.getBuffer() != NULL);
 
     const bool use_v1 = true;
     //const bool use_v1 = false;
@@ -316,7 +373,7 @@ void GpuIntegralChannelsDetector::compute()
     if(use_v1)
     {
         // for each range search
-        for(size_t search_range_index=0; search_range_index < search_ranges.size(); search_range_index +=1)
+        for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index +=1)
         {
             compute_detections_at_specific_scale_v1(search_range_index, first_call);
         } // end of "for each search range"
@@ -330,7 +387,7 @@ void GpuIntegralChannelsDetector::compute()
         //const bool save_score_image = true;
 
         // for each range search
-        for(size_t search_range_index=0; search_range_index < search_ranges.size(); search_range_index +=1)
+        for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index +=1)
         {
             compute_detections_at_specific_scale_v0(search_range_index, save_score_image, first_call);
         } // end of "for each search range"
@@ -455,10 +512,10 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
         }
         else if(scaled_input_image_size.x() < 5)
         {
-            const DetectorSearchRange &original_search_range = search_ranges[search_range_index];
+            const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[search_range_index];
             printf("current scale == %.3f, current ratio == %.3f, current image width == %i, resized image width == %zi\n",
-                   original_search_range.detection_window_scale,
-                   original_search_range.detection_window_ratio,
+                   original_search_range_data.detection_window_scale,
+                   original_search_range_data.detection_window_ratio,
                    input_gpu_mat.cols, scaled_input_image_size.x());
             throw std::invalid_argument("Input scale and ratio ranges (and channel shrinking factor), "
                                         "generates rescaled images with width < 5. This is too narrow.");
@@ -503,6 +560,106 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
 }
 
 
+class invoke_v0_integral_channels_detector: public boost::static_visitor<void>
+{
+protected:
+
+    doppia::objects_detection::gpu_integral_channels_t &integral_channels;
+    const size_t search_range_index;
+    const doppia::DetectorSearchRange &search_range;
+    //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale;
+    const bool use_the_model_cascade;
+    cv::gpu::DevMem2Df& detection_scores;
+
+public:
+
+    invoke_v0_integral_channels_detector(
+            doppia::objects_detection::gpu_integral_channels_t &integral_channels_,
+            const size_t search_range_index_,
+            const doppia::DetectorSearchRange &search_range_,
+            //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
+            const bool use_the_model_cascade_,
+            cv::gpu::DevMem2Df& detection_scores_)
+        : integral_channels(integral_channels_),
+         search_range_index(search_range_index_),
+         search_range(search_range_),
+         //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
+         use_the_model_cascade(use_the_model_cascade_),
+          detection_scores(detection_scores_)
+    {
+        // nothing to do here
+        return;
+    }
+
+    template<typename T>
+    void operator()(T &gpu_detection_cascade_per_scale) const;
+
+protected:
+
+    template<typename T>
+    void compute(T &gpu_detection_cascade_per_scale) const;
+
+}; // end of visitor class invoke_v0_integral_channels_detector
+
+
+
+template<typename T>
+void invoke_v0_integral_channels_detector::operator()(T &gpu_detection_cascade_per_scale) const
+{
+    // gpu_fractional_detection_cascade_per_scale_t
+    // (and others)
+    throw std::runtime_error("invoke_v0_integral_channels_detector with a gpu detection cascade per scale type "
+                             "that is not yet managed");
+    return;
+}
+
+
+template<typename T>
+inline
+void invoke_v0_integral_channels_detector::compute(T &gpu_detection_cascade_per_scale) const
+{
+    doppia::objects_detection::integral_channels_detector(
+                integral_channels,
+                search_range_index,
+                search_range,
+                gpu_detection_cascade_per_scale,
+                use_the_model_cascade,
+                detection_scores);
+    return;
+}
+
+
+template<>
+void invoke_v0_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+
+template<>
+void invoke_v0_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_stump_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_stump_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+
+template<>
+void invoke_v0_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_three_stumps_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_three_stumps_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+
+
 void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
         const size_t search_range_index,
         const bool save_score_image,
@@ -511,14 +668,14 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
     doppia::objects_detection::gpu_integral_channels_t &integral_channels =
             resize_input_and_compute_integral_channels(search_range_index, first_call);
 
-    const DetectorSearchRange &original_search_range = search_ranges[search_range_index];
+    const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[search_range_index];
     //const cascade_stages_t &cascade_stages = detection_cascade_per_scale[search_range_index];
     const detection_window_size_t &detection_window_size = detection_window_size_per_scale[search_range_index];
     const ScaleData &scale_data = extra_data_per_scale[search_range_index];
 
 
 #if defined(BOOTSTRAPPING_LIB)
-    current_image_scale = 1.0f/original_search_range.detection_window_scale;
+    current_image_scale = 1.0f/original_search_range_data.detection_window_scale;
     detections_t *non_rescaled_detections_p = &non_rescaled_detections;
 #else
     detections_t *non_rescaled_detections_p = NULL;
@@ -546,27 +703,25 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
         cv::gpu::GpuMat detection_scores_gpu_mat = detection_scores_cuda_memory.createGpuMatHeader();
         cv::gpu::DevMem2Df detection_scores_device_memory = detection_scores_gpu_mat;
 
+        const doppia::DetectorSearchRange &search_range = scale_data.scaled_search_range;
+        const int width = search_range.max_x, height = search_range.max_y;
+
+        if((width <= 0) or (height <= 0))
+        { // nothing to be done
+            // num_detections is left unchanged
+            return;
+        }
+
         // compute the scores
-        if(use_stump_cascades)
-        {
-            doppia::objects_detection::integral_channels_detector(
-                        integral_channels,
-                        search_range_index,
-                        scale_data.scaled_search_range,
-                        gpu_detection_stump_cascade_per_scale,
-                        use_the_detector_model_cascade,
-                        detection_scores_device_memory);
-        }
-        else
-        {
-            doppia::objects_detection::integral_channels_detector(
-                        integral_channels,
-                        search_range_index,
-                        scale_data.scaled_search_range,
-                        gpu_detection_cascade_per_scale,
-                        use_the_detector_model_cascade,
-                        detection_scores_device_memory);
-        }
+        invoke_v0_integral_channels_detector visitor(
+                    integral_channels,
+                    search_range_index,
+                    search_range,
+                    use_the_detector_model_cascade,
+                    detection_scores_device_memory);
+
+        boost::apply_visitor(visitor, gpu_detection_variant_cascade_per_scale);
+
         detection_scores_mat = detection_scores_cuda_memory.createMatHeader();
 
         if(false)
@@ -609,7 +764,7 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
         cv::minMaxLoc(scores_mat, &min_score, &max_score);
         cv::normalize(scores_mat, normalized_scores, 255, 0, cv::NORM_MINMAX);
 
-        const float original_detection_window_scale = original_search_range.detection_window_scale;
+        const float original_detection_window_scale = original_search_range_data.detection_window_scale;
         const string filename = str(format("gpu_scores_at_%.2f.png") % original_detection_window_scale);
         cv::imwrite(filename, normalized_scores);
         log_info() << "Created debug file " << filename << std::endl;
@@ -622,9 +777,150 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
         }
     }
 
+
+    // explicit call to release, just in case
+    detection_scores_cuda_memory.release();
+
     return;
 }
 
+
+
+class invoke_v1_integral_channels_detector: public boost::static_visitor<void>
+{
+protected:
+
+    doppia::objects_detection::gpu_integral_channels_t &integral_channels;
+    const size_t search_range_index;
+    const doppia::ScaleData scale_data;
+    //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale;
+    const float score_threshold;
+    const bool use_the_model_cascade;
+    doppia::objects_detection::gpu_detections_t& gpu_detections;
+    size_t &num_detections;
+
+public:
+
+    invoke_v1_integral_channels_detector(
+            doppia::objects_detection::gpu_integral_channels_t &integral_channels_,
+            const size_t search_range_index_,
+            const doppia::ScaleData &scale_data_,
+            //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
+            const float score_threshold_,
+            const bool use_the_model_cascade_,
+            doppia::objects_detection::gpu_detections_t& gpu_detections_,
+            size_t &num_detections_)
+        : integral_channels(integral_channels_),
+         search_range_index(search_range_index_),
+         scale_data(scale_data_),
+         //gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
+         score_threshold(score_threshold_),
+         use_the_model_cascade(use_the_model_cascade_),
+         gpu_detections(gpu_detections_),
+         num_detections(num_detections_)
+    {
+        // nothing to do here
+        return;
+    }
+
+    template<typename T>
+    void operator()(T &gpu_detection_cascade_per_scale) const;
+
+protected:
+
+    template<typename T>
+    void compute(T &gpu_detection_cascade_per_scale) const;
+
+}; // end of visitor class invoke_v0_integral_channels_detector
+
+
+
+template<typename T>
+void invoke_v1_integral_channels_detector::operator()(T &gpu_detection_cascade_per_scale) const
+{
+    printf("Received type %s\n", typeid(T).name());
+    throw std::runtime_error("invoke_v1_integral_channels_detector with a gpu detection cascade per scale type "
+                             "that is not yet managed");
+    return;
+}
+
+
+template<typename T>
+inline
+void invoke_v1_integral_channels_detector::compute(T &gpu_detection_cascade_per_scale) const
+{
+    doppia::objects_detection::integral_channels_detector(
+                integral_channels,
+                search_range_index,
+                scale_data,
+                gpu_detection_cascade_per_scale,
+                score_threshold,
+                use_the_model_cascade,
+                gpu_detections,
+                num_detections);
+    return;
+}
+
+
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_stump_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_stump_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_fractional_detection_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_fractional_detection_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+/*
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_two_stumps_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_two_stumps_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+*/
+
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_three_stumps_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_three_stumps_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+
+/*
+template<>
+void invoke_v1_integral_channels_detector::operator()
+<GpuIntegralChannelsDetector::gpu_detection_four_stumps_cascade_per_scale_t>
+(GpuIntegralChannelsDetector::gpu_detection_four_stumps_cascade_per_scale_t &gpu_detection_cascade_per_scale) const
+{
+    compute(gpu_detection_cascade_per_scale);
+    return;
+}
+*/
 
 void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v1(
         const size_t search_range_index,
@@ -641,26 +937,15 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v1(
     // FIXME either consider the strides (not a great idea, using stixels is better), or print a warning at run time
 
     // compute the scores --
-    if(use_stump_cascades)
-    {
-        // compute the detections, and keep the results on the gpu memory
-        doppia::objects_detection::integral_channels_detector(
-                    integral_channels,
-                    search_range_index,
-                    scale_data.scaled_search_range,
-                    gpu_detection_stump_cascade_per_scale, score_threshold, use_the_detector_model_cascade,
-                    gpu_detections, num_gpu_detections);
-    }
-    else
-    {
-        // compute the detections, and keep the results on the gpu memory
-        doppia::objects_detection::integral_channels_detector(
-                    integral_channels,
-                    search_range_index,
-                    scale_data.scaled_search_range,
-                    gpu_detection_cascade_per_scale, score_threshold, use_the_detector_model_cascade,
-                    gpu_detections, num_gpu_detections);
-    }
+    invoke_v1_integral_channels_detector visitor(
+                integral_channels,
+                search_range_index,
+                scale_data,
+                score_threshold, use_the_detector_model_cascade,
+                gpu_detections, num_gpu_detections);
+
+    // compute the detections, and keep the results on the gpu memory
+    boost::apply_visitor(visitor, gpu_detection_variant_cascade_per_scale);
 
     // ( the detections will be colected after iterating over all the scales )
 

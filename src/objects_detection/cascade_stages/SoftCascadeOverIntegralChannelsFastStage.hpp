@@ -7,6 +7,7 @@
 #include <host_defines.h>
 #endif
 
+
 namespace doppia {
 
 // forward declarations
@@ -39,7 +40,7 @@ public:
     typedef SimpleDecisionStump::feature_t feature_t;
     typedef feature_t::rectangle_t rectangle_t;
 
-    __device__
+    __host__ __device__
     DecisionStumpWithWeights();
     DecisionStumpWithWeights(const DecisionStump &stump, const float feature_weight);
     //~DecisionStumpWithWeights();
@@ -56,7 +57,6 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
-__device__
 DecisionStumpWithWeights::DecisionStumpWithWeights()
 {
     // default constructor does nothing
@@ -92,7 +92,7 @@ class __align__(16) SoftCascadeOverIntegralChannelsFastStage
 {
 public:
 
-    __device__
+    __host__  __device__
     SoftCascadeOverIntegralChannelsFastStage();
     SoftCascadeOverIntegralChannelsFastStage(const SoftCascadeOverIntegralChannelsStage &stage);
 
@@ -112,9 +112,9 @@ public:
     const weak_classifier_t::rectangle_t &get_bounding_box() const;
 };
 
+
 /// defined in the header to make CUDA happy
 inline
-__device__
 SoftCascadeOverIntegralChannelsFastStage::SoftCascadeOverIntegralChannelsFastStage()
 {
     // default constructor does nothing
@@ -130,30 +130,6 @@ SoftCascadeOverIntegralChannelsFastStage::get_bounding_box() const
 }
 
 
-/// This class aims the same function of SoftCascadeOverIntegralChannelsFastStage,
-/// however it uses a stump classifier as weak classifier, instead of the level2 decision tree
-/// @see SoftCascadeOverIntegralChannelsFastStage
-class SoftCascadeOverIntegralChannelsStumpStage
-{
-public:
-
-    typedef DecisionStumpWithWeights weak_classifier_t;
-
-    weak_classifier_t weak_classifier;
-
-    /// if (strong_classifier_score < cascade_threshold) answer is "not this class"
-    float cascade_threshold;
-
-    const weak_classifier_t::rectangle_t &get_bounding_box() const;
-};
-
-
-inline
-const SoftCascadeOverIntegralChannelsStumpStage::weak_classifier_t::rectangle_t &
-SoftCascadeOverIntegralChannelsStumpStage::get_bounding_box() const
-{
-    return weak_classifier.feature.box;
-}
 
 
 } // end of namespace doppia

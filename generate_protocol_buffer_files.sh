@@ -14,5 +14,6 @@ protoc --cpp_out=./ calibration.proto
 cd ../../..
 cd src/helpers/data
 protoc --cpp_out=./ DataSequenceHeader.proto
+protoc --python_out=../../../tools/data_sequence DataSequenceHeader.proto
 
 echo "End of game. Have a nice day!"

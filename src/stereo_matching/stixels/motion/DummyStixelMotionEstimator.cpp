@@ -51,17 +51,17 @@ boost::program_options::options_description DummyStixelMotionEstimator::get_args
              "maximum number of stixels assigned to the same stixel motion in pixels over the whole sequence. "
              "If this value is n, then one stixel might be assigned to 2n+1 stixels at most.")
             /*
-                                            ("stixel_world.ground_cost_weight",
-                                             boost::program_options::value<float>()->default_value(1.0),
-                                             "relative weight between the ground cost and the objects cost")
+                                                    ("stixel_world.ground_cost_weight",
+                                                     boost::program_options::value<float>()->default_value(1.0),
+                                                     "relative weight between the ground cost and the objects cost")
 
 
-                                            ("stixel_world.ground_cost_threshold",
-                                             boost::program_options::value<float>()->default_value(-1),
-                                             "threshold the ground cost based on a percent of the highest value. "
-                                             "ground_cost_threshold == 0.3 indicates that only values higher than 0.3*highest_ground_cost_value will be allowed. "
-                                             "ground_cost_threshold <= 0 indicates that no thresholding should be applied")
-                                */
+                                                    ("stixel_world.ground_cost_threshold",
+                                                     boost::program_options::value<float>()->default_value(-1),
+                                                     "threshold the ground cost based on a percent of the highest value. "
+                                                     "ground_cost_threshold == 0.3 indicates that only values higher than 0.3*highest_ground_cost_value will be allowed. "
+                                                     "ground_cost_threshold <= 0 indicates that no thresholding should be applied")
+                                        */
             ;
 
     return desc;
@@ -88,7 +88,7 @@ DummyStixelMotionEstimator::DummyStixelMotionEstimator(const boost::program_opti
 
     initialize_matrices();
 
-    reset_stixel_tracks_image();        
+    reset_stixel_tracks_image();
 
     return;
 }
@@ -138,7 +138,7 @@ void DummyStixelMotionEstimator::compute_motion_v1()
 
 void DummyStixelMotionEstimator::compute_matching_cost_matrix()
 {
-    const float maximum_depth_difference = 1.0; // in meters    
+    const float maximum_depth_difference = 1.0; // in meters
     const float maximum_real_motion = maximum_pedestrian_speed / video_frame_rate;
 
     const unsigned int number_of_current_stixels = current_stixels_p->size();
@@ -159,7 +159,7 @@ void DummyStixelMotionEstimator::compute_matching_cost_matrix()
 
         const unsigned int stixel_horizontal_padding = compute_stixel_horizontal_padding( current_stixel );
 
-        if( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
+        if( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
             current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() )
         {
             const float current_stixel_real_height = compute_stixel_real_height( current_stixel );
@@ -171,14 +171,14 @@ void DummyStixelMotionEstimator::compute_matching_cost_matrix()
             {
                 const Stixel& previous_stixel = ( *previous_stixels_p )[ s_prev ];
 
-                if( previous_stixel.x - ( previous_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
+                if( previous_stixel.x - ( previous_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
                     previous_stixel.x + ( previous_stixel.width - 1 ) / 2 + stixel_horizontal_padding < previous_image_view.width() )
                 {
                     const int pixelwise_motion = previous_stixel.x - current_stixel.x; // Motion can be positive or negative
 
-//                    if( pixelwise_motion >= -( int( maximum_motion_in_pixels ) ) &&
-//                        pixelwise_motion <= int( maximum_motion_in_pixels ) )
-                    if( pixelwise_motion >= -( int( maximum_motion_in_pixels_for_current_stixel ) ) &&
+                    //                    if( pixelwise_motion >= -( int( maximum_motion_in_pixels ) ) and
+                    //                        pixelwise_motion <= int( maximum_motion_in_pixels ) )
+                    if( pixelwise_motion >= -( int( maximum_motion_in_pixels_for_current_stixel ) ) and
                         pixelwise_motion <= int( maximum_motion_in_pixels_for_current_stixel ) )
                     {
                         const float previous_stixel_real_height = compute_stixel_real_height( previous_stixel );
@@ -204,11 +204,11 @@ void DummyStixelMotionEstimator::compute_matching_cost_matrix()
 
         } // End of if( current_stixel stays inside image borders )
 
-    } // End of for( s_current )    
+    } // End of for( s_current )
 
     /// Rescale the real height difference matrix elemants so that it will have the same range with pixelwise_sad
     const float maximum_real_height_difference = real_height_differences_matrix.maxCoeff();
-//    real_height_differences_matrix = real_height_differences_matrix * ( float ( maximum_pixel_value ) / maximum_real_height_difference );
+    //    real_height_differences_matrix = real_height_differences_matrix * ( float ( maximum_pixel_value ) / maximum_real_height_difference );
     real_height_differences_matrix = real_height_differences_matrix * maximum_pixel_value;
 
     pixelwise_height_differences_matrix = pixelwise_height_differences_matrix * maximum_pixel_value;
@@ -220,9 +220,9 @@ void DummyStixelMotionEstimator::compute_matching_cost_matrix()
 
     const float maximum_cost_matrix_element = matching_cost_matrix.maxCoeff(); // Minimum is 0 by definition
 
-//    insertion_cost_dp = ( matching_cost_matrix * ( ( float( 1.0 ) ) / number_of_matrix_elements ) ).sum();
+    //    insertion_cost_dp = ( matching_cost_matrix * ( ( float( 1.0 ) ) / number_of_matrix_elements ) ).sum();
     insertion_cost_dp = maximum_cost_matrix_element * 0.25;
-    deletion_cost_dp = insertion_cost_dp;    
+    deletion_cost_dp = insertion_cost_dp;
 
     for( unsigned int i = 0, number_of_rows = matching_cost_matrix.rows(); i < number_of_rows; ++i )
     {
@@ -234,7 +234,7 @@ void DummyStixelMotionEstimator::compute_matching_cost_matrix()
                 matching_cost_assignment_matrix( i, j ) = true;
             }
         }
-    }    
+    }
 
     return;
 }
@@ -267,9 +267,9 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
         const unsigned int stixel_horizontal_padding = compute_stixel_horizontal_padding( current_stixel );
 
         /// Do NOT add else conditions since it can affect the computation of matrices
-        if( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-            current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*&&
-            current_stixel.type != Stixel::Occluded*/ ) // Horizontal padding for current stixel is suitable
+        if( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+            current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*and
+                current_stixel.type != Stixel::Occluded*/ ) // Horizontal padding for current stixel is suitable
         {
             const float current_stixel_disparity = std::max< float >( min_float_disparity, current_stixel.disparity );
             const float current_stixel_depth = stereo_camera.disparity_to_depth( current_stixel_disparity );
@@ -284,30 +284,30 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
             {
                 const Stixel& previous_stixel = ( *previous_stixels_p )[ s_prev ];
 
-                if( previous_stixel.x - ( previous_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-                    previous_stixel.x + ( previous_stixel.width - 1 ) / 2 + stixel_horizontal_padding < previous_image_view.width() /*&&
-                    previous_stixel.type != Stixel::Occluded*/ ) // Horizontal padding for previous stixel is suitable
+                if( previous_stixel.x - ( previous_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+                    previous_stixel.x + ( previous_stixel.width - 1 ) / 2 + stixel_horizontal_padding < previous_image_view.width() /*and
+                        previous_stixel.type != Stixel::Occluded*/ ) // Horizontal padding for previous stixel is suitable
                 {
                     const float previous_stixel_disparity = std::max< float >( min_float_disparity, previous_stixel.disparity );
                     const float previous_stixel_depth = stereo_camera.disparity_to_depth( previous_stixel_disparity );
 
-                    Eigen::Vector3f real_motion = compute_real_motion_between_stixels( current_stixel, previous_stixel, current_stixel_depth, previous_stixel_depth );                    
+                    Eigen::Vector3f real_motion = compute_real_motion_between_stixels( current_stixel, previous_stixel, current_stixel_depth, previous_stixel_depth );
                     const float real_motion_magnitude = real_motion.norm();
 
-//                    if( fabs( current_stixel_depth - previous_stixel_depth ) < maximum_depth_difference )
+                    //                    if( fabs( current_stixel_depth - previous_stixel_depth ) < maximum_depth_difference )
                     {
                         const int pixelwise_motion = previous_stixel.x - current_stixel.x; // Motion can be positive or negative
 
                         const unsigned int maximum_motion_in_pixels_for_current_stixel = compute_maximum_pixelwise_motion_for_stixel( current_stixel );
 
-                        if( pixelwise_motion >= -( int( maximum_motion_in_pixels_for_current_stixel ) ) &&
-                            pixelwise_motion <= int( maximum_motion_in_pixels_for_current_stixel ) /*&&
-                            real_motion_magnitude <= maximum_real_motion*/ )
+                        if( pixelwise_motion >= -( int( maximum_motion_in_pixels_for_current_stixel ) ) and
+                            pixelwise_motion <= int( maximum_motion_in_pixels_for_current_stixel ) /*and
+                                real_motion_magnitude <= maximum_real_motion*/ )
                         {
                             float pixelwise_sad;
                             float real_height_difference;
 
-                            if( current_stixel.type != Stixel::Occluded && previous_stixel.type != Stixel::Occluded )
+                            if( current_stixel.type != Stixel::Occluded and previous_stixel.type != Stixel::Occluded )
                             {
                                 pixelwise_sad = compute_pixelwise_sad( current_stixel, previous_stixel, current_image_view, previous_image_view, stixel_horizontal_padding );
                                 real_height_difference = fabs( current_stixel_real_height - compute_stixel_real_height( previous_stixel ) );
@@ -320,7 +320,7 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
 
                             pixelwise_sad_matrix( pixelwise_motion + maximum_possible_motion_in_pixels, s_current ) = pixelwise_sad;
                             real_height_differences_matrix( pixelwise_motion + maximum_possible_motion_in_pixels, s_current ) =
-                                                                            std::min( 1.0f, real_height_difference / maximum_allowed_real_height_difference );
+                                    std::min( 1.0f, real_height_difference / maximum_allowed_real_height_difference );
 
                             motion_cost_assignment_matrix( pixelwise_motion + maximum_possible_motion_in_pixels, s_current ) = true;
                             real_motion_vectors_matrix[ s_current ][ pixelwise_motion + maximum_possible_motion_in_pixels ] = real_motion;
@@ -335,7 +335,7 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
 
     /// Rescale the real height difference matrix elemants so that it will have the same range with pixelwise_sad
     const float maximum_real_height_difference = real_height_differences_matrix.maxCoeff();
-//    real_height_differences_matrix = real_height_differences_matrix * ( float ( maximum_pixel_value ) / maximum_real_height_difference );
+    //    real_height_differences_matrix = real_height_differences_matrix * ( float ( maximum_pixel_value ) / maximum_real_height_difference );
     real_height_differences_matrix = real_height_differences_matrix * maximum_pixel_value;
 
     /// Fill in the motion cost matrix
@@ -344,7 +344,7 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
     const float maximum_cost_matrix_element = motion_cost_matrix.maxCoeff(); // Minimum is 0 by definition
 
     /// Fill in disappearing stixel entries specially
-//    insertion_cost_dp = maximum_cost_matrix_element * 0.75;
+    //    insertion_cost_dp = maximum_cost_matrix_element * 0.75;
     insertion_cost_dp = maximum_pixel_value * 0.6;
     deletion_cost_dp = insertion_cost_dp; // insertion_cost_dp is not used for the moment !!
 
@@ -365,7 +365,7 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
                 // motion_cost_assignment_matrix(i,j) should NOT be set to true for the entries which are "forced".
             }
         }
-    }    
+    }
 
     /**
       *
@@ -373,7 +373,7 @@ void DummyStixelMotionEstimator::compute_motion_cost_matrix()
       *
       **/
 
-//    fill_in_visualization_motion_cost_matrix();
+    //    fill_in_visualization_motion_cost_matrix();
 
     return;
 }
@@ -420,17 +420,18 @@ void DummyStixelMotionEstimator::compute_motion()
 {
     compute_motion_dp();
 
-    indices_columnwise_minimum_visual_cost = Eigen::Matrix< unsigned int, Eigen::Dynamic, 2 >( motion_cost_matrix.cols(), 2 ); // Vector is uninitialized
+    indices_columnwise_minimum_visual_cost =
+            Eigen::Matrix< unsigned int, Eigen::Dynamic, 2 >( motion_cost_matrix.cols(), 2 ); // Vector is uninitialized
 
-    /// Convert the motion solution to visual format
+    // Convert the motion solution to visual format
     {
-        float matrix_scaling_factor = ( float )( visual_motion_cost_matrix.rows() ) / ( float )( motion_cost_matrix.rows() );
+        const float matrix_scaling_factor = ( float )( visual_motion_cost_matrix.rows() ) / ( float )( motion_cost_matrix.rows() );
 
         for( unsigned int i = 0, number_of_cols = motion_cost_matrix.cols(); i < number_of_cols; ++i  )
         {
-            float scaled_index = matrix_scaling_factor * indices_columnwise_minimum_cost( i );
+            const float scaled_index = matrix_scaling_factor * indices_columnwise_minimum_cost( i );
 
-            unsigned int scaled_lower_index = ( unsigned int )( std::floor( scaled_index ) );
+            const unsigned int scaled_lower_index = ( unsigned int )( std::floor( scaled_index ) );
             unsigned int scaled_upper_index = ( unsigned int )( std::ceil( scaled_index ) );
 
             if( scaled_lower_index == scaled_upper_index )
@@ -440,7 +441,6 @@ void DummyStixelMotionEstimator::compute_motion()
 
             indices_columnwise_minimum_visual_cost( i, 0 ) = scaled_lower_index;
             indices_columnwise_minimum_visual_cost( i, 1 ) = scaled_upper_index;
-
         }
     }
 
@@ -453,12 +453,13 @@ void DummyStixelMotionEstimator::compute_motion_dp()
     // Copy all m_i(d_i) values
     M_cost_dp = motion_cost_matrix;
 
-    neighbour_differences = Eigen::Matrix< float, Eigen::Dynamic, 1 >::Zero( ( *current_stixels_p ).size() - 1, 1 );
-    c_cost_matrix.resize( boost::extents[ motion_cost_matrix.cols() - 1 ][ motion_cost_matrix.rows() ][ motion_cost_matrix.rows() ] );
+    neighbour_differences = Eigen::MatrixXf::Zero( ( *current_stixels_p ).size() - 1, 1 );
+    c_cost_matrix.resize(
+                boost::extents[motion_cost_matrix.cols() - 1][motion_cost_matrix.rows()][motion_cost_matrix.rows()] );
 
     // right to left pass
     dp_first_pass();
-//    dp_first_pass_one_to_many();
+    //    dp_first_pass_one_to_many(); // buggy version
 
     // left to right pass
     dp_second_pass();
@@ -512,7 +513,7 @@ void DummyStixelMotionEstimator::dp_first_pass_v1( Eigen::MatrixXi& M_cost_sourc
             const float cost_deletion_option = M_cost_dp( i - 1, j ) + deletion_cost_dp;
             const float cost_insertion_option = M_cost_dp( i, j - 1 ) + insertion_cost_dp;
 
-            if( cost_matching_option <= cost_insertion_option && cost_matching_option <= cost_deletion_option ) // cost_matching_option is the minimum
+            if( cost_matching_option <= cost_insertion_option and cost_matching_option <= cost_deletion_option ) // cost_matching_option is the minimum
             {
                 M_cost_dp( i, j ) = cost_matching_option;
                 M_cost_source_indicator_matrix( i, j ) = 1;
@@ -540,7 +541,7 @@ void DummyStixelMotionEstimator::dp_second_pass_v1( const Eigen::MatrixXi& M_cos
     unsigned int i = M_cost_dp.rows() - 1;
     unsigned int j = M_cost_dp.cols() - 1;
 
-    while( i != 0 && j != 0 )
+    while( i != 0 and j != 0 )
     {
         unsigned int s_current = i - 1;
         unsigned int s_prev = j - 1;
@@ -577,23 +578,25 @@ void DummyStixelMotionEstimator::dp_second_pass_v1( const Eigen::MatrixXi& M_cos
     return;
 }
 
+
 void DummyStixelMotionEstimator::dp_first_pass()
 {
-    /// FIXME : Should be carried outside !
-    const float delta_h = 1; // in meters
-    const float delta_z = 3; // in meters
+    // FIXME : all these parameters should be program options
+    const float
+            delta_h = 1, // expected change in height in meters
+            delta_z = 3, // expected change in depth in meters
+            alpha_z = 0.1,
+            alpha_h = 0.5,
+            //k_z = 0.5 * maximum_pixel_value * 2,
+            k_z = 0.5 * maximum_pixel_value * 2,
+            k_h = 0,
+            k_abs_diff = 500; // controls overall smoothing
 
-    const float alpha_z = 0.1;
-    const float alpha_h = 0.5;
-
-    const float k_z = 0.5 * maximum_pixel_value * 2;
-    const float k_h = 0;
-
-    const float lambda_s = 1;
+    //    const float lambda_s = 1; // never used
 
     const unsigned int number_of_cols = motion_cost_matrix.cols();
     const unsigned int number_of_motions = motion_cost_matrix.rows() - 1; // The number of motions in range
-    const unsigned int number_of_total_motions = number_of_motions + 1; // The last row is for "disappearing" motion - special case    
+    const unsigned int number_of_total_motions = number_of_motions + 1; // The last row is for "disappearing" motion - special case
 
     const unsigned int number_of_current_stixels = current_stixels_p->size();
 
@@ -603,41 +606,42 @@ void DummyStixelMotionEstimator::dp_first_pass()
     for( unsigned int s_cur = 0, number_of_neighbours = number_of_current_stixels - 1; s_cur < number_of_neighbours; ++s_cur )
     {
         current_neighbour_stixel_depth_differences( s_cur ) = fabs( current_stixel_depths( s_cur ) - current_stixel_depths( s_cur + 1 ) );
-        current_neighbour_stixel_real_height_differences( s_cur ) = fabs( current_stixel_real_heights( s_cur ) - current_stixel_real_heights( s_cur + 1 ) );        
-    }   
+        current_neighbour_stixel_real_height_differences( s_cur ) = fabs( current_stixel_real_heights( s_cur ) - current_stixel_real_heights( s_cur + 1 ) );
+    }
 
-//    const float maximum_neighbour_stixel_depth_difference = current_neighbour_stixel_depth_differences.maxCoeff();
-//    const float maximum_neighbour_stixel_real_height_difference = current_neighbour_stixel_real_height_differences.maxCoeff();
+    //    const float maximum_neighbour_stixel_depth_difference = current_neighbour_stixel_depth_differences.maxCoeff();
+    //    const float maximum_neighbour_stixel_real_height_difference = current_neighbour_stixel_real_height_differences.maxCoeff();
 
     // Rescale the neighbour information vectors
-//    current_neighbour_stixel_depth_differences = current_neighbour_stixel_depth_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_depth_difference;
-//    current_neighbour_stixel_real_height_differences = current_neighbour_stixel_real_height_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_real_height_difference;
+    //    current_neighbour_stixel_depth_differences = current_neighbour_stixel_depth_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_depth_difference;
+    //    current_neighbour_stixel_real_height_differences = current_neighbour_stixel_real_height_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_real_height_difference;
 
     // col and next_col should not be unsigned int (causes segmentation fault)
     for( int col = number_of_cols - 2; col >=0;  --col )
     {
         int next_col = col + 1;
 
-        const Stixel& current_stixel = ( *current_stixels_p )[ col ];
+        //        const Stixel& current_stixel = ( *current_stixels_p )[ col ];
         const Stixel& next_stixel = ( *current_stixels_p )[ next_col ];
 
-//        const unsigned int stixel_horizontal_padding = compute_stixel_horizontal_padding( current_stixel );
+        //        const unsigned int stixel_horizontal_padding = compute_stixel_horizontal_padding( current_stixel );
 
-//        const bool stixels_safe = ( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-//                                    current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() &&
-//                                    next_stixel.x - ( next_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-//                                    next_stixel.x + ( next_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*&&
-//                                    current_stixel.type != Stixel::Occluded &&
-//                                    next_stixel.type != Stixel::Occluded*/ );
+        //        const bool stixels_safe = ( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+        //                                    current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() and
+        //                                    next_stixel.x - ( next_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+        //                                    next_stixel.x + ( next_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*and
+        //                                    current_stixel.type != Stixel::Occluded and
+        //                                    next_stixel.type != Stixel::Occluded*/ );
 
-        float neighbour_difference =  k_z * std::max( alpha_z, 1 - current_neighbour_stixel_depth_differences( col ) / delta_z ) +
-                                      k_h * std::max( alpha_h, 1 - current_neighbour_stixel_real_height_differences( col ) / delta_h );
+        float neighbour_difference =
+                k_z * std::max( alpha_z, 1 - current_neighbour_stixel_depth_differences( col ) / delta_z ) +
+                k_h * std::max( alpha_h, 1 - current_neighbour_stixel_real_height_differences( col ) / delta_h );
 
         neighbour_differences( col ) = neighbour_difference;
 
         for( int m = 0; m < number_of_total_motions; ++m )
         {
-            float min_M_plus_c = std::numeric_limits< float >::max();            
+            float min_M_plus_c = std::numeric_limits< float >::max();
 
             for( int e = 0; e < number_of_total_motions; ++e )
             {
@@ -647,9 +651,9 @@ void DummyStixelMotionEstimator::dp_first_pass()
 
                 float c_cost = 0;
 
-                if( m < number_of_motions && e < number_of_motions )
+                if( m < number_of_motions and e < number_of_motions )
                 {
-                    if( motion_cost_assignment_matrix( m, col ) == true && motion_cost_assignment_matrix( e, next_col ) == true )
+                    if( motion_cost_assignment_matrix( m, col ) == true and motion_cost_assignment_matrix( e, next_col ) == true )
                     {
                         motion_abs_difference = float( abs( m - e ) ) / ( number_of_motions - 1 );
 
@@ -663,7 +667,7 @@ void DummyStixelMotionEstimator::dp_first_pass()
                     }
 
                 }
-                else if( m == number_of_motions && e == number_of_motions )
+                else if( m == number_of_motions and e == number_of_motions )
                 {
                     motion_abs_difference = 0;
                     real_motion_vectors_difference = 0;
@@ -676,10 +680,10 @@ void DummyStixelMotionEstimator::dp_first_pass()
 
 
 
-//                c_cost = real_motion_vectors_difference * neighbour_difference;
-                c_cost = motion_abs_difference * neighbour_difference;
-//                c_cost = real_motion_vectors_difference;
-//                c_cost = 0;
+                //                c_cost = real_motion_vectors_difference * neighbour_difference;
+                c_cost = motion_abs_difference * (k_abs_diff +  neighbour_difference);
+                //                c_cost = real_motion_vectors_difference;
+                //                c_cost = 0;
 
                 if( next_stixel.type == Stixel::Occluded )
                 {
@@ -693,9 +697,9 @@ void DummyStixelMotionEstimator::dp_first_pass()
 
                 const float t_cost = M_cost_dp( e, next_col ) + c_cost;
 
-                min_M_plus_c = std::min( t_cost, min_M_plus_c );                
+                min_M_plus_c = std::min( t_cost, min_M_plus_c );
 
-            } // End of for( e )            
+            } // End of for( e )
 
             M_cost_dp( m, col ) += min_M_plus_c;
             stixels_one_to_many_assignment_map( m, col ) = 0; // Just to be in accordance with the one-to-many matching formulation
@@ -724,7 +728,7 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
 
     const unsigned int number_of_cols = motion_cost_matrix.cols();
     const unsigned int number_of_motions = motion_cost_matrix.rows() - 1; // The number of motions in range
-    const unsigned int number_of_total_motions = number_of_motions + 1; // The last row is for "disappearing" motion - special case    
+    const unsigned int number_of_total_motions = number_of_motions + 1; // The last row is for "disappearing" motion - special case
 
     const unsigned int number_of_current_stixels = current_stixels_p->size();
 
@@ -737,12 +741,12 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
         current_neighbour_stixel_real_height_differences( s_cur ) = fabs( current_stixel_real_heights( s_cur ) - current_stixel_real_heights( s_cur + 1 ) );
     }
 
-//    const float maximum_neighbour_stixel_depth_difference = current_neighbour_stixel_depth_differences.maxCoeff();
-//    const float maximum_neighbour_stixel_real_height_difference = current_neighbour_stixel_real_height_differences.maxCoeff();
+    //    const float maximum_neighbour_stixel_depth_difference = current_neighbour_stixel_depth_differences.maxCoeff();
+    //    const float maximum_neighbour_stixel_real_height_difference = current_neighbour_stixel_real_height_differences.maxCoeff();
 
     // Rescale the neighbour information vectors
-//    current_neighbour_stixel_depth_differences = current_neighbour_stixel_depth_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_depth_difference;
-//    current_neighbour_stixel_real_height_differences = current_neighbour_stixel_real_height_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_real_height_difference;
+    //    current_neighbour_stixel_depth_differences = current_neighbour_stixel_depth_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_depth_difference;
+    //    current_neighbour_stixel_real_height_differences = current_neighbour_stixel_real_height_differences * ( float( maximum_pixel_value ) ) / maximum_neighbour_stixel_real_height_difference;
 
     // col and next_col should not be unsigned int (causes segmentation fault)
     for( int col = number_of_cols - 2; col >=0;  --col )
@@ -754,17 +758,17 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
 
         const unsigned int stixel_horizontal_padding = compute_stixel_horizontal_padding( current_stixel );
 
-        const bool stixels_safe = ( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-                                    current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() &&
-                                    next_stixel.x - ( next_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 &&
-                                    next_stixel.x + ( next_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*&&
-                                                                                                                                                    current_stixel.type != Stixel::Occluded &&
-                                                                                                                                                    next_stixel.type != Stixel::Occluded*/ );
+        const bool stixels_safe = ( current_stixel.x - ( current_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+                                    current_stixel.x + ( current_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() and
+                                    next_stixel.x - ( next_stixel.width - 1 ) / 2 - stixel_horizontal_padding >= 0 and
+                                    next_stixel.x + ( next_stixel.width - 1 ) / 2 + stixel_horizontal_padding < current_image_view.width() /*and
+                                                                                                                                                                                current_stixel.type != Stixel::Occluded and
+                                                                                                                                                                                next_stixel.type != Stixel::Occluded*/ );
 
         float neighbour_difference =  k_z * std::max( alpha_z, 1 - current_neighbour_stixel_depth_differences( col ) / delta_z ) +
                                       k_h * std::max( alpha_h, 1 - current_neighbour_stixel_real_height_differences( col ) / delta_h );
 
-        neighbour_differences( col ) = neighbour_difference;        
+        neighbour_differences( col ) = neighbour_difference;
 
         for( unsigned int m = 0; m < number_of_motions; ++m )
         {
@@ -777,7 +781,7 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
 
             for( unsigned int k = 0; k <= maximum_number_of_one_to_many_stixels_matching; ++k )
             {
-                if( m - k >= 0 && m + k < number_of_motions  )
+                if( m - k >= 0 and m + k < number_of_motions  )
                 {
                     float min_M_plus_c = std::numeric_limits< float >::max();
 
@@ -797,48 +801,48 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
                     for( unsigned int e = 0; e < number_of_total_motions; ++e )
                     {
                         float motion_abs_difference = 0;
-//                        float real_motion_vectors_difference = 0;
-                        float c_cost = 0;                       
+                        //                        float real_motion_vectors_difference = 0;
+                        float c_cost = 0;
 
                         for( int l = m - k; l <= m + k; ++l )
                         {
                             float abs_diff;
-//                            float real_motion_vec_diff;
+                            //                            float real_motion_vec_diff;
 
-                            if( l < number_of_motions && e < number_of_motions )
+                            if( l < number_of_motions and e < number_of_motions )
                             {
-                                if( motion_cost_assignment_matrix( l, col ) == true && motion_cost_assignment_matrix( e, next_col ) == true )
+                                if( motion_cost_assignment_matrix( l, col ) == true and motion_cost_assignment_matrix( e, next_col ) == true )
                                 {
                                     abs_diff = float( abs( l - e ) ) / ( number_of_motions - 1 );
 
-//                                    real_motion_vec_diff =
-//                                            ( ( real_motion_vectors_matrix[ col ][ l ] - real_motion_vectors_matrix[ next_col ][ e ] ).norm() ) / maximum_displacement_between_frames;
+                                    //                                    real_motion_vec_diff =
+                                    //                                            ( ( real_motion_vectors_matrix[ col ][ l ] - real_motion_vectors_matrix[ next_col ][ e ] ).norm() ) / maximum_displacement_between_frames;
                                 }
                                 else
                                 {
                                     abs_diff = 1.0f;
-//                                    real_motion_vec_diff = 1.0f;
+                                    //                                    real_motion_vec_diff = 1.0f;
                                 }
 
                             }
-                            else if( l == number_of_motions && e == number_of_motions ) // This else if is unnecessary for the moment !
+                            else if( l == number_of_motions and e == number_of_motions ) // This else if is unnecessary for the moment !
                             {
                                 abs_diff = 0;
-//                                real_motion_vec_diff = 0;
+                                //                                real_motion_vec_diff = 0;
                             }
                             else
                             {
                                 abs_diff = 1.0f;
-//                                real_motion_vec_diff = 1.0f;
+                                //                                real_motion_vec_diff = 1.0f;
                             }
 
                             motion_abs_difference += abs_diff;
-//                            real_motion_vectors_difference += real_motion_vec_diff;
+                            //                            real_motion_vectors_difference += real_motion_vec_diff;
 
                         } // End of for( l )
 
                         motion_abs_difference /= number_of_contributing_motions;
-//                        real_motion_vectors_difference /= number_of_contributing_motions;
+                        //                        real_motion_vectors_difference /= number_of_contributing_motions;
 
                         c_cost = motion_abs_difference * neighbour_difference;
 
@@ -851,9 +855,9 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
 
                         const float t_cost = M_cost_dp( e, next_col ) + c_cost;
 
-                        min_M_plus_c = std::min( t_cost, min_M_plus_c );                       
+                        min_M_plus_c = std::min( t_cost, min_M_plus_c );
 
-                    } // End of for( e )                    
+                    } // End of for( e )
 
                     if( group_motion_cost + min_M_plus_c < min_group_dp_cost )
                     {
@@ -867,18 +871,18 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
                     break;
                 }
 
-            } // End of for( k )           
+            } // End of for( k )
 
             M_cost_dp( m, col ) = min_group_dp_cost;
 
             for( unsigned int e = 0; e < number_of_total_motions; ++e )
             {
                 c_cost_matrix[ col ][ m ][ e ] = group_cost_values( winning_index_k, e );
-            }            
+            }
 
-            stixels_one_to_many_assignment_map( m, col ) = winning_index_k;                        
+            stixels_one_to_many_assignment_map( m, col ) = winning_index_k;
 
-        } // End of for( m )        
+        } // End of for( m )
 
         { // Process m == number_of_motions specially !!!
 
@@ -915,7 +919,7 @@ void DummyStixelMotionEstimator::dp_first_pass_one_to_many()
 
                 const float t_cost = M_cost_dp( e, next_col ) + c_cost;
 
-                min_M_plus_c = std::min( t_cost, min_M_plus_c );                
+                min_M_plus_c = std::min( t_cost, min_M_plus_c );
 
             } // End of for( e )
 
@@ -939,9 +943,9 @@ void DummyStixelMotionEstimator::dp_second_pass()
     const unsigned int number_of_total_motions = number_of_motions + 1; // The last row is for "disappearing" motion - special case
 
     const unsigned int number_of_current_stixels = current_stixels_p->size();
-    const unsigned int number_of_previous_stixels = previous_stixels_p->size();    
+    const unsigned int number_of_previous_stixels = previous_stixels_p->size();
 
-    indices_columnwise_minimum_cost = Eigen::Matrix< unsigned int, Eigen::Dynamic, 1 >( motion_cost_matrix.cols(), 1 ); // Vector is uninitialized    
+    indices_columnwise_minimum_cost = Eigen::Matrix< unsigned int, Eigen::Dynamic, 1 >( motion_cost_matrix.cols(), 1 ); // Vector is uninitialized
 
     const motion_cost_matrix_t& const_M_cost_dp = M_cost_dp;
 
@@ -949,11 +953,11 @@ void DummyStixelMotionEstimator::dp_second_pass()
 
         Stixel& current_stixel = ( *current_stixels_p )[ 0 ];
 
-        unsigned int &d_star = indices_columnwise_minimum_cost( 0 );        
+        unsigned int &d_star = indices_columnwise_minimum_cost( 0 );
 
         // minCoeff takes the "lowest index", but
         // we search for the maximum index with minimum value
-//        const_M_cost_dp.col( 0 ).minCoeff( &d_star );
+        //        const_M_cost_dp.col( 0 ).minCoeff( &d_star );
 
         float d_star_score = const_M_cost_dp( 0, 0 );
         d_star = 0;
@@ -964,7 +968,7 @@ void DummyStixelMotionEstimator::dp_second_pass()
             {
                 const int motion = i - maximum_possible_motion_in_pixels;
 
-                if( motion >= 0 && motion < number_of_previous_stixels ) // 0 + motion
+                if( motion >= 0 and motion < number_of_previous_stixels ) // 0 + motion
                 {
                     d_star_score = const_M_cost_dp( i, 0 );
                     d_star = i;
@@ -980,7 +984,7 @@ void DummyStixelMotionEstimator::dp_second_pass()
                 d_star_score = const_M_cost_dp( number_of_motions, 0 );
                 d_star = number_of_motions;
             }
-        }       
+        }
 
         if( d_star == number_of_motions ) // Disappearing stixel
         {
@@ -996,9 +1000,9 @@ void DummyStixelMotionEstimator::dp_second_pass()
             const int previous_stixel_center_x = current_stixel.x + motion;
 
             /// FIXME : Should be computed intelligently if the stixel width(s) is(are) not 1.
-            const int previous_stixel_index = previous_stixel_center_x;            
+            const int previous_stixel_index = previous_stixel_center_x;
 
-            stixels_motion[ 0 ] = previous_stixel_index;            
+            stixels_motion[ 0 ] = previous_stixel_index;
 
             const int stixels_one_to_many_assignment = stixels_one_to_many_assignment_map( d_star, 0 );
 
@@ -1007,7 +1011,7 @@ void DummyStixelMotionEstimator::dp_second_pass()
             current_stixel.valid_backward_delta_x = true;
         }
 
-    }   
+    }
 
     for( unsigned int col = 1; col < number_of_cols; ++col )
     {
@@ -1035,7 +1039,7 @@ void DummyStixelMotionEstimator::dp_second_pass()
                 /// FIXME : Should be computed intelligently if the stixel width(s) is(are) not 1.
                 const int previous_stixel_index = previous_stixel_center_x;
 
-                if( previous_stixel_index >= 0 && previous_stixel_index < number_of_previous_stixels )
+                if( previous_stixel_index >= 0 and previous_stixel_index < number_of_previous_stixels )
                 {
                     d_star = e;
                     min_M_minus_c = t_cost;
@@ -1043,7 +1047,7 @@ void DummyStixelMotionEstimator::dp_second_pass()
 
             }
 
-        } // End of for( e )        
+        } // End of for( e )
 
         { // Treat the last entry specially
 
@@ -1083,10 +1087,11 @@ void DummyStixelMotionEstimator::dp_second_pass()
             current_stixel.valid_backward_delta_x = true;
         }
 
-    } // End of for( col )        
+    } // End of for( col )
 
     return;
 }
+
 
 float DummyStixelMotionEstimator::compute_pixelwise_sad( const Stixel& stixel1, const Stixel& stixel2,
                                                          const input_image_const_view_t& image_view1, const input_image_const_view_t& image_view2,
@@ -1099,7 +1104,7 @@ float DummyStixelMotionEstimator::compute_pixelwise_sad( const Stixel& stixel1, 
     stixel_representation_t stixel_representation1;
     stixel_representation_t stixel_representation2;
 
-    compute_stixel_representation( stixel1, image_view1, stixel_representation1, stixel_horizontal_padding );    
+    compute_stixel_representation( stixel1, image_view1, stixel_representation1, stixel_horizontal_padding );
     compute_stixel_representation( stixel2, image_view2, stixel_representation2, stixel_horizontal_padding );
 
     float pixelwise_sad = 0;
@@ -1130,6 +1135,7 @@ float DummyStixelMotionEstimator::compute_pixelwise_sad( const Stixel& stixel1, 
     return pixelwise_sad;
 }
 
+
 Eigen::Vector3f DummyStixelMotionEstimator::compute_real_motion_between_stixels( const Stixel& reference_stixel, const Stixel& destination_stixel ) const
 {
     const float reference_stixel_disparity = std::max< float >( min_float_disparity, reference_stixel.disparity );
@@ -1140,6 +1146,7 @@ Eigen::Vector3f DummyStixelMotionEstimator::compute_real_motion_between_stixels(
 
     return compute_real_motion_between_stixels( reference_stixel, destination_stixel, reference_stixel_depth, destination_stixel_depth );
 }
+
 
 Eigen::Vector3f DummyStixelMotionEstimator::compute_real_motion_between_stixels( const Stixel& reference_stixel, const Stixel& destination_stixel,
                                                                                  const float reference_stixel_depth, const float destination_stixel_depth ) const
@@ -1155,6 +1162,7 @@ Eigen::Vector3f DummyStixelMotionEstimator::compute_real_motion_between_stixels(
     return ( destination_stixel_bottom_point_3d - reference_stixel_bottom_point_3d );
 }
 
+
 float DummyStixelMotionEstimator::compute_stixel_real_height_difference( const Stixel& stixel1, const Stixel& stixel2 ) const
 {
     const float stixel_height1 = compute_stixel_real_height( stixel1 );
@@ -1166,6 +1174,7 @@ float DummyStixelMotionEstimator::compute_stixel_real_height_difference( const S
 
 }
 
+
 float DummyStixelMotionEstimator::compute_stixel_real_height( const Stixel& stixel ) const
 {
     const float stixel_disparity = std::max< float >( min_float_disparity, stixel.disparity );
@@ -1175,6 +1184,7 @@ float DummyStixelMotionEstimator::compute_stixel_real_height( const Stixel& stix
 
     return stixel_real_height;
 }
+
 
 float DummyStixelMotionEstimator::compute_stixel_real_height( const Stixel& stixel, const float stixel_depth ) const
 {
@@ -1190,6 +1200,7 @@ float DummyStixelMotionEstimator::compute_stixel_real_height( const Stixel& stix
 
     return stixel_real_height;
 }
+
 
 void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel& stixel, const input_image_const_view_t& image_view_hosting_the_stixel,
                                                                 stixel_representation_t& stixel_representation,
@@ -1210,7 +1221,7 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel& st
             throw std::invalid_argument( "DummyStixelMotionEstimator::compute_stixel_representation() -- The width of stixel should be an odd number !" );
         }
 
-        if( stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding < 0 ||
+        if( stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding < 0 or
             stixel.x + ( stixel.width - 1 ) / 2 + stixel_horizontal_padding >= image_view_hosting_the_stixel.width() )
         {
             throw std::invalid_argument( "DummyStixelMotionEstimator::compute_stixel_representation() -- The stixel representation should obey the image boundaries !" );
@@ -1229,9 +1240,9 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel& st
         const float vertical_scaling_factor = float( stixel_representation_height ) / float( stixel_height );
 
         // Sub-image representation for the input stixel
-//        input_image_const_view_t stixel_view = boost::gil::subimage_view( image_view_hosting_the_stixel,
-//                                                                          stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding, stixel.top_y,
-//                                                                          stixel_representation_width_initial, abs( stixel.bottom_y - stixel.top_y ) );
+        //        input_image_const_view_t stixel_view = boost::gil::subimage_view( image_view_hosting_the_stixel,
+        //                                                                          stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding, stixel.top_y,
+        //                                                                          stixel_representation_width_initial, abs( stixel.bottom_y - stixel.top_y ) );
 
         input_image_const_view_t stixel_view = boost::gil::subimage_view( image_view_hosting_the_stixel,
                                                                           stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding, stixel.top_y,
@@ -1261,8 +1272,8 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel& st
             const float delta_y1_square = delta_y1 * delta_y1;
             const float delta_y2_square = delta_y2 * delta_y2;
 
-            input_image_const_view_t::x_iterator src_iter_lower = stixel_view.row_begin( int( projected_lower_y ) );
-            input_image_const_view_t::x_iterator src_iter_upper = stixel_view.row_begin( int( projected_upper_y ) );
+            //input_image_const_view_t::x_iterator src_iter_lower = stixel_view.row_begin( int( projected_lower_y ) );
+            //input_image_const_view_t::x_iterator src_iter_upper = stixel_view.row_begin( int( projected_upper_y ) );
 
             for( unsigned int x = 0; x < stixel_representation_width; ++x )
             {
@@ -1304,7 +1315,7 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel& st
 void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel &stixel, const input_image_const_view_t& image_view_hosting_the_stixel,
                                                                 stixel_representation_t &stixel_representation, const unsigned int stixel_horizontal_padding ) const
 {
-    const unsigned int stixel_representation_width = stixel.width + 2 * stixel_horizontal_padding;    
+    const unsigned int stixel_representation_width = stixel.width + 2 * stixel_horizontal_padding;
 
     const int stixel_height = abs( stixel.top_y - stixel.bottom_y );
     const int stixel_effective_part_height = stixel_height;
@@ -1318,11 +1329,11 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel &st
         throw std::invalid_argument( "DummyStixelMotionEstimator::compute_stixel_representation() -- The width of stixel should be an odd number !" );
     }
 
-    if( stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding < 0 ||
+    if( stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding < 0 or
         stixel.x + ( stixel.width - 1 ) / 2 + stixel_horizontal_padding >= image_view_hosting_the_stixel.width() )
     {
         throw std::invalid_argument( "DummyStixelMotionEstimator::compute_stixel_representation() -- The stixel representation should obey the image boundaries !" );
-    }    
+    }
 
     input_image_const_view_t stixel_view = boost::gil::subimage_view( image_view_hosting_the_stixel,
                                                                       stixel.x - ( stixel.width - 1 ) / 2 - stixel_horizontal_padding, stixel.top_y,
@@ -1331,7 +1342,7 @@ void DummyStixelMotionEstimator::compute_stixel_representation( const Stixel &st
     const unsigned int number_of_channels = image_view_hosting_the_stixel.num_channels();
 
     stixel_representation.clear();
-    stixel_representation.resize( number_of_channels );   
+    stixel_representation.resize( number_of_channels );
 
     for( unsigned int c = 0; c < number_of_channels; ++c )
     {
@@ -1425,7 +1436,7 @@ unsigned int DummyStixelMotionEstimator::compute_maximum_motion_in_pixels()
     Eigen::Vector2f point2d1 = left_camera.project_3d_point( point3d1 );
     Eigen::Vector2f point2d2 = left_camera.project_3d_point( point3d2 );
 
-    const unsigned int maximum_motion_in_pixels = static_cast<unsigned int>(point2d2[0] - point2d1[0]);    
+    const unsigned int maximum_motion_in_pixels = static_cast<unsigned int>(point2d2[0] - point2d1[0]);
 
     return maximum_motion_in_pixels;
 }
@@ -1433,7 +1444,7 @@ unsigned int DummyStixelMotionEstimator::compute_maximum_motion_in_pixels()
 /// FIXME: Drawing methods should not be in the logic code
 void DummyStixelMotionEstimator::update_stixel_tracks_image()
 {
-//    std::cout << "UpdateStixelTracks()" << std::endl;
+    //    std::cout << "UpdateStixelTracks()" << std::endl;
 
     const unsigned int rows_per_frame = number_of_rows_per_frame_in_stixel_track_visualization;
 
@@ -1495,7 +1506,7 @@ void DummyStixelMotionEstimator::update_stixel_tracks_image()
 
             current_stixel_color_indices( s_current ) = previous_stixel_color_indices( s_prev );
 
-//            color_occupancy_vector( current_stixel_color_indices( s_current ) ) = true;
+            //            color_occupancy_vector( current_stixel_color_indices( s_current ) ) = true;
         }
     }
 
@@ -1507,23 +1518,23 @@ void DummyStixelMotionEstimator::update_stixel_tracks_image()
 
         if( stixels_motion[ s_current ] < 0 ) // Unmatched stixels
         {
-//            // Search for the next unoccupied color
-//            for( unsigned int color = unoccupied_color_search_start; color < number_of_colors; ++color )
-//            {
-//                if( color_occupancy_vector( color ) == false )
-//                {
-//                    unoccupied_color_search_start = color;
-//                    break;
-//                }
-//            }
+            //            // Search for the next unoccupied color
+            //            for( unsigned int color = unoccupied_color_search_start; color < number_of_colors; ++color )
+            //            {
+            //                if( color_occupancy_vector( color ) == false )
+            //                {
+            //                    unoccupied_color_search_start = color;
+            //                    break;
+            //                }
+            //            }
 
-//            // Extract the color
-//            const boost::gil::rgb8c_pixel_t t_color = boost::gil::rgb8_view_t::value_type( jet_color_map[ unoccupied_color_search_start ][ 0 ],
-//                                                                                           jet_color_map[ unoccupied_color_search_start ][ 1 ],
-//                                                                                           jet_color_map[ unoccupied_color_search_start ][ 2 ] );
+            //            // Extract the color
+            //            const boost::gil::rgb8c_pixel_t t_color = boost::gil::rgb8_view_t::value_type( jet_color_map[ unoccupied_color_search_start ][ 0 ],
+            //                                                                                           jet_color_map[ unoccupied_color_search_start ][ 1 ],
+            //                                                                                           jet_color_map[ unoccupied_color_search_start ][ 2 ] );
 
             // Update the color occupancy map
-//            color_occupancy_vector( unoccupied_color_search_start ) = true;
+            //            color_occupancy_vector( unoccupied_color_search_start ) = true;
 
             // Fill in the stixel area with the selected color
             AbstractStixelMotionEstimator::input_image_view_t stixel_sub_view =
@@ -1531,7 +1542,7 @@ void DummyStixelMotionEstimator::update_stixel_tracks_image()
                                                current_stixel.x - current_stixel.width / 2, ( number_of_frames_in_history - 1 ) * number_of_rows_per_frame_in_stixel_track_visualization,
                                                current_stixel.width, number_of_rows_per_frame_in_stixel_track_visualization );
 
-//            boost::gil::fill_pixels( stixel_sub_view, t_color );
+            //            boost::gil::fill_pixels( stixel_sub_view, t_color );
             boost::gil::fill_pixels( stixel_sub_view, rgb8_colors::black );
 
         }

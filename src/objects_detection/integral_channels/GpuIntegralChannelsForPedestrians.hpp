@@ -2,6 +2,9 @@
 #define BICLOP_GPUINTEGRALCHANNELSFORPEDESTRIANS_HPP
 
 #include "IntegralChannelsForPedestrians.hpp"
+
+#include "../gpu/DeviceMemoryPitched2DWithHeight.hpp"
+
 #include <boost/scoped_ptr.hpp>
 
 #include <opencv2/core/version.hpp>
@@ -43,9 +46,10 @@ public:
     //typedef Cuda::DeviceMemoryPitched3D<boost::int16_t> gpu_channels_t;
     typedef Cuda::DeviceMemoryPitched3D<boost::uint8_t> gpu_channels_t;
     typedef Cuda::DeviceMemoryPitched3D<boost::uint32_t> gpu_3d_integral_channels_t;
-    typedef Cuda::DeviceMemoryPitched2D<boost::uint32_t> gpu_2d_integral_channels_t;
-    typedef gpu_3d_integral_channels_t gpu_integral_channels_t; // 818.6 Hz on Kochab
-    //typedef gpu_2d_integral_channels_t gpu_integral_channels_t; // 1007.7 Hz on Kochab
+    //typedef Cuda::DeviceMemoryPitched2D<boost::uint32_t> gpu_2d_integral_channels_t;
+    typedef doppia::DeviceMemoryPitched2DWithHeight<boost::uint32_t> gpu_2d_integral_channels_t;
+    //typedef gpu_3d_integral_channels_t gpu_integral_channels_t; // 818.6 Hz on Kochab
+    typedef gpu_2d_integral_channels_t gpu_integral_channels_t; // 1007.7 Hz on Kochab
 
     //typedef IntegralChannelsForPedestrians::channels_t channels_t;
     typedef boost::multi_array<gpu_channels_t::Type, 3> channels_t;

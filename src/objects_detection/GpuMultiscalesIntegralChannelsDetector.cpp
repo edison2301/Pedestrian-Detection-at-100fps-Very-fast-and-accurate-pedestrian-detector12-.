@@ -1,5 +1,7 @@
 #include "GpuMultiscalesIntegralChannelsDetector.hpp"
 
+#include "MultiScalesIntegralChannelsModel.hpp"
+
 #include "helpers/get_option_value.hpp"
 #include "helpers/Log.hpp"
 
@@ -34,8 +36,6 @@ std::ostream & log_error()
 
 namespace doppia {
 
-typedef MultiScalesIntegralChannelsModel::detectors_t detectors_t;
-typedef MultiScalesIntegralChannelsModel::detector_t detector_t;
 
 GpuMultiscalesIntegralChannelsDetector::GpuMultiscalesIntegralChannelsDetector(
         const boost::program_options::variables_map &options,

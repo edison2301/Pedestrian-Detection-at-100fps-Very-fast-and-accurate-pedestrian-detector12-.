@@ -5,7 +5,6 @@
 #include "calibration/StereoCameraCalibration.hpp"
 
 #include "helpers/get_option_value.hpp"
-#include "helpers/get_section_options.hpp"
 
 namespace doppia
 {

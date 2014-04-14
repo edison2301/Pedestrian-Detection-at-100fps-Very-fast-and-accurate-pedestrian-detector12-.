@@ -20,7 +20,7 @@ options_description DummyObjectsTracker::get_args_options()
     desc.add_options()
 
             // 15 is what was used in Mitzel ICCV/COORP 2011
-            ("objects_tracking.maximum_extrapolation_length", value<int>()->default_value(15),
+            ("objects_tracker.maximum_extrapolation_length", value<int>()->default_value(15),
              "number of frames without detection, before a detection is dropped")
 
             // FIXME should we instead use a score decay function ?
@@ -34,7 +34,7 @@ options_description DummyObjectsTracker::get_args_options()
 DummyObjectsTracker::DummyObjectsTracker(const boost::program_options::variables_map &options)
     :
       next_track_id(0),
-      max_extrapolation_length(get_option_value<int>(options, "objects_tracking.maximum_extrapolation_length"))
+      max_extrapolation_length(get_option_value<int>(options, "objects_tracker.maximum_extrapolation_length"))
 {
 
     // nothing to do here
@@ -185,12 +185,16 @@ void update_tracks_with_detections_v0(DummyObjectsTracker::tracks_t &tracks,
     return;
 }
 
+namespace {
+
 typedef boost::tuple<float, size_t, size_t> match_t;
 
 bool compare_matches(const match_t &a, const match_t &b)
 {
     return a.get<0>() > b.get<0>();
 }
+
+} // end of anonymous namespace
 
 /// update or create tracks as needed
 /// greedy matcher: considers the best match first, and the continue to lower scoring ones
@@ -216,10 +220,10 @@ void update_tracks_with_detections_v1(DummyObjectsTracker::tracks_t &tracks,
     // match new_detections to the current track
     // extend tracks that do not match
     size_t track_index = 0;
-    for(tracks_t::iterator tracks_it=tracks.begin();
+    for(tracks_t::const_iterator tracks_it=tracks.begin();
         tracks_it != tracks.end(); ++tracks_it, track_index+=1)
     {
-        track_t &track = *tracks_it;
+        const track_t &track = *tracks_it;
         //const rectangle_t &expected_track_box = track.current_bounding_box;
         const rectangle_t expected_track_box =  track.compute_extrapolated_bounding_box();
 
@@ -264,7 +268,7 @@ void update_tracks_with_detections_v1(DummyObjectsTracker::tracks_t &tracks,
                 the_detection_index = accepted_match.get<2>();
 
         if((track_already_matched[the_track_index] == -1)
-                and (detection_already_matched[the_detection_index] == -1))
+           and (detection_already_matched[the_detection_index] == -1))
         {
             track_already_matched[the_track_index] = the_detection_index;
             detection_already_matched[the_detection_index] = the_track_index;
@@ -372,6 +376,7 @@ void handle_occlusions(DummyObjectsTracker::tracks_t &tracks)
     return;
 }
 
+
 void DummyObjectsTracker::compute()
 {
 
@@ -423,15 +428,17 @@ const AbstractObjectsTracker::detections_t &DummyObjectsTracker::get_current_det
     return current_detections;
 }
 
+
 const DummyObjectsTracker::tracks_t &DummyObjectsTracker::get_tracks() const
 {
     return tracks;
 }
 
-bool DummyObjectsTracker::track_is_outside_image(const DummyObjectsTracker::track_t &track) const
+
+bool box_is_outside_image(const rectangle_t &bbox, const int image_width, const int image_height)
 {
+
     bool outside_image = false;
-    const rectangle_t &bbox = track.get_current_bounding_box();
 
     const bool use_width_center = true;
     if(use_width_center)
@@ -450,6 +457,13 @@ bool DummyObjectsTracker::track_is_outside_image(const DummyObjectsTracker::trac
     }
 
     return outside_image;
+}
+
+
+bool DummyObjectsTracker::track_is_outside_image(const DummyObjectsTracker::track_t &track) const
+{
+    const rectangle_t &bbox = track.get_current_bounding_box();
+    return box_is_outside_image(bbox, image_width, image_height);
 }
 
 

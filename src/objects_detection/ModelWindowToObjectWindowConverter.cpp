@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <cstdio>
+#include <iostream>
 
 namespace doppia
 {
@@ -26,6 +27,14 @@ ModelWindowToObjectWindowConverter::ModelWindowToObjectWindowConverter(
             model_center_y = model_height / 2.0f,
             delta_x = object_center_x - model_center_x,
             delta_y = object_center_y - model_center_y;
+    if (true){
+
+        std::cout << "object width: "<< object_width << " object height: " << object_height << std::endl;
+        std::cout << "model width: "<< model_width << " model height: " << model_height << std::endl;
+
+
+
+    }
 
     // object_width / model_width
     object_width_to_model_width = static_cast<float>(object_width) / model_width;

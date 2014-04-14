@@ -664,14 +664,14 @@ void VeryFastDetectorScaleStatisticsApplication::process_frame(const AbstractVid
     objects_detector_p->set_image(input_view);
     const IntegralChannelsDetector::detections_scores_t &detections_scores = objects_detector_p->detections_scores;
 
-    BOOST_REQUIRE(objects_detector_p->search_ranges.empty() == false);
+    BOOST_REQUIRE(objects_detector_p->search_ranges_data.empty() == false);
 
     // we will only consider the pixels covered by all scales
     size_t
             min_max_x = detections_scores.shape()[1],
             min_max_y =  detections_scores.shape()[0];
 
-    for(size_t scale_index=0; scale_index < objects_detector_p->search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < objects_detector_p->search_ranges_data.size(); scale_index +=1)
     {
         const ScaleData &scale_data = objects_detector_p->extra_data_per_scale[scale_index];
         const DetectorSearchRange &search_range = scale_data.scaled_search_range;
@@ -691,14 +691,14 @@ void VeryFastDetectorScaleStatisticsApplication::process_frame(const AbstractVid
 
     const size_t
             num_score_pixels = min_max_x*min_max_y,
-            num_scales = objects_detector_p->search_ranges.size();
+            num_scales = objects_detector_p->search_ranges_data.size();
     scores_per_pixel.resize(boost::extents[num_score_pixels][num_scales]);
 
     statistics_per_delta_scale.resize(num_scales); // lazy allocation
     centered_statistics_per_delta_scale.resize(2*num_scales+1);
 
     // for each range search
-    for(size_t scale_index=0; scale_index < objects_detector_p->search_ranges.size(); scale_index +=1)
+    for(size_t scale_index=0; scale_index < objects_detector_p->search_ranges_data.size(); scale_index +=1)
     {
         objects_detector_p->compute_detections_at_specific_scale(scale_index,
                                                                  save_score_image, first_call);

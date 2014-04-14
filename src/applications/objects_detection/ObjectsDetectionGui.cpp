@@ -1,10 +1,14 @@
 #include "ObjectsDetectionGui.hpp"
 
-#include "draw_the_detections.hpp"
+#include "drawing/gil/draw_the_detections.hpp"
+#include "drawing/gil/draw_the_tracks.hpp"
 
 #include "ObjectsDetectionApplication.hpp"
+
+
 #include "video_input/AbstractVideoInput.hpp"
 #include "video_input/MetricStereoCamera.hpp"
+#include "video_input/MetricCamera.hpp"
 #include "video_input/ImagesFromDirectory.hpp"
 #include "video_input/VideoFromFiles.hpp"
 #include "video_input/preprocessing/CpuPreprocessor.hpp"
@@ -25,6 +29,7 @@
 
 #include "objects_tracking/AbstractObjectsTracker.hpp"
 #include "objects_tracking/DummyObjectsTracker.hpp"
+#include "objects_tracking/FrameData.hpp"
 
 #include "helpers/data/DataSequence.hpp"
 #include "objects_detection/detections.pb.h"
@@ -37,10 +42,9 @@
 #include <boost/format.hpp>
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
-#include <boost/array.hpp>
+
 #include <boost/gil/extension/io/png_io.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/random.hpp>
 
 #include <opencv2/core/core.hpp>
 #include "boost/gil/extension/opencv/ipl_image_wrapper.hpp"
@@ -83,11 +87,8 @@ std::ostream & log_error()
 namespace doppia
 {
 
-using boost::array;
 using namespace boost::gil;
 
-/// random_generator should be accessed only by one thread
-boost::mt19937 random_generator;
 
 program_options::options_description ObjectsDetectionGui::get_args_options()
 {
@@ -123,7 +124,7 @@ ObjectsDetectionGui::ObjectsDetectionGui(ObjectsDetectionApplication &applicatio
 {
 
     //if(application.video_input_p.get() == NULL
-    //        || application.stixel_world_estimator_p.get() == NULL)
+    //        or application.stixel_world_estimator_p.get() == NULL)
     //{
     //    throw std::runtime_error("ObjectsDetectionGui constructor expects that video_input and stixel_world_estimator_p are already initialized");
     //}
@@ -349,7 +350,7 @@ void ObjectsDetectionGui::resize_if_necessary()
             application.directory_input_p->get_image().dimensions();
 
     if((screen_left_view.width() < input_dimensions.x) or
-            (screen_left_view.height() < input_dimensions.y))
+       (screen_left_view.height() < input_dimensions.y))
     {
 
         const int
@@ -408,114 +409,116 @@ void ObjectsDetectionGui::draw_detections()
 
 
 
-void draw_the_tracks(
-        const DummyObjectsTracker::tracks_t &tracks,
-        float &max_detection_score,
-        const int additional_border,
-        std::map<int, float> &track_id_to_hue,
-        const boost::gil::rgb8_view_t &view)
+void draw_u_disparity_cost_threshold(AbstractStixelWorldEstimator *stixel_world_estimator_p,
+                                     const boost::gil::rgb8_view_t &view)
 {
 
-    typedef DummyObjectsTracker::track_t track_t;
-    typedef DummyObjectsTracker::detection_t detection_t;
-    typedef DummyObjectsTracker::detections_t detections_t;
+    FastStixelWorldEstimator *the_fast_stixel_world_estimator_p = \
+            dynamic_cast< FastStixelWorldEstimator *>(stixel_world_estimator_p);
 
-    const float min_score = 0; // we will saturate at negative scores
-    //float min_score = std::numeric_limits<float>::max();
-
-    BOOST_FOREACH(const track_t &track, tracks)
+    if(the_fast_stixel_world_estimator_p != NULL)
     {
-        //const float score = abs(track.get_current_detection().score);
-        const float score = track.get_current_detection().score;
-        //min_score = std::min(min_score, detection.score);
-        max_detection_score = std::max(max_detection_score, score);
+
+        const StixelsEstimator *stixels_estimator_p = \
+                dynamic_cast<StixelsEstimator *>(the_fast_stixel_world_estimator_p->stixels_estimator_p.get());
+
+        // draw left screen ---
+        if(stixels_estimator_p)
+        {
+
+            // cost on top -
+            const StixelsEstimator::u_disparity_cost_t &u_disparity_cost =
+                    stixels_estimator_p->get_u_disparity_cost();
+            StixelsEstimator::u_disparity_cost_t filtered_u_disparity_cost = u_disparity_cost;
+
+
+            const std::vector<int> &ground_plane_corridor = the_fast_stixel_world_estimator_p->get_ground_plane_corridor();
+            const std::vector<int> &v_given_disparity = stixels_estimator_p->get_v_given_disparity();
+
+            //const float cost_threshold = 25;
+            const float cost_threshold = 35;
+            for(int u=0; u < u_disparity_cost.cols(); u+=1)
+            {
+                for(int disparity=0; disparity < u_disparity_cost.rows(); disparity+=1)
+                {
+                    float filtered_cost = 0;
+                    const int v = v_given_disparity[disparity];
+                    const int top_v = ground_plane_corridor[v];
+
+                    if(top_v > 0)
+                    {
+                        const int
+                                //delta_d = 2,
+                                delta_d = 5,
+                                //delta_d = 10, // 10 is better than 2, 20 is like 10
+                                //delta_d = 50, // 50 is like 10
+                                min_d = std::max<int>(0, disparity - delta_d),
+                                max_d = std::min<int>(disparity + delta_d, u_disparity_cost.cols() - 1);
+
+                        const int
+                                object_height = v - top_v,
+                                object_width = object_height*0.4,
+                                min_u = std::max<int>(0, u - object_width/2),
+                                max_u = std::min<int>(u + object_width/2, u_disparity_cost.cols());
+
+                        for(int uu=min_u; uu < max_u; uu+=1)
+                        {
+                            const bool search_around = true;
+                            if(search_around)
+                            {
+                                float minimum_local_cost = std::numeric_limits<float>::max();
+                                for(int d=min_d; d <= max_d; d+=1)
+                                {
+                                    const float t_cost = u_disparity_cost(d, u);
+                                    minimum_local_cost = std::min(minimum_local_cost, t_cost);
+                                }
+                                filtered_cost += minimum_local_cost;
+                            }
+                            else
+                            {
+                                filtered_cost += u_disparity_cost(disparity, u);
+                            }
+
+                        } // end of "for each column in the detection window"
+
+                        filtered_cost /= (max_u - min_u); // we average the cost
+
+                        filtered_u_disparity_cost(disparity, u) = filtered_cost;
+                    }
+                    else
+                    {
+                        filtered_cost = u_disparity_cost(disparity, u);
+
+                    }//  end of "if valid object"
+
+                    if( filtered_cost > cost_threshold )
+                    {
+                        filtered_u_disparity_cost(disparity, u) = 0;
+                    }
+                    else
+                    {
+                        view(u,v) = rgb8_colors::red;
+                    }
+                } // end of "for each column"
+            } // end of "for each row"
+
+
+            boost::gil::rgb8_view_t left_top_sub_view =
+                    boost::gil::subimage_view(view,
+                                              0, 0,
+                                              u_disparity_cost.cols(), u_disparity_cost.rows());
+
+            //draw_matrix(u_disparity_cost, left_top_sub_view);
+            draw_matrix(filtered_u_disparity_cost, left_top_sub_view);
+
+
+        } // end of draw left screen -
+
     }
-
-    //printf("max_detection_score == %.3f\n", max_detection_score);
-
-    const float scaling = 1.0 / (max_detection_score - min_score);
-
-    BOOST_FOREACH(const track_t &track, tracks)
-    {
-        gil::rgb8_pixel_t color;
-
-        // get track color
-        {
-            const int id = track.get_id();
-
-            //const float score = abs(track.get_current_detection().score);
-            const float score = track.get_current_detection().score;
-            //printf("track_id %i score == %.3f\n", id, score);
-            const float normalized_score = max(0.0f, (score - min_score)*scaling);
-
-            //color = rgb8_colors::white;
-            //color = gil::rgb8_pixel_t(normalized_score*255, 0, 0); // red box
-            const float
-                    //value = 0.9,
-                    value = normalized_score,
-                    saturation = 0.8;
-
-
-            if(track_id_to_hue.size() > 1000)
-            {
-                // to avoid memory leacks we reset the colors once in a while
-                track_id_to_hue.clear();
-            }
-
-
-            if(track_id_to_hue.count(id) == 0)
-            {
-                boost::uniform_real<float> random_hue;
-                // random generator should be accessed only by one thread
-                track_id_to_hue[id] = random_hue(random_generator);
-            }
-
-            const float hue = track_id_to_hue[id];
-            //printf("track_id_to_hue[%i] == %.3f\n", id, hue);
-            //printf("track_id %i value == %.3f\n", id, value);
-            color = hsv_to_rgb(hue, saturation, value);
-        }
-
-
-        // draw current bounding box --
-        {
-            track_t::rectangle_t box = track.get_current_bounding_box();
-
-            box.min_corner().x(box.min_corner().x() - additional_border);
-            box.min_corner().y(box.min_corner().y() - additional_border);
-            box.max_corner().x(box.max_corner().x() - additional_border);
-            box.max_corner().y(box.max_corner().y() - additional_border);
-
-            draw_rectangle(view, color, box, 4);
-        }
-
-        // draw tails
-        {
-            const detections_t &detections_in_time = track.get_detections_in_time();
-
-            const detection_t::rectangle_t &bbox = detections_in_time.front().bounding_box;
-            int
-                    previous_middle_low_point_x = (bbox.max_corner().x() + bbox.min_corner().x()) / 2,
-                    previous_middle_low_point_y = bbox.max_corner().y();
-
-            BOOST_FOREACH(const detection_t &detection, detections_in_time)
-            {
-                const detection_t::rectangle_t &bbox = detection.bounding_box;
-
-                const int
-                        middle_low_point_x = (bbox.max_corner().x() + bbox.min_corner().x()) / 2,
-                        middle_low_point_y = bbox.max_corner().y();
-
-                draw_line(view, color, middle_low_point_x, middle_low_point_y,
-                          previous_middle_low_point_x, previous_middle_low_point_y);
-
-                previous_middle_low_point_x = middle_low_point_x;
-                previous_middle_low_point_y = middle_low_point_y;
-            } // end of "for each detection in time"
-
-        }
-
-    } // end of "for each track"
+    else
+    { // the_stixel_world_estimator_p == NULL
+        // simply freeze the screen
+    }
 
     return;
 }
@@ -524,30 +527,103 @@ void draw_the_tracks(
 void ObjectsDetectionGui::draw_tracks()
 {
 
-    {
+    { // copy input images as background
         //this->draw_video_input();
         const AbstractVideoInput::input_image_view_t
                 &left_input_view = application.video_input_p->get_left_image();
 
-        copy_and_convert_pixels(left_input_view, screen_left_view);
+        //copy_and_convert_pixels(left_input_view, screen_left_view);
+        StixelWorldGui::draw_stixel_world(); // will draw left and right screen views
+        //StixelWorldGui::draw_stixels_estimation();
+
+        // we overwrite the right image
         copy_and_convert_pixels(left_input_view, screen_right_view);
     }
 
-    StixelWorldGui::draw_stixel_world();
-    //StixelWorldGui::draw_stixels_estimation();
 
     if(application.objects_tracker_p)
     {
-        const DummyObjectsTracker * dummy_objects_tracker_p = \
+        const DummyObjectsTracker *dummy_objects_tracker_p = \
                 dynamic_cast<const DummyObjectsTracker *>(application.objects_tracker_p.get());
 
-        if(dummy_objects_tracker_p != NULL)
+        const Dummy3dObjectsTracker *dummy_3d_objects_tracker_p = \
+                dynamic_cast<const Dummy3dObjectsTracker *>(application.objects_tracker_p.get());
+
+        SpectrObjectsTracker *spectr_objects_tracker_p = \
+                dynamic_cast<SpectrObjectsTracker *>(application.objects_tracker_p.get());
+
+
+        AbstractVideoInput &video_input = *(application.video_input_p);
+
+        if((dummy_objects_tracker_p != NULL)
+           or (dummy_3d_objects_tracker_p != NULL)
+           or (spectr_objects_tracker_p != NULL))
         {
-            const DummyObjectsTracker::tracks_t &tracks = dummy_objects_tracker_p->get_tracks();
-            draw_the_tracks(tracks,
-                            max_detection_score, application.additional_border,
-                            track_id_to_hue,
-                            screen_left_view);
+
+            if(dummy_objects_tracker_p != NULL)
+            {
+                const DummyObjectsTracker::tracks_t &tracks = dummy_objects_tracker_p->get_tracks();
+                draw_the_tracks(tracks,
+                                max_detection_score, application.additional_border,
+                                track_id_to_hue,
+                                screen_left_view);
+            }
+            else if(dummy_3d_objects_tracker_p != NULL)
+            {
+
+                GroundPlane ground_plane_estimate;
+
+                if(application.stixel_world_estimator_p)
+                {
+                    ground_plane_estimate = application.stixel_world_estimator_p->get_ground_plane();
+                }
+                else
+                { // we use the prior
+                    ground_plane_estimate.set_from_metric_units(
+                                video_input.camera_pitch, video_input.camera_roll, video_input.camera_height);
+                }
+
+                const Dummy3dObjectsTracker::tracks_t &tracks = dummy_3d_objects_tracker_p->get_tracks();
+
+                ObjectsTrackingApplication *tracking_application_p = \
+                        dynamic_cast<ObjectsTrackingApplication *>(&application);
+
+                if(tracking_application_p)
+                {
+
+                    FrameData &frame_data = *(dummy_3d_objects_tracker_p->latest_frame_data_p);
+                    MetricCamera camera(*(frame_data.camera_calibration_p), frame_data.pose);
+
+                    draw_the_tracks(tracks,
+                                    max_detection_score, application.additional_border,
+                                    track_id_to_hue,
+                                    ground_plane_estimate,
+                                    camera,
+                                    screen_left_view);
+
+                }
+                else
+                {
+                    draw_the_tracks(tracks,
+                                    max_detection_score, application.additional_border,
+                                    track_id_to_hue,
+                                    ground_plane_estimate,
+                                    video_input.get_metric_camera().get_left_camera(),
+                                    screen_left_view);
+                }
+            }
+            else
+            {
+                // FIXME just for debugging
+                const hypotheses_t &tracks = spectr_objects_tracker_p->get_interesting_hypotheses();
+                //const hypotheses_t &tracks = spectr_objects_tracker_p->get_all_hypotheses();
+                draw_the_tracks(tracks,
+                                max_detection_score, application.additional_border,
+                                track_id_to_hue,
+                                video_input.get_metric_camera().get_left_camera(),
+                                screen_left_view);
+            }
+
 
             // draw ground truth
             for(size_t i=0; i < ground_truth_detections.size(); i+=1)
@@ -579,118 +655,12 @@ void ObjectsDetectionGui::draw_tracks()
 
 
     // draw the threshold regions
-    const bool draw_u_disparity_cost_threshold = false;
-    if(draw_u_disparity_cost_threshold)
+    const bool do_draw_u_disparity_cost_threshold = false;
+    if(do_draw_u_disparity_cost_threshold)
     {
-        FastStixelWorldEstimator *the_fast_stixel_world_estimator_p = \
-                dynamic_cast< FastStixelWorldEstimator *>(stixel_world_estimator_p.get());
-
-        if(the_fast_stixel_world_estimator_p != NULL)
-        {
-
-            const StixelsEstimator *stixels_estimator_p = \
-                    dynamic_cast<StixelsEstimator *>(the_fast_stixel_world_estimator_p->stixels_estimator_p.get());
-
-            // draw left screen ---
-            if(stixels_estimator_p)
-            {
-
-                // cost on top -
-                const StixelsEstimator::u_disparity_cost_t &u_disparity_cost =
-                        stixels_estimator_p->get_u_disparity_cost();
-                StixelsEstimator::u_disparity_cost_t filtered_u_disparity_cost = u_disparity_cost;
-
-
-                const std::vector<int> &ground_plane_corridor = the_fast_stixel_world_estimator_p->get_ground_plane_corridor();
-                const std::vector<int> &v_given_disparity = stixels_estimator_p->get_v_given_disparity();
-
-                //const float cost_threshold = 25;
-                const float cost_threshold = 35;
-                for(int u=0; u < u_disparity_cost.cols(); u+=1)
-                {
-                    for(int disparity=0; disparity < u_disparity_cost.rows(); disparity+=1)
-                    {
-                        float filtered_cost = 0;
-                        const int v = v_given_disparity[disparity];
-                        const int top_v = ground_plane_corridor[v];
-
-                        if(top_v > 0)
-                        {
-                            const int
-                                    //delta_d = 2,
-                                    delta_d = 5,
-                                    //delta_d = 10, // 10 is better than 2, 20 is like 10
-                                    //delta_d = 50, // 50 is like 10
-                                    min_d = std::max<int>(0, disparity - delta_d),
-                                    max_d = std::min<int>(disparity + delta_d, u_disparity_cost.cols() - 1);
-
-                            const int
-                                    object_height = v - top_v,
-                                    object_width = object_height*0.4,
-                                    min_u = std::max<int>(0, u - object_width/2),
-                                    max_u = std::min<int>(u + object_width/2, u_disparity_cost.cols());
-
-                            for(int uu=min_u; uu < max_u; uu+=1)
-                            {
-                                const bool search_around = true;
-                                if(search_around)
-                                {
-                                    float minimum_local_cost = std::numeric_limits<float>::max();
-                                    for(int d=min_d; d <= max_d; d+=1)
-                                    {
-                                        const float t_cost = u_disparity_cost(d, u);
-                                        minimum_local_cost = std::min(minimum_local_cost, t_cost);
-                                    }
-                                    filtered_cost += minimum_local_cost;
-                                }
-                                else
-                                {
-                                    filtered_cost += u_disparity_cost(disparity, u);
-                                }
-
-                            } // end of "for each column in the detection window"
-
-                            filtered_cost /= (max_u - min_u); // we average the cost
-
-                            filtered_u_disparity_cost(disparity, u) = filtered_cost;
-                        }
-                        else
-                        {
-                            filtered_cost = u_disparity_cost(disparity, u);
-
-                        }//  end of "if valid object"
-
-                        if( filtered_cost > cost_threshold )
-                        {
-                            filtered_u_disparity_cost(disparity, u) = 0;
-                        }
-                        else
-                        {
-
-                            screen_left_view(u,v) = rgb8_colors::red;
-                        }
-                    } // end of "for each column"
-                } // end of "for each row"
-
-
-                boost::gil::rgb8_view_t left_top_sub_view =
-                        boost::gil::subimage_view(screen_left_view,
-                                                  0, 0,
-                                                  u_disparity_cost.cols(), u_disparity_cost.rows());
-
-                //draw_matrix(u_disparity_cost, left_top_sub_view);
-                draw_matrix(filtered_u_disparity_cost, left_top_sub_view);
-
-
-            } // end of draw left screen -
-
-        }
-        else
-        { // the_stixel_world_estimator_p == NULL
-            // simply freeze the screen
-        }
-
-
+        draw_u_disparity_cost_threshold(
+                    stixel_world_estimator_p.get(),
+                    screen_left_view);
     } // end of "if draw_u_disparity_cost_threshold"
 
     return;

@@ -227,12 +227,12 @@ namespace doppia
             throw std::runtime_error("ReverseMapper::undistort lookup_table_p not yet initialized");
         }
 
-        if(point.y < 0 || point.y >= static_cast<int>(lookup_table_p->shape()[0])  )
+        if(point.y < 0 or point.y >= static_cast<int>(lookup_table_p->shape()[0])  )
         {
             throw std::runtime_error("ReverseMapper::undistort input point.y is out of range");
         }
 
-        if(point.x < 0 || point.x >= static_cast<int>(lookup_table_p->shape()[1])  )
+        if(point.x < 0 or point.x >= static_cast<int>(lookup_table_p->shape()[1])  )
         {
             throw std::runtime_error("ReverseMapper::undistort input point.x is out of range");
         }

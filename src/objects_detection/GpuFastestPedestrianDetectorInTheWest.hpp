@@ -15,10 +15,6 @@ class GpuFastestPedestrianDetectorInTheWest:
 {
 public:
 
-    /// Where we store the fractional cascade information
-    /// @see GpuIntegralChannelsDetector
-    typedef Cuda::DeviceMemoryLinear2D<fractional_cascade_stage_t> gpu_fractional_detection_cascade_per_scale_t;
-
     GpuFastestPedestrianDetectorInTheWest(
             const boost::program_options::variables_map &options,
             boost::shared_ptr<SoftCascadeOverIntegralChannelsModel> cascade_model_p,
@@ -29,17 +25,9 @@ public:
 
 protected:
 
-    gpu_fractional_detection_cascade_per_scale_t gpu_fractional_detection_cascade_per_scale;
-    void set_gpu_scale_detection_cascades();
-
-    void set_gpu_scale_fractional_detection_cascades();
-
     /// computes the detections directly on GPU, avoiding the score image transfer
     void compute_detections_at_specific_scale_v1(const size_t search_range_index,
                                                  const bool first_call = false);
-
-
-
 };
 
 } // end of namespace doppia

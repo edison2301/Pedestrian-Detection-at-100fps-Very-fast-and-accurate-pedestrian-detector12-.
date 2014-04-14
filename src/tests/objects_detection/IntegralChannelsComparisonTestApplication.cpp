@@ -203,9 +203,13 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
     gpu_integral_channels_computer_p->set_image(input_view);
 
     const int
+        #if defined(DEBUG)
+            num_iterations_for_cpu_timing = 1,
+        #else
             num_iterations_for_cpu_timing = 100,
-            //num_iterations_for_gpu_timing = 50*num_iterations_for_cpu_timing;
-            num_iterations_for_gpu_timing = 5*num_iterations_for_cpu_timing;
+        #endif
+            num_iterations_for_gpu_timing = 25*num_iterations_for_cpu_timing;
+            //num_iterations_for_gpu_timing = 5*num_iterations_for_cpu_timing;
     double cpu_time, gpu_time;
 
     {
@@ -251,21 +255,26 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
             max_magnitude_diff=-std::numeric_limits<float>::max(),
             min_magnitude_diff=std::numeric_limits<float>::max();
 
+    Eigen::MatrixXf cpu_channel, gpu_channel;
+
     bool found_one_difference = false;
     for(size_t channel_index=0; channel_index < cpu_integral_channels.shape()[0]; channel_index +=1 )
     {
-
         // reconstruct "non integral image" from integral image
-        const Eigen::MatrixXf
-                cpu_channel = get_channel_matrix(cpu_integral_channels, channel_index),
-                gpu_channel = get_channel_matrix(gpu_integral_channels, channel_index);
+        get_channel_matrix(cpu_integral_channels, channel_index, cpu_channel);
+        get_channel_matrix(gpu_integral_channels, channel_index, gpu_channel);
 
         BOOST_REQUIRE(cpu_channel.cols() == gpu_channel.cols());
         BOOST_REQUIRE(cpu_channel.rows() == gpu_channel.rows());
 
-        for(size_t row_index=0; row_index < static_cast<size_t>(cpu_channel.rows()); row_index +=1 )
+        bool stop_this_channel = false;
+        for(size_t row_index=0;
+            (row_index < static_cast<size_t>(cpu_channel.rows())) and (not stop_this_channel);
+            row_index +=1 )
         {
-            for(size_t col_index=0; col_index < static_cast<size_t>(cpu_channel.cols()); col_index +=1 )
+            for(size_t col_index=0;
+                (col_index < static_cast<size_t>(cpu_channel.cols())) and (not stop_this_channel);
+                col_index +=1 )
             {
                 const float
                         &cpu_value = cpu_channel(row_index, col_index),
@@ -281,6 +290,7 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
                                cpu_value, gpu_value);
 
                         found_one_difference = true;
+                        stop_this_channel = true;
                     }
 
 
@@ -300,6 +310,12 @@ void IntegralChannelsComparisonTestApplication::process_frame(const AbstractVide
                                    cpu_value, gpu_value, diff);
                         }
                     }
+
+                }
+
+                if(stop_this_channel)
+                {
+                    printf("Skipping the rest of channel %zi.\n", channel_index);
                 }
 
             } // end of "for each column"

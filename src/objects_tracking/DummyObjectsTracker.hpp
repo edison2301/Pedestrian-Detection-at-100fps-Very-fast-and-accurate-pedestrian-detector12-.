@@ -2,12 +2,13 @@
 #define BICLOP_DUMMYOBJECTSTRACKER_HPP
 
 #include "AbstractObjectsTracker.hpp"
-#include "TrackedDetection2d.hpp"
+#include "tracked_detections/TrackedDetection2d.hpp"
 
 #include <list>
 
 namespace doppia {
 
+/// Simple 2d objects tracker
 class DummyObjectsTracker: public AbstractObjectsTracker
 {
 public:
@@ -47,6 +48,15 @@ protected:
 
     bool track_is_outside_image(const track_t &track) const;
 };
+
+/// helper methods (used by Dummy3dObjectsTracker)
+/// @{
+bool box_is_outside_image(const TrackedDetection2d::rectangle_t &bbox, const int image_width, const int image_height);
+
+/// PASCAL VOC criterion
+float intersection_over_union(const TrackedDetection2d::rectangle_t &a, const TrackedDetection2d::rectangle_t &b);
+
+/// @}
 
 } // namespace doppia
 

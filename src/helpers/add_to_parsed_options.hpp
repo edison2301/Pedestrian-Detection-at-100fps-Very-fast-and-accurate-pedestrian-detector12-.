@@ -14,7 +14,7 @@ template <typename T>
     t_vector.clear();
     t_vector.push_back(boost::lexical_cast<std::string>(value));
 
-    // FIXME should check that keys does not already exists
+    // FIXME should check that key does not already exists
     the_parsed_options.options.push_back( boost::program_options::option(key, t_vector) );
 
     return;

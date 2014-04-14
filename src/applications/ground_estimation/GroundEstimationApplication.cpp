@@ -84,7 +84,7 @@ GroundEstimationApplication::~GroundEstimationApplication()
 }
 
 
-program_options::options_description GroundEstimationApplication::get_args_options(void)
+program_options::options_description GroundEstimationApplication::get_args_options()
 {
     program_options::options_description desc("GroundEstimationApplication options");
 

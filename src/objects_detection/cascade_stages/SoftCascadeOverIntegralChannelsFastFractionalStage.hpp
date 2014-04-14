@@ -21,7 +21,7 @@ public:
     typedef doppia::geometry::point_xy<coordinate_t> point_t;
     typedef doppia::geometry::box<point_t> rectangle_t;
 
-    __device__
+    __host__ __device__
     IntegralChannelsFractionalFeature();
     IntegralChannelsFractionalFeature(const IntegralChannelsFeature&feature);
     //~IntegralChannelsFractionalFeature();
@@ -35,7 +35,6 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
-__device__
 IntegralChannelsFractionalFeature::IntegralChannelsFractionalFeature()
 {
     // nothing to do here
@@ -66,7 +65,7 @@ class FractionalDecisionStumpWithWeights: public SimpleFractionalDecisionStump
 {
 public:
 
-    __device__
+    __host__ __device__
     FractionalDecisionStumpWithWeights();
     FractionalDecisionStumpWithWeights(const DecisionStump &stump, const float feature_weight);
     //~FractionalDecisionStumpWithWeights();
@@ -83,7 +82,6 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
-__device__
 FractionalDecisionStumpWithWeights::FractionalDecisionStumpWithWeights()
 {
     // default constructor does nothing
@@ -113,7 +111,7 @@ class SoftCascadeOverIntegralChannelsFastFractionalStage
 {
 public:
 
-    __device__
+    __host__ __device__
     SoftCascadeOverIntegralChannelsFastFractionalStage();
     SoftCascadeOverIntegralChannelsFastFractionalStage(const SoftCascadeOverIntegralChannelsStage &stage);
     //~SoftCascadeOverIntegralChannelsFastFractionalStage();
@@ -130,7 +128,6 @@ public:
 
 /// Defined in the header to make CUDA happy
 inline
-__device__
 SoftCascadeOverIntegralChannelsFastFractionalStage::SoftCascadeOverIntegralChannelsFastFractionalStage()
 {
     // default constructor does nothing

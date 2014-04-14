@@ -54,11 +54,10 @@ public:
 
     static program_options::options_description get_args_options();
 
-    virtual std::string get_application_title();
-
+    std::string get_application_title();
 
     ObjectsDetectionApplication();
-    virtual ~ObjectsDetectionApplication();
+    ~ObjectsDetectionApplication();
 
 protected:
 

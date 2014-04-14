@@ -11,7 +11,7 @@
 #define cuda_safe_call(expr)  doppia::___cuda_safe_call(expr, __FILE__, __LINE__, __func__)
 //#define cufft_safe_call(expr)  doppia::___cufft_safe_call(expr, __FILE__, __LINE__, __func__)
 //#define npp_safe_call(expr)  doppia::___npp_safe_call(expr, __FILE__, __LINE__, __func__)
-#else /* defined(__CUDACC__) || defined(__MSVC__) */
+#else /* defined(__CUDACC__) or defined(__MSVC__) */
 #define cuda_safe_call(expr)  doppia::___cuda_safe_call(expr, __FILE__, __LINE__)
 //#define cufft_safe_call(expr)  doppia::___cufft_safe_call(expr, __FILE__, __LINE__)
 //#define npp_safe_call(expr)  doppia::___npp_safe_call(expr, __FILE__, __LINE__)

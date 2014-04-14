@@ -54,7 +54,7 @@ class OpenCvStereo: public AbstractStereoBlockMatcher
 
 public:
 
-    static boost::program_options::options_description get_args_options(void);
+    static boost::program_options::options_description get_args_options();
 
     OpenCvStereo(const boost::program_options::variables_map &options);
     ~OpenCvStereo();

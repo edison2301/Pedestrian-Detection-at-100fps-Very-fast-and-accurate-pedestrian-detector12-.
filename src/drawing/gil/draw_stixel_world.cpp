@@ -561,6 +561,12 @@ void draw_stixels_estimation(const ImagePlaneStixelsEstimator &stixels_estimator
                              boost::gil::rgb8_view_t &screen_right_view)
 {
 
+    const bool should_draw_the_stixels = true;
+    //const bool should_draw_the_stixels = false;
+
+    const bool should_draw_cost_matrix = true;
+    //const bool should_draw_cost_matrix = false;
+
     const int desired_cost_height = (left_input_view.height()*0.4);
 
     // draw left screen ---
@@ -568,7 +574,7 @@ void draw_stixels_estimation(const ImagePlaneStixelsEstimator &stixels_estimator
         copy_and_convert_pixels(left_input_view, screen_left_view);
 
         // draw the stixels --
-        if(true)
+        if(should_draw_the_stixels)
         {
             draw_the_stixels(screen_left_view,
                              stixels_estimator.get_stixels());
@@ -577,7 +583,7 @@ void draw_stixels_estimation(const ImagePlaneStixelsEstimator &stixels_estimator
         // draw bottom candidates --
         {
             const ImagePlaneStixelsEstimator::row_given_stixel_and_row_step_t &candidate_bottom = \
-                    stixels_estimator.row_given_stixel_and_row_step;
+                    stixels_estimator.bottom_v_given_stixel_and_row_step;
             for(size_t stixel_index=0; stixel_index < candidate_bottom.shape()[0]; stixel_index +=1)
             {
 
@@ -598,7 +604,7 @@ void draw_stixels_estimation(const ImagePlaneStixelsEstimator &stixels_estimator
 
 
         // cost on top --
-        if(true)
+        if(should_draw_cost_matrix)
         {
             const ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &cost =
                     stixels_estimator.get_cost_per_stixel_and_row_step();
@@ -646,39 +652,45 @@ void draw_stixels_estimation(const ImagePlaneStixelsEstimator &stixels_estimator
         //copy_and_convert_pixels(right_input_view, screen_right_view);
         copy_and_convert_pixels(left_input_view, screen_right_view);
 
+        if(should_draw_cost_matrix)
+        {
 
-        // objects cost on top --
-        const ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &object_cost =
-                stixels_estimator.get_object_cost_per_stixel_and_row_step();
+            // objects cost on top --
+            const ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &object_cost =
+                    stixels_estimator.get_object_cost_per_stixel_and_row_step();
 
-        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t object_cost_to_draw;
-        fill_cost_to_draw(object_cost, object_cost_to_draw, desired_cost_height, stixels_estimator.stixel_width);
+            ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t object_cost_to_draw;
+            fill_cost_to_draw(object_cost, object_cost_to_draw, desired_cost_height, stixels_estimator.stixel_width);
 
-        boost::gil::rgb8_view_t right_top_sub_view =
-                boost::gil::subimage_view(screen_right_view,
-                                          0, 0,
-                                          object_cost_to_draw.cols(), object_cost_to_draw.rows());
+            boost::gil::rgb8_view_t right_top_sub_view =
+                    boost::gil::subimage_view(screen_right_view,
+                                              0, 0,
+                                              object_cost_to_draw.cols(), object_cost_to_draw.rows());
 
-        draw_matrix(object_cost_to_draw, right_top_sub_view);
-
-
-        // ground cost on the bottom --
-        const ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost =
-                stixels_estimator.get_ground_cost_per_stixel_and_row_step();
-
-        ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t ground_cost_to_draw;
-        fill_cost_to_draw(ground_cost, ground_cost_to_draw, desired_cost_height, stixels_estimator.stixel_width);
+            draw_matrix(object_cost_to_draw, right_top_sub_view);
 
 
-        const int x_min = 0, y_min = std::max<int>(0, screen_left_view.height() - ground_cost_to_draw.rows() );
+            // ground cost on the bottom --
+            const ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t &ground_cost =
+                    stixels_estimator.get_ground_cost_per_stixel_and_row_step();
 
-        boost::gil::rgb8_view_t right_bottom_sub_view =
-                boost::gil::subimage_view(screen_right_view,
-                                          x_min, y_min,
-                                          ground_cost_to_draw.cols(), ground_cost_to_draw.rows());
+            ImagePlaneStixelsEstimator::cost_per_stixel_and_row_step_t ground_cost_to_draw;
+            fill_cost_to_draw(ground_cost, ground_cost_to_draw, desired_cost_height, stixels_estimator.stixel_width);
 
-        draw_matrix(ground_cost_to_draw, right_bottom_sub_view);
-    }
+
+            const int x_min = 0, y_min = std::max<int>(0, screen_left_view.height() - ground_cost_to_draw.rows() );
+
+            boost::gil::rgb8_view_t right_bottom_sub_view =
+                    boost::gil::subimage_view(screen_right_view,
+                                              x_min, y_min,
+                                              ground_cost_to_draw.cols(), ground_cost_to_draw.rows());
+
+            draw_matrix(ground_cost_to_draw, right_bottom_sub_view);
+
+        } // end of "should draw cost matrix"
+
+    } // end of draw right screen -
+
     return;
 }
 
@@ -787,7 +799,7 @@ void draw_stixel_match_lines( boost::gil::rgb8_view_t& left_screen_view,
                 const Stixel& right_stixel = right_screen_stixels[ i ];
                 const Stixel& left_stixel = left_screen_stixels[ stixel_match ];
 
-                if( right_stixel.type != Stixel::Occluded && left_stixel.type != Stixel::Occluded )
+                if( right_stixel.type != Stixel::Occluded and left_stixel.type != Stixel::Occluded )
                 {
                     const unsigned int color_index = ( i * color_stixel_sampling_width_ratio ) % number_of_stixels;
 
@@ -901,7 +913,7 @@ void draw_stixel_match_lines( boost::gil::rgb8_view_t& left_screen_view,
                         right_screen_view( x, int( y_bottom + 0.5 ) ) = t_color;
                     }
 
-                } // End of if( right_stixel is NOT Occluded && left_stixel is NOT Occluded )
+                } // End of if( right_stixel is NOT Occluded and left_stixel is NOT Occluded )
 
             } // End of if( stixel_match >= 0 )
         }

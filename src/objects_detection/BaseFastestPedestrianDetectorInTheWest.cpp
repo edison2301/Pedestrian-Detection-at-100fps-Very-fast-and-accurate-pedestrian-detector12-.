@@ -2,10 +2,35 @@
 
 #include "integral_channels/IntegralChannelsForPedestrians.hpp"
 
+#include "helpers/Log.hpp"
+
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/round.hpp>
+#include <boost/format.hpp>
 
 #include <cstdio>
+
+
+namespace
+{
+
+std::ostream & log_info()
+{
+    return  logging::log(logging::InfoMessage, "BaseFastestPedestrianDetectorInTheWest");
+}
+
+std::ostream & log_debug()
+{
+    return  logging::log(logging::DebugMessage, "BaseFastestPedestrianDetectorInTheWest");
+}
+
+std::ostream & log_error()
+{
+    return  logging::log(logging::ErrorMessage, "BaseFastestPedestrianDetectorInTheWest");
+}
+
+} // end of anonymous namespace
+
 
 namespace doppia {
 
@@ -39,40 +64,34 @@ void BaseFastestPedestrianDetectorInTheWest::compute_scaled_detection_cascades()
     assert(cascade_model_p);
 
     detection_cascade_per_scale.clear();
-    fractional_detection_cascade_per_scale.clear();
     detector_cascade_relative_scale_per_scale.clear();
     detection_window_size_per_scale.clear();
     original_detection_window_scales.clear();
 
-    const size_t num_scales = search_ranges.size();
+    const size_t num_scales = search_ranges_data.size();
     detection_cascade_per_scale.reserve(num_scales);
     detector_cascade_relative_scale_per_scale.reserve(num_scales);
-    fractional_detection_cascade_per_scale.reserve(num_scales);
     detection_window_size_per_scale.reserve(num_scales);
     original_detection_window_scales.reserve(num_scales);
 
     for(size_t scale_index=0; scale_index < num_scales; scale_index+=1)
     {
-        const DetectorSearchRange &search_range = search_ranges[scale_index];
+        const DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
 
-        original_detection_window_scales.push_back(search_range.detection_window_scale);
+        original_detection_window_scales.push_back(search_range_data.detection_window_scale);
 
         // search the nearest octave scale ---
-        const int octave = boost::math::iround(std::log(search_range.detection_window_scale)/std::log(2.0f));
+        const int octave = boost::math::iround(std::log(search_range_data.detection_window_scale)/std::log(2.0f));
         const float octave_detection_window_scale = std::pow<float>(2, static_cast<float>(octave));
 
         // update the search range scale --
         const float
-                original_detection_window_scale = search_range.detection_window_scale,
+                original_detection_window_scale = search_range_data.detection_window_scale,
                 relative_scale = original_detection_window_scale / octave_detection_window_scale;
 
-        const cascade_stages_t
-                cascade_stages = cascade_model_p->get_rescaled_fast_stages(relative_scale);
-        const fractional_cascade_stages_t
-                fractional_cascade_stages = cascade_model_p->get_rescaled_fast_fractional_stages(relative_scale);
+        const cascade_stages_t cascade_stages = cascade_model_p->get_rescaled_stages(relative_scale);
 
         detection_cascade_per_scale.push_back(cascade_stages);
-        fractional_detection_cascade_per_scale.push_back(fractional_cascade_stages);
         detector_cascade_relative_scale_per_scale.push_back(relative_scale);
         detection_window_size_per_scale.push_back(scale_one_detection_window_size);
     } // end of "for each search range"
@@ -88,17 +107,17 @@ void BaseFastestPedestrianDetectorInTheWest::compute_extra_data_per_scale(
     using boost::math::iround;
 
     extra_data_per_scale.clear();
-    extra_data_per_scale.reserve(search_ranges.size());
+    extra_data_per_scale.reserve(search_ranges_data.size());
 
     // IntegralChannelsForPedestrians::get_shrinking_factor() == GpuIntegralChannelsForPedestrians::get_shrinking_factor()
     const float channels_resizing_factor = 1.0f/IntegralChannelsForPedestrians::get_shrinking_factor();
 
-    for(size_t scale_index=0; scale_index < search_ranges.size(); scale_index+=1)
+    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index+=1)
     {
-        const DetectorSearchRange &search_range = search_ranges[scale_index];
+        const DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
 
         // search the nearest octave scale ---
-        const int octave = boost::math::iround(std::log(search_range.detection_window_scale)/std::log(2.0f));
+        const int octave = boost::math::iround(std::log(search_range_data.detection_window_scale)/std::log(2.0f));
         const float octave_detection_window_scale = std::pow<float>(2, static_cast<float>(octave));
 
         // set the extra data --
@@ -106,7 +125,7 @@ void BaseFastestPedestrianDetectorInTheWest::compute_extra_data_per_scale(
 
         const float
                 //original_to_channel_scale = 1.0f/search_range.detection_window_scale,
-                original_to_channel_ratio = 1.0f/search_range.detection_window_ratio,
+                original_to_channel_ratio = 1.0f/search_range_data.detection_window_ratio,
                 //original_to_channel_scale_x = original_to_channel_scale * original_to_channel_ratio;
                 octave_to_scaled_input = 1.0f/octave_detection_window_scale;
 
@@ -140,23 +159,30 @@ void BaseFastestPedestrianDetectorInTheWest::compute_extra_data_per_scale(
                                     std::max<stride_t::coordinate_t>(1, iround(y_stride*stride_scaling)));
             if(first_call)
             {
-                printf("Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n",
-                       detection_window_scale,
-                       x_stride*stride_scaling, y_stride*stride_scaling,
-                       extra_data.stride.x(),  extra_data.stride.y());
+                log_debug()
+                        << boost::str(
+                               boost::format(
+                                   "Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n")
+                               % detection_window_scale
+                               % (x_stride*stride_scaling)
+                               % (y_stride*stride_scaling)
+                               % extra_data.stride.x()
+                               % extra_data.stride.y()
+                               );
             }
 
             // resize the search range based on the new image size
             extra_data.scaled_search_range =
-                    search_range.get_rescaled(octave_to_channel_scale, original_to_channel_ratio);
+                    //search_range_data.get_rescaled(octave_to_channel_scale, original_to_channel_ratio);
+                    compute_scaled_search_range(scale_index);
         }
 
         // update the scaled detection window sizes
         {
             const detection_window_size_t &original_detection_window_size = detection_window_size_per_scale[scale_index];
             const float
-                    original_window_scale = search_range.detection_window_scale,
-                    original_window_ratio = search_range.detection_window_ratio,
+                    original_window_scale = search_range_data.detection_window_scale,
+                    original_window_ratio = search_range_data.detection_window_ratio,
                     original_window_scale_x = original_window_scale*original_window_ratio;
 
             const detection_window_size_t::coordinate_t

@@ -76,7 +76,7 @@ Regarding point 2, if you created some training configuration scripts for v1, th
 The changes are simple name changes that should be straighforward. 
 Feel free to contact us if you have doubts about this.
 
-Please note that if you want to reproduce exactly our CVPR 2012 we recommend using v1.
+Please note that if you want to reproduce exactly our 2011 or 2012 results we recommend using v1.
 If you only care about detection results please use the detection bounding boxes provided in the [Caltech benchmark](http://www.vision.caltech.edu/Image_Datasets/CaltechPedestrians/).
 If you care about correctness, please use v2. Speed should be comparable to v1.
 

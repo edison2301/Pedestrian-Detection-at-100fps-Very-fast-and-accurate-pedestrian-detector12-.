@@ -10,11 +10,29 @@
 
 namespace doppia {
 
+
+MetricCamera::MetricCamera(const CameraCalibration &calibration_, const Pose &camera_pose)
+    : own_camera_calibration_p(new CameraCalibration(calibration_)),
+      calibration(*own_camera_calibration_p)
+{
+    // we set the new pose
+    own_camera_calibration_p->get_pose() = camera_pose;
+    compute_helper_matrices();
+    return;
+}
+
+
 MetricCamera::MetricCamera(const CameraCalibration &calibration_)
     : calibration(calibration_)
 {
-    // precompute some useful definitions -
+    compute_helper_matrices();
+    return;
+}
 
+
+void MetricCamera::compute_helper_matrices()
+{
+    // precompute some useful definitions -
     const Pose &camera_pose = calibration.get_pose();
 
     transposed_R = camera_pose.rotation.transpose();
@@ -24,15 +42,22 @@ MetricCamera::MetricCamera(const CameraCalibration &calibration_)
 
     camera_focal_point = -(transposed_R * camera_pose.translation);
 
+
+    const InternalCalibrationMatrix &K = calibration.get_internal_calibration();
     // pre-multiplied K * rotation and K*translation
-    KR = calibration.get_internal_calibration() * camera_pose.R;
-    Kt = calibration.get_internal_calibration() * camera_pose.t;
+    KR = K * camera_pose.R;
+    Kt = K * camera_pose.t;
 
     KR_inverse = KR.inverse();
 
+    ProjectionMatrix Rt;
+    Rt = ProjectionMatrix::Zero();
+    Rt.topLeftCorner<3, 3>() = get_calibration().get_pose().rotation;
+    Rt.col(3) = get_calibration().get_pose().translation;
+
+    P = K*Rt; // set P the projection matrix
     return;
 }
-
 
 MetricCamera::~MetricCamera()
 {
@@ -58,7 +83,7 @@ Eigen::Vector2f MetricCamera::project_3d_point(const Eigen::Vector3f &point3d) c
 Eigen::Vector3f MetricCamera::back_project_2d_point_to_3d( const Eigen::Vector2f& point_2d, const float depth ) const
 {
     Eigen::Vector3f homogeneous_point_2d( point_2d( i_x ) * depth, point_2d( i_y ) * depth, depth );
-//    Eigen::Vector3f point_3d = KR.inverse() * ( homogeneous_point_2d - Kt );
+    //    Eigen::Vector3f point_3d = KR.inverse() * ( homogeneous_point_2d - Kt );
     Eigen::Vector3f point_3d = KR_inverse * ( homogeneous_point_2d - Kt );
 
     const float z = point_3d( i_z );
@@ -69,29 +94,31 @@ Eigen::Vector3f MetricCamera::back_project_2d_point_to_3d( const Eigen::Vector2f
 }
 
 
-/// x,y and height are in [meters]
-Eigen::Vector2f MetricCamera::project_ground_plane_point(const GroundPlane &ground_plane,
-                                                         const Eigen::Vector3f &point_on_ground_coordinates) const
+MetricCamera::Line3d MetricCamera::back_project_2d_point_to_3d_ray(const Eigen::Vector2f &point_2d) const
 {
-    return project_ground_plane_point(ground_plane,
-                                      point_on_ground_coordinates(i_x),
-                                      point_on_ground_coordinates(i_y),
-                                      point_on_ground_coordinates(i_z));
+    // See Multiple view geometry, p. 148
+    const Eigen::Vector3f &camera_center = get_calibration().get_pose().translation;
+    const InternalCalibrationMatrix &K = get_calibration().get_internal_calibration();
+    const Eigen::Vector3f point_3d_on_image_plane = transposed_R*(K.inverse() * point_2d.homogeneous());
+
+    return Line3d::Through(camera_center, point_3d_on_image_plane);
 }
 
 
-/// x,y and height are in [meters]
-Eigen::Vector2f MetricCamera::project_ground_plane_point(const GroundPlane &ground_plane,
-                                                         const float x, const float y)  const
+MetricCamera::Plane3d MetricCamera::get_principal_plane() const
 {
-    return project_ground_plane_point(ground_plane, x, y, 0);
+    // see http://en.wikipedia.org/wiki/Pinhole_camera_model for a definition of principal plane
+    const Eigen::Vector3f principal_plane_normal(P(2, 0), P(2, 1), P(2, 2));
+    const float principal_plane_offset = P(2,3);
+
+    return Plane3d(principal_plane_normal, principal_plane_offset);
 }
 
 
-/// x,y and height are in [meters]
-Eigen::Vector2f MetricCamera::project_ground_plane_point(
-        const GroundPlane &ground_plane,
-        const float x, const float y, const float height)  const
+
+
+Eigen::Vector3f MetricCamera::from_ground_to_3d(const GroundPlane &ground_plane,
+                                                const float x, const float y, const float height) const
 {
     //Eigen::Vector3f xyz_point = camera_focal_point + forward_axis*y + left_axis*x;
     //const Eigen::Vector3f closest_point_on_plane = ground_plane.projection(xyz_point);
@@ -117,9 +144,54 @@ Eigen::Vector2f MetricCamera::project_ground_plane_point(
     const Eigen::Vector3f ground_forward_axis =  aa * ground_plane_normal;
 
     const Eigen::Vector3f object_bottom = plane_zero_zero + ground_forward_axis*y + ground_left_axis*x;
-    Eigen::Vector3f xyz_point = object_bottom + ground_plane.normal()*height;
+    const Eigen::Vector3f xyz_point = object_bottom + ground_plane.normal()*height;
 
-    Eigen::Vector2f uv_point = project_3d_point(xyz_point);
+    return xyz_point;
+}
+
+Eigen::Vector3f MetricCamera::from_ground_to_3d(const GroundPlane &ground_plane,
+                                                const Eigen::Vector3f &point_on_ground_coordinates) const
+{
+    return from_ground_to_3d(ground_plane,
+                             point_on_ground_coordinates(i_x),
+                             point_on_ground_coordinates(i_y),
+                             point_on_ground_coordinates(i_z));
+}
+
+Eigen::Vector3f MetricCamera::from_ground_to_3d(const GroundPlane &ground_plane, const float x, const float y) const
+{
+    return from_ground_to_3d(ground_plane, x, y, 0);
+}
+
+
+/// x,y and height are in [meters]
+Eigen::Vector2f MetricCamera::project_ground_plane_point(const GroundPlane &ground_plane,
+                                                         const Eigen::Vector3f &point_on_ground_coordinates) const
+{
+    return project_ground_plane_point(ground_plane,
+                                      point_on_ground_coordinates(i_x),
+                                      point_on_ground_coordinates(i_y),
+                                      point_on_ground_coordinates(i_z));
+}
+
+
+/// x,y and height are in [meters]
+Eigen::Vector2f MetricCamera::project_ground_plane_point(const GroundPlane &ground_plane,
+                                                         const float x, const float y)  const
+{
+    return project_ground_plane_point(ground_plane, x, y, 0);
+}
+
+
+
+
+/// x,y and height are in [meters]
+Eigen::Vector2f MetricCamera::project_ground_plane_point(
+        const GroundPlane &ground_plane,
+        const float x, const float y, const float height)  const
+{
+    const Eigen::Vector3f xyz_point = from_ground_to_3d(ground_plane, x, y, height);
+    const Eigen::Vector2f uv_point = project_3d_point(xyz_point);
     return uv_point;
 }
 

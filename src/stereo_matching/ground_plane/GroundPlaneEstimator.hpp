@@ -14,7 +14,7 @@
 #include <boost/gil/image.hpp>
 #include <boost/gil/image_view.hpp>
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <opencv2/core/core.hpp>
 
 namespace doppia {

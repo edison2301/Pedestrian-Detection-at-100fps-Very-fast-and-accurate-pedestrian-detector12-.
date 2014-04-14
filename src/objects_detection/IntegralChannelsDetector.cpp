@@ -18,12 +18,15 @@
 //#include <boost/gil/utilities.hpp>
 #include <boost/gil/extension/opencv/ipl_image_wrapper.hpp>
 
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #include <boost/format.hpp>
 #include <boost/foreach.hpp>
+#include <boost/variant/static_visitor.hpp>
+#include <boost/variant/apply_visitor.hpp>
 
 #include <limits>
 #include <cmath>
@@ -56,7 +59,8 @@ using namespace boost;
 using namespace boost::program_options;
 
 typedef IntegralChannelsDetector::cascade_stages_t cascade_stages_t;
-typedef cascade_stages_t::value_type cascade_stage_t;
+//typedef cascade_stages_t::value_type cascade_stage_t; // old code
+typedef SoftCascadeOverIntegralChannelsModel::fast_stage_t cascade_stage_t;
 
 typedef AbstractObjectsDetector::detections_t detections_t;
 typedef AbstractObjectsDetector::detection_t detection_t;
@@ -107,14 +111,12 @@ void IntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_v
 
 
     // set default search range --
-    if(input_dimensions_changed or search_ranges.empty())
+    if(input_dimensions_changed or search_ranges_data.empty())
     {
         log_debug() << boost::str(boost::format("::set_image resizing the search_ranges using input size (%i,%i)")
                                   % input_view.width() % input_view.height()) << std::endl;
 
-        compute_search_ranges(input_view.dimensions(),
-                              scale_one_detection_window_size,
-                              search_ranges);
+        compute_search_ranges_meta_data(search_ranges_data);
 
         // update the detection cascades
         compute_scaled_detection_cascades();
@@ -149,19 +151,41 @@ size_t current_y;
 // useful for debugging (see also SlidingIntegralFeature.hpp)
 const bool print_each_feature_value = false;
 
-/// @return true if there are still detections left (unresolved) in the row
-/// this version is slightly slower than the version using SoftCascadeOverIntegralChannelsModel::fast_stage_t
-/// @see SoftCascadeOverIntegralChannelsFastStage
+template <typename StageType>
 inline
 bool compute_cascade_stage_on_row(
         const DetectorSearchRange &search_range,
-        const SoftCascadeOverIntegralChannelsModel::stage_t &stage, const int stage_index,
+        const StageType &stage, const int stage_index,
         const integral_channels_t &integral_channels,
         const size_t row_index,
         const int xstride,
+        const bool use_the_detector_model_cascade,
         detections_scores_t::reference &detections_scores,
         stages_left_t::reference &stages_left)
 {
+    throw std::runtime_error("Received a call to IntegralChannelsDetector compute_cascade_stage_on_row "
+                             "for a type of stage not yet implemented");
+    return false;
+}
+
+
+/// @return true if there are still detections left (unresolved) in the row
+/// this version is slightly slower than the version using SoftCascadeOverIntegralChannelsModel::fast_stage_t
+/// @see SoftCascadeOverIntegralChannelsFastStage
+template <>
+inline
+bool compute_cascade_stage_on_row<SoftCascadeOverIntegralChannelsModel::plain_stage_t>(
+        const DetectorSearchRange &search_range,
+        const SoftCascadeOverIntegralChannelsModel::plain_stage_t &stage, const int stage_index,
+        const integral_channels_t &integral_channels,
+        const size_t row_index,
+        const int xstride,
+        const bool use_the_detector_model_cascade,
+        detections_scores_t::reference &detections_scores,
+        stages_left_t::reference &stages_left)
+{
+
+    assert(use_the_detector_model_cascade == false);
 
     const bool print_cascade_scores = false; // just for debugging
     bool detections_left_unresolved = false;
@@ -282,8 +306,9 @@ bool compute_cascade_stage_on_row(
 
 
 /// @return true if there are still detections left (unresolved) in the row
+template<>
 inline
-bool compute_cascade_stage_on_row(
+bool compute_cascade_stage_on_row<SoftCascadeOverIntegralChannelsModel::stump_stage_t>(
         const DetectorSearchRange &search_range,
         const SoftCascadeOverIntegralChannelsModel::stump_stage_t &stage, const int stage_index,
         const integral_channels_t &integral_channels,
@@ -349,8 +374,9 @@ bool compute_cascade_stage_on_row(
 
 
 /// @return true if there are still detections left (unresolved) in the row
+template<>
 inline
-bool compute_cascade_stage_on_row(
+bool compute_cascade_stage_on_row<SoftCascadeOverIntegralChannelsModel::fast_stage_t>(
         const DetectorSearchRange &search_range,
         const SoftCascadeOverIntegralChannelsModel::fast_stage_t &stage, const int stage_index,
         const integral_channels_t &integral_channels,
@@ -542,7 +568,7 @@ void collect_the_detections(
 }
 
 
-template<typename CascadeStageType>
+template<typename CascadeStagesType>
 void compute_detections_at_specific_scale_impl(
         stages_left_in_the_row_t &stages_left_in_the_row,
         stages_left_t &stages_left,
@@ -551,7 +577,7 @@ void compute_detections_at_specific_scale_impl(
         const detection_window_size_t &original_detection_window_size,
         const float original_detection_window_scale,
         detections_t &detections, detections_t *non_rescaled_detections_p,
-        const CascadeStageType &cascade_stages,
+        const CascadeStagesType &cascade_stages,
         const float score_threshold,
         const ScaleData &scale_data,
         const bool print_stages,
@@ -560,7 +586,7 @@ void compute_detections_at_specific_scale_impl(
         const bool use_the_detector_model_cascade)
 {
 
-    typedef typename CascadeStageType::value_type cascade_stage_t;
+    typedef typename CascadeStagesType::value_type cascade_stage_t;
     const DetectorSearchRange &scaled_search_range = scale_data.scaled_search_range;
     const stride_t &actual_stride = scale_data.stride;
 
@@ -634,7 +660,7 @@ void compute_detections_at_specific_scale_impl(
             const size_t max_col = integral_channels.shape()[2];
 
             DetectorSearchRange search_range_fixed_max_x = scaled_search_range;
-            search_range_fixed_max_x.max_x = max_col - stage.get_bounding_box().max_corner().x();
+            search_range_fixed_max_x.max_x = max_col -1 -stage.get_bounding_box().max_corner().x();
 
             //printf("stages_left_in_the_row.size() == %zi, max_row == %zi\n",
             //       stages_left_in_the_row.size(), max_row);
@@ -745,8 +771,8 @@ void compute_detections_at_specific_scale_impl(
             const size_t
                     max_row = integral_channels.shape()[1],
                     max_col = integral_channels.shape()[2];
-            scale_data_fixed.scaled_search_range.max_y = max_row;
-            scale_data_fixed.scaled_search_range.max_x = max_col;
+            scale_data_fixed.scaled_search_range.max_y = max_row -1;
+            scale_data_fixed.scaled_search_range.max_x = max_col -1;
 
             collect_the_detections(scale_data_fixed, original_detection_window_size,
                                    detections_scores, score_threshold,
@@ -784,6 +810,115 @@ void compute_detections_at_specific_scale_impl(
 } // end of compute_detections_at_specific_scale_impl
 
 
+/// This class is ugly as hell, but I did not know how to do better (other than creating an arguments structure)
+class compute_detections_at_specific_scale_visitor: public boost::static_visitor<void>
+{
+
+protected:
+
+    stages_left_in_the_row_t &stages_left_in_the_row;
+    stages_left_t &stages_left;
+    detections_scores_t &detections_scores;
+    const integral_channels_t &integral_channels;
+    const detection_window_size_t &original_detection_window_size;
+    const float original_detection_window_scale;
+    detections_t &detections;
+    detections_t *non_rescaled_detections_p;
+    //const CascadeStagesType &cascade_stages,
+    const float score_threshold;
+    const ScaleData &scale_data;
+    const bool print_stages;
+    const bool print_cascade_statistics;
+    const bool save_score_image;
+    const bool use_the_detector_model_cascade;
+
+public:
+
+    compute_detections_at_specific_scale_visitor(
+            stages_left_in_the_row_t &stages_left_in_the_row_,
+            stages_left_t &stages_left_,
+            detections_scores_t &detections_scores_,
+            const integral_channels_t &integral_channels_,
+            const detection_window_size_t &original_detection_window_size_,
+            const float original_detection_window_scale_,
+            detections_t &detections_, detections_t *non_rescaled_detections_p_,
+            //const CascadeStagesType &cascade_stages,
+            const float score_threshold_,
+            const ScaleData &scale_data_,
+            const bool print_stages_,
+            const bool print_cascade_statistics_,
+            const bool save_score_image_,
+            const bool use_the_detector_model_cascade_)
+        :
+          stages_left_in_the_row(stages_left_in_the_row_),
+          stages_left(stages_left_),
+          detections_scores(detections_scores_),
+          integral_channels(integral_channels_),
+          original_detection_window_size(original_detection_window_size_),
+          original_detection_window_scale(original_detection_window_scale_),
+          detections(detections_),
+          non_rescaled_detections_p(non_rescaled_detections_p_),
+          //const CascadeStageType &cascade_stages,
+          score_threshold(score_threshold_),
+          scale_data(scale_data_),
+          print_stages(print_stages_),
+          print_cascade_statistics(print_cascade_statistics_),
+          save_score_image(save_score_image_),
+          use_the_detector_model_cascade(use_the_detector_model_cascade_)
+    {
+        // nothing to do here
+        return;
+    }
+
+    typedef SoftCascadeOverIntegralChannelsModel::plain_stages_t plain_stages_t;
+    typedef SoftCascadeOverIntegralChannelsModel::fast_fractional_stages_t fast_fractional_stages_t;
+
+    template<typename CascadeStagesType>
+    void operator()(const CascadeStagesType &cascade_stages) const;
+
+}; // end of visitor class compute_detections_at_specific_scale_visitor
+
+
+template<typename CascadeStagesType>
+void compute_detections_at_specific_scale_visitor::operator()(const CascadeStagesType &cascade_stages) const
+{
+    doppia::compute_detections_at_specific_scale_impl(
+                stages_left_in_the_row,
+                stages_left,
+                detections_scores,
+                integral_channels,
+                original_detection_window_size,
+                original_detection_window_scale,
+                detections, non_rescaled_detections_p,
+                cascade_stages,
+                score_threshold,
+                scale_data,
+                print_stages,
+                print_cascade_statistics,
+                save_score_image,
+                use_the_detector_model_cascade);
+    return;
+}
+
+
+template<>
+void compute_detections_at_specific_scale_visitor::operator()
+<compute_detections_at_specific_scale_visitor::plain_stages_t>(
+        const compute_detections_at_specific_scale_visitor::plain_stages_t &) const
+{
+    throw std::runtime_error("plain_stages_t not yet supported");
+    return;
+}
+
+template<>
+void compute_detections_at_specific_scale_visitor::operator()
+<compute_detections_at_specific_scale_visitor::fast_fractional_stages_t>(
+        const compute_detections_at_specific_scale_visitor::fast_fractional_stages_t &) const
+{
+    throw std::runtime_error("fast_fractional_stages_t not yet supported");
+    return;
+}
+
 void compute_detections_at_specific_scale(
         IntegralChannelsDetector::stages_left_in_the_row_t &stages_left_in_the_row,
         IntegralChannelsDetector::stages_left_t &stages_left,
@@ -801,6 +936,25 @@ void compute_detections_at_specific_scale(
         const bool save_score_image,
         const bool use_the_detector_model_cascade)
 {
+
+    compute_detections_at_specific_scale_visitor visitor(
+                stages_left_in_the_row,
+                stages_left,
+                detections_scores,
+                integral_channels,
+                detection_window_size,
+                original_detection_window_scale,
+                detections, non_rescaled_detections_p,
+                //cascade_stages,
+                score_threshold,
+                scale_data,
+                print_stages,
+                print_cascade_statistics,
+                save_score_image,
+                use_the_detector_model_cascade);
+
+    boost::apply_visitor(visitor, cascade_stages);
+    /*
     compute_detections_at_specific_scale_impl(
                 stages_left_in_the_row,
                 stages_left,
@@ -815,7 +969,7 @@ void compute_detections_at_specific_scale(
                 print_stages,
                 print_cascade_statistics,
                 save_score_image,
-                use_the_detector_model_cascade);
+                use_the_detector_model_cascade);*/
     return;
 }
 
@@ -835,10 +989,10 @@ IntegralChannelsDetector::resize_input_and_compute_integral_channels(const size_
 
         if(first_call)
         {
-            const DetectorSearchRange &original_search_range = search_ranges[search_range_index];
+            const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[search_range_index];
             log_debug() << "resize_input_and_compute_integral_channels "
                         << "scale index == " << search_range_index
-                        << ", detection window scale == " << original_search_range.detection_window_scale
+                        << ", detection window scale == " << original_search_range_data.detection_window_scale
                         << ", scaled x,y == "
                         << scaled_input_image_size.x() << ", " << scaled_input_image_size.y() << std::endl;
         }
@@ -922,6 +1076,7 @@ size_t IntegralChannelsDetector::get_input_height() const
 }
 
 
+
 void IntegralChannelsDetector::compute_detections_at_specific_scale(
         const size_t search_range_index,
         const bool save_score_image,
@@ -935,15 +1090,14 @@ void IntegralChannelsDetector::compute_detections_at_specific_scale(
     const integral_channels_t &integral_channels =
             resize_input_and_compute_integral_channels(search_range_index, first_call);
 
-    const DetectorSearchRange &original_search_range = search_ranges[search_range_index];
-    const cascade_stages_t &cascade_stages = detection_cascade_per_scale[search_range_index];
-    const stump_cascade_stages_t &stump_cascade_stages = detection_stump_cascade_per_scale[search_range_index];
+    const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[search_range_index];
+    const variant_stages_t &cascade_stages = detection_cascade_per_scale[search_range_index];
     const detection_window_size_t &detection_window_size = detection_window_size_per_scale[search_range_index];
     const ScaleData &scale_data = extra_data_per_scale[search_range_index];
 
     // run the cascade classifier and collect the detections --
 #if defined(BOOTSTRAPPING_LIB)
-    current_image_scale = 1.0f/original_search_range.detection_window_scale;
+    current_image_scale = 1.0f/original_search_range_data.detection_window_scale;
     detections_t *non_rescaled_detections_p = &non_rescaled_detections;
 #else
     detections_t *non_rescaled_detections_p = NULL;
@@ -960,43 +1114,23 @@ void IntegralChannelsDetector::compute_detections_at_specific_scale(
     }
 #endif
 
-    if((detection_stump_cascade_per_scale.empty() == false) and (stump_cascade_stages.empty() == false))
-    { // stumps model
-        doppia::compute_detections_at_specific_scale_impl(
-                    stages_left_in_the_row,
-                    stages_left,
-                    detections_scores,
-                    integral_channels,
-                    detection_window_size,
-                    original_search_range.detection_window_scale, // at original scale
-                    detections, non_rescaled_detections_p,
-                    stump_cascade_stages, // we use stumps
-                    score_threshold,
-                    scale_data,
-                    print_stages,
-                    print_cascade_statistics,
-                    save_score_image,
-                    use_the_detector_model_cascade);
-    }
-    else
-    {
-        // level2 decision trees model
-        doppia::compute_detections_at_specific_scale_impl(
-                    stages_left_in_the_row,
-                    stages_left,
-                    detections_scores,
-                    integral_channels,
-                    detection_window_size,
-                    original_search_range.detection_window_scale, // at original scale
-                    detections, non_rescaled_detections_p,
-                    cascade_stages,
-                    score_threshold,
-                    scale_data,
-                    print_stages,
-                    print_cascade_statistics,
-                    save_score_image,
-                    use_the_detector_model_cascade);
-    }
+    compute_detections_at_specific_scale_visitor visitor(
+                stages_left_in_the_row,
+                stages_left,
+                detections_scores,
+                integral_channels,
+                detection_window_size,
+                original_search_range_data.detection_window_scale, // at original scale
+                detections, non_rescaled_detections_p,
+                //cascade_stages,
+                score_threshold,
+                scale_data,
+                print_stages,
+                print_cascade_statistics,
+                save_score_image,
+                use_the_detector_model_cascade);
+
+    boost::apply_visitor(visitor, cascade_stages);
 
 #if defined(TESTING)
     // store some key values for testing via DetectorsComparisonTestApplication
@@ -1192,7 +1326,7 @@ void filter_detections(AbstractObjectsDetector::detections_t &detections,
     // stixels and ground plane information is available
 
     // we already checked inside set_stixels,
-    // that the lenght of estimated_stixels matches the image width
+    // that the length of estimated_stixels matches the image width
 
     typedef AbstractObjectsDetector::detections_t detections_t;
     typedef AbstractObjectsDetector::detection_t detection_t;
@@ -1253,10 +1387,10 @@ void IntegralChannelsDetector::compute()
     static bool first_call = true;
 
     assert(integral_channels_computer_p);
-    assert(search_ranges.size() == detection_cascade_per_scale.size());
+    assert(search_ranges_data.size() == detection_cascade_per_scale.size());
 
     // for each range search
-    for(size_t search_range_index=0; search_range_index < search_ranges.size(); search_range_index +=1)
+    for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index +=1)
     {
         compute_detections_at_specific_scale(search_range_index,
                                              save_score_image, first_call);

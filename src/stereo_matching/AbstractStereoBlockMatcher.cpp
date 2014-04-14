@@ -9,7 +9,7 @@ using namespace std;
 using namespace boost;
 using namespace boost::gil;
 
-program_options::options_description AbstractStereoBlockMatcher::get_args_options(void)
+program_options::options_description AbstractStereoBlockMatcher::get_args_options()
 {
     program_options::options_description desc("AbstractStereoBlockMatcher options");
 
@@ -208,13 +208,13 @@ void AbstractStereoBlockMatcher::check_left_right_consistency(const disparity_ma
         {
             pixel_t &lr_pixel = *lr_x_iterator;
             const int right_x = left_x - lr_pixel[0];
-            if ((right_x >= 0) && (right_x < width))
+            if ((right_x >= 0) and (right_x < width))
             {
 
                 // right to left disparity values are negative
                 const pixel_t &rl_pixel = *(rl_x_iterator - lr_pixel[0]);
 
-                if (false && y == 100 && left_x == 200)
+                if (false and y == 100 and left_x == 200)
                 {
                     printf("lr_pixel[0] == %i; (*(rl_x_iterator - lr_pixel[0]))[0] == %i, (*(rl_x_iterator + lr_pixel[0]))[0] == %i\n",
                            lr_pixel[0],
@@ -271,7 +271,7 @@ void AbstractStereoBlockMatcher::occlusions_interpolation(disparity_map_t::view_
         {
             const int current_disparity_value = (*x_iterator)[0];
 
-            if ((in_an_occluded_section == true) && (current_disparity_value != max_disparity_value))
+            if ((in_an_occluded_section == true) and (current_disparity_value != max_disparity_value))
             {
                 in_an_occluded_section = false;
                 right_side_disparity = current_disparity_value;
@@ -282,7 +282,7 @@ void AbstractStereoBlockMatcher::occlusions_interpolation(disparity_map_t::view_
             }
 
 
-            if ((in_an_occluded_section == false) && (current_disparity_value == max_disparity_value))
+            if ((in_an_occluded_section == false) and (current_disparity_value == max_disparity_value))
             { // start of a section to interpolate
                 in_an_occluded_section = true;
                 segment_start_position = x_iterator;

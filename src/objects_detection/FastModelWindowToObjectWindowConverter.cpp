@@ -31,6 +31,7 @@ FastModelWindowToObjectWindowConverter::FastModelWindowToObjectWindowConverter(
     {
         printf("object_center x,y == %i, %i\n", object_center_x, object_center_y);
         printf("model_window_size x,y == %i, %i\n", model_window_size.x(), model_window_size.y());
+        printf("binHIer");
     }
 
     // we give a 1 pixel slack to handle impair numbers
@@ -46,6 +47,9 @@ FastModelWindowToObjectWindowConverter::FastModelWindowToObjectWindowConverter(
 
     scaling_factor_x = static_cast<float>(object_width) / model_window_size.x();
     scaling_factor_y = static_cast<float>(object_height) / model_window_size.y();
+   // scaling_factor_x = 1.0f;
+   //scaling_factor_y = 1.0f;
+
 
     return;
 }

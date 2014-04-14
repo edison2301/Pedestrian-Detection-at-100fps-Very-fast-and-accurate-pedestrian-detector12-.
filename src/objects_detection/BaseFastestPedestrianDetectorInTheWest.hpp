@@ -33,7 +33,6 @@ protected:
 
     void compute_extra_data_per_scale(const size_t input_width, const size_t input_height);
 
-    std::vector<fractional_cascade_stages_t> fractional_detection_cascade_per_scale;
 };
 
 } // namespace doppia

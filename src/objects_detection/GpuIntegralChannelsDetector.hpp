@@ -24,6 +24,7 @@
 
 
 #include <boost/program_options.hpp>
+#include <boost/variant/variant.hpp>
 
 #include <vector>
 
@@ -40,14 +41,36 @@ class GpuIntegralChannelsDetector: public virtual BaseIntegralChannelsDetector
 
 public:
 
-    //typedef Cuda::Symbol2D<cascade_stage_t> gpu_detection_cascade_per_scale_t;
+    typedef SoftCascadeOverIntegralChannelsModel::fast_stage_t fast_stage_t;
+    typedef SoftCascadeOverIntegralChannelsModel::stump_stage_t stump_stage_t;
+
+    typedef SoftCascadeOverIntegralChannelsModel::two_stumps_stage_t two_stumps_stage_t;
+    typedef SoftCascadeOverIntegralChannelsModel::three_stumps_stage_t three_stumps_stage_t;
+    typedef SoftCascadeOverIntegralChannelsModel::four_stumps_stage_t four_stumps_stage_t;
 
     // using Pitched allocation for a custom type makes us run into troubles,
     // we used linear allocation, even is slightly less efficient GPU access (to be fixed...)
     //typedef Cuda::DeviceMemoryPitched2D<cascade_stage_t> gpu_detection_cascade_per_scale_t;
-    typedef Cuda::DeviceMemoryLinear2D<cascade_stage_t> gpu_detection_cascade_per_scale_t;
+    typedef Cuda::DeviceMemoryLinear2D<fast_stage_t> gpu_detection_cascade_per_scale_t;
+    typedef Cuda::DeviceMemoryLinear2D<stump_stage_t> gpu_detection_stump_cascade_per_scale_t;
 
-    typedef Cuda::DeviceMemoryLinear2D<stump_cascade_stage_t> gpu_detection_stump_cascade_per_scale_t;
+    typedef Cuda::DeviceMemoryLinear2D<two_stumps_stage_t> gpu_detection_two_stumps_cascade_per_scale_t;
+    typedef Cuda::DeviceMemoryLinear2D<three_stumps_stage_t> gpu_detection_three_stumps_cascade_per_scale_t;
+    typedef Cuda::DeviceMemoryLinear2D<four_stumps_stage_t> gpu_detection_four_stumps_cascade_per_scale_t;
+
+    typedef SoftCascadeOverIntegralChannelsModel::fast_fractional_stage_t fractional_cascade_stage_t;
+    typedef Cuda::DeviceMemoryLinear2D<fractional_cascade_stage_t> gpu_fractional_detection_cascade_per_scale_t;
+
+    // list of all possible stages types
+    typedef
+    boost::variant<
+    gpu_detection_cascade_per_scale_t, // classic one
+    gpu_detection_stump_cascade_per_scale_t, // bad idea 1
+    gpu_fractional_detection_cascade_per_scale_t, // bad idea 2
+    gpu_detection_two_stumps_cascade_per_scale_t, // stump sets (2,3,4)
+    gpu_detection_three_stumps_cascade_per_scale_t,
+    gpu_detection_four_stumps_cascade_per_scale_t
+    >  gpu_detection_variant_cascade_per_scale_t;
 
 public:
 
@@ -77,9 +100,8 @@ protected:
     std::vector<cv::gpu::GpuMat> resized_input_gpu_matrices;
     size_t previous_resized_input_gpu_matrix_index;
 
-    gpu_detection_cascade_per_scale_t gpu_detection_cascade_per_scale;
-    gpu_detection_stump_cascade_per_scale_t gpu_detection_stump_cascade_per_scale;
-    bool use_stump_cascades;
+    gpu_detection_variant_cascade_per_scale_t gpu_detection_variant_cascade_per_scale;
+
     virtual void set_gpu_scale_detection_cascades();
 
     gpu_detections_t gpu_detections;

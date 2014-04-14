@@ -2,14 +2,40 @@
 
 #include "integral_channels/IntegralChannelsForPedestrians.hpp"
 
+#include "cascade_stages/check_stages_and_range_visitor.hpp"
+#include "cascade_stages/compute_cascade_window_size_visitor.hpp"
+
 #include "helpers/objects_detection/create_json_for_mustache.hpp"
 #include "helpers/get_option_value.hpp"
+#include "helpers/Log.hpp"
 
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/round.hpp>
+#include <boost/variant/get.hpp>
+#include <boost/variant/apply_visitor.hpp>
 
 #include <cstdio>
 
+
+namespace
+{
+
+std::ostream & log_info()
+{
+    return  logging::log(logging::InfoMessage, "BaseVeryFastIntegralChannelsDetector");
+}
+
+std::ostream & log_debug()
+{
+    return  logging::log(logging::DebugMessage, "BaseVeryFastIntegralChannelsDetector");
+}
+
+std::ostream & log_error()
+{
+    return  logging::log(logging::ErrorMessage, "BaseVeryFastIntegralChannelsDetector");
+}
+
+} // end of anonymous namespace
 
 namespace doppia {
 
@@ -145,6 +171,7 @@ std::vector<size_t> get_shuffled_indices(const size_t size)
     return indices;
 }
 
+
 void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
 {
     static bool first_call = true;
@@ -155,15 +182,13 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
 
     detection_cascade_per_scale.clear();
     detector_cascade_relative_scale_per_scale.clear();
-    fractional_detection_cascade_per_scale.clear();
     detection_window_size_per_scale.clear();
     detector_index_per_scale.clear();
     original_detection_window_scales.clear();
 
-    const size_t num_scales = search_ranges.size();
+    const size_t num_scales = search_ranges_data.size();
     detection_cascade_per_scale.reserve(num_scales);
     detector_cascade_relative_scale_per_scale.reserve(num_scales);
-    fractional_detection_cascade_per_scale.reserve(num_scales);
     detection_window_size_per_scale.reserve(num_scales);
     detector_index_per_scale.reserve(num_scales);
     original_detection_window_scales.reserve(num_scales);
@@ -175,36 +200,36 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
         printf("BaseVeryFastIntegralChannelsDetector has the scales shuffling enabled\n");
         const std::vector<size_t> scale_indices = get_shuffled_indices(num_scales);
 
-        detector_search_ranges_t reordered_search_ranges;
+        detector_search_ranges_data_t reordered_search_ranges;
         for(size_t scale_index=0; scale_index < num_scales; scale_index+=1)
         {
             if(false)
             {
                 printf("Index %zi is now %zi\n", scale_index, scale_indices[scale_index]);
             }
-            reordered_search_ranges.push_back(search_ranges[scale_indices[scale_index]]);
+            reordered_search_ranges.push_back(search_ranges_data[scale_indices[scale_index]]);
         }
 
-        search_ranges = reordered_search_ranges;
+        search_ranges_data = reordered_search_ranges;
     }
 
     for(size_t scale_index=0; scale_index < num_scales; scale_index+=1)
     {
-        DetectorSearchRange &search_range = search_ranges[scale_index];
+        DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
 
-        if(search_range.detection_window_ratio != 1.0)
+        if(search_range_data.detection_window_ratio != 1.0)
         {
             throw std::invalid_argument("BaseVeryFastIntegralChannelsDetector does not handle ratios != 1");
         }
 
-        original_detection_window_scales.push_back(search_range.detection_window_scale);
+        original_detection_window_scales.push_back(search_range_data.detection_window_scale);
 
         // search the nearest scale model ---
         const detector_t *nearest_detector_scale_p = NULL;
         size_t nearest_detector_scale_index = 0;
         float min_abs_log_scale = std::numeric_limits<float>::max();
 
-        const float search_range_log_scale = log(search_range.detection_window_scale);
+        const float search_range_log_scale = log(search_range_data.detection_window_scale);
         size_t detector_index = 0;
         BOOST_FOREACH(const detector_t &detector, detector_model_p->get_detectors())
         {
@@ -227,11 +252,11 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
         if(first_call)
         {
             printf("Selected model scale %.3f for detection window scale %.3f\n",
-                   nearest_detector_scale_p->get_scale(), search_range.detection_window_scale);
+                   nearest_detector_scale_p->get_scale(), search_range_data.detection_window_scale);
         }
 
         // update the search range scale --
-        search_range.detection_window_scale /= nearest_detector_scale_p->get_scale();
+        search_range_data.detection_window_scale /= nearest_detector_scale_p->get_scale();
 
 
         const SoftCascadeOverIntegralChannelsModel::model_window_size_t &model_window_size =
@@ -247,7 +272,17 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
             const float
                     offset_x = model_window_size.x()/2.0f,
                     offset_y = model_window_size.y()/2.0f;
-            recenter_cascade(nearest_detector_scale.get_stages(), -offset_x, -offset_y);
+
+            detector_t::variant_stages_t &variant_stages = nearest_detector_scale.get_stages();
+            detector_t::plain_stages_t *plain_stages_p = boost::get<detector_t::plain_stages_t *>(variant_stages);
+            if(plain_stages_p != NULL)
+            {
+                recenter_cascade(*plain_stages_p, -offset_x, -offset_y);
+            }
+            else
+            {
+                throw std::runtime_error("recenter_the_search_range is only implemented for plain_stages_t cascade stages");
+            }
         }
         else
         {
@@ -256,11 +291,8 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
 
 
         // get the rescaled detection cascade --
-        const float relative_scale = search_range.detection_window_scale;
-        const cascade_stages_t
-                cascade_stages = nearest_detector_scale.get_rescaled_fast_stages(relative_scale);
-        const fractional_cascade_stages_t
-                fractional_cascade_stages = nearest_detector_scale.get_rescaled_fast_fractional_stages(relative_scale);
+        const float relative_scale = search_range_data.detection_window_scale;
+        const cascade_stages_t cascade_stages = nearest_detector_scale.get_rescaled_stages(relative_scale);
 
         if(recenter_the_search_range)
         {
@@ -273,13 +305,15 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
 
 
             // FIXME just for testing, very conservative search range
-            search_range.min_x += model_window_size.x(); search_range.max_x -= model_window_size.x();
-            search_range.min_y += model_window_size.y();
-            search_range.max_y = std::max<int>(0,  search_range.max_y - static_cast<int>(model_window_size.y()));
+            /*search_range_data.min_x += model_window_size.x(); search_range_data.max_x -= model_window_size.x();
+            search_range_data.min_y += model_window_size.y();
+            search_range_data.max_y = std::max<int>(0,  search_range_data.max_y - static_cast<int>(model_window_size.y()));*/
+
+            throw std::runtime_error("recenter_the_search_range is deprecated, "
+                                     "code needs update to support (again?) this feature");
         }
 
         detection_cascade_per_scale.push_back(cascade_stages);
-        fractional_detection_cascade_per_scale.push_back(fractional_cascade_stages);
         detector_cascade_relative_scale_per_scale.push_back(relative_scale);
         detection_window_size_per_scale.push_back(model_window_size);
         detector_index_per_scale.push_back(nearest_detector_scale_index);
@@ -309,16 +343,16 @@ void BaseVeryFastIntegralChannelsDetector::compute_extra_data_per_scale(
     using boost::math::iround;
 
     extra_data_per_scale.clear();
-    extra_data_per_scale.reserve(search_ranges.size());
+    extra_data_per_scale.reserve(search_ranges_data.size());
 
     // IntegralChannelsForPedestrians::get_shrinking_factor() == GpuIntegralChannelsForPedestrians::get_shrinking_factor()
     const float channels_resizing_factor = 1.0f/IntegralChannelsForPedestrians::get_shrinking_factor();
 
-    for(size_t scale_index=0; scale_index < search_ranges.size(); scale_index+=1)
+    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index+=1)
     {
-        const DetectorSearchRange &search_range = search_ranges[scale_index];
+        const DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
 
-        if(search_range.detection_window_ratio != 1.0)
+        if(search_range_data.detection_window_ratio != 1.0)
         {
             throw std::invalid_argument("BaseVeryFastIntegralChannelsDetector does not handle ratios != 1");
         }
@@ -346,22 +380,30 @@ void BaseVeryFastIntegralChannelsDetector::compute_extra_data_per_scale(
                                     std::max<stride_t::coordinate_t>(1, iround(y_stride*stride_scaling)));
             if(first_call)
             {
-                printf("Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n",
-                       detection_window_scale,
-                       x_stride*stride_scaling, y_stride*stride_scaling,
-                       extra_data.stride.x(),  extra_data.stride.y());
+                log_debug()
+                        << boost::str(
+                               boost::format(
+                                   "Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n")
+                               % detection_window_scale
+                               % (x_stride*stride_scaling)
+                               % (y_stride*stride_scaling)
+                               % extra_data.stride.x()
+                               % extra_data.stride.y()
+                               );
             }
 
             // from input dimensions to integral channel dimensions
-            extra_data.scaled_search_range = search_range.get_rescaled(input_to_channel_scale);
+            extra_data.scaled_search_range =
+                    //search_range_data.get_rescaled(input_to_channel_scale);
+                    compute_scaled_search_range(scale_index);
         }
 
         // update the scaled detection window sizes
         {
             const detection_window_size_t &original_detection_window_size = detection_window_size_per_scale[scale_index];
             const float
-                    original_window_scale = search_range.detection_window_scale,
-                    original_window_ratio = search_range.detection_window_ratio,
+                    original_window_scale = search_range_data.detection_window_scale,
+                    original_window_ratio = search_range_data.detection_window_ratio,
                     original_window_scale_x = original_window_scale*original_window_ratio;
 
             const detection_window_size_t::coordinate_t
@@ -375,11 +417,154 @@ void BaseVeryFastIntegralChannelsDetector::compute_extra_data_per_scale(
         extra_data_per_scale.push_back(extra_data);
     } // end of "for each search range"
 
-    // FIXME we use centered detection, so we need a different sanity check
+    // FIXME if we use centered detection, this sanity check will fail (but do we use centered detections, at all ?)
     // sanity check
-    //check_extra_data_per_scale();
+    check_extra_data_per_scale();
 
     first_call = false;
+    return;
+}
+
+
+DetectorSearchRange BaseVeryFastIntegralChannelsDetector::compute_scaled_search_range(const size_t scale_index) const
+{
+    const DetectorSearchRangeMetaData &search_data = search_ranges_data[scale_index];
+
+    const int
+            input_width = get_input_width(),
+            input_height = get_input_height(),
+            shrinking_factor = IntegralChannelsForPedestrians::get_shrinking_factor();
+
+    const float input_to_channel_scale = 1.0f/shrinking_factor;
+
+    if(search_data.detection_window_ratio != 1.0)
+    {
+        throw std::invalid_argument("BaseVeryFastIntegralChannelsDetector does not handle ratios != 1");
+    }
+
+
+    DetectorSearchRange scaled_range;
+
+    scaled_range = search_data; // copy all meta data
+
+    scaled_range.range_scaling *= input_to_channel_scale;
+    //scaled_range.range_ratio *= 1;
+    scaled_range.detection_window_scale *= input_to_channel_scale;
+    //scaled_range.detection_window_ratio *= 1; // ratio is invariant to scaling
+
+
+    const variant_stages_t &cascade = detection_cascade_per_scale[scale_index];
+    compute_cascade_window_size_visitor visitor;
+    const detection_window_size_t shrunk_detection_window_size = boost::apply_visitor(visitor, cascade);
+
+    printf("Scale %zu shrunk detection window size (x,y) == (%i, %i)\n",
+           scale_index, shrunk_detection_window_size.x(), shrunk_detection_window_size.y());
+
+    // flooring/ceiling/rounding is important to avoid being "off by one pixel" in the search range
+    const int
+            shrunk_input_width = input_width*input_to_channel_scale,
+            shrunk_input_height = input_height*input_to_channel_scale;
+
+    //printf("Scale %zu shrunk input (width, height) == (%i, %i)\n",
+    //       scale_index, shrunk_input_width, shrunk_input_height);
+
+    const DetectorSearchRangeMetaData::occlusion_type_t
+            occlusion_type = scaled_range.detector_occlusion_type;
+
+    if (occlusion_type == SoftCascadeOverIntegralChannelsModel::NoOcclusion)
+    {
+        scaled_range.min_x = 0;
+        scaled_range.min_y = 0;
+        scaled_range.max_x = std::max<int>(0, shrunk_input_width -shrunk_detection_window_size.x());
+        scaled_range.max_y = std::max<int>(0, shrunk_input_height -shrunk_detection_window_size.y());
+    }
+    else
+    {
+        throw std::runtime_error("BaseVeryFastIntegralChannelsDetector::compute_scaled_search_range "
+                                 "does yet support occluded models");
+
+    } // end of "no occlusion or some occlusion"
+
+    assert(scaled_range.max_x <= shrunk_input_width);
+    assert(scaled_range.max_y <= shrunk_input_height);
+
+    const float detection_window_scale = original_detection_window_scales[scale_index];
+
+    const bool print_ranges = false;
+    if(print_ranges)
+    {
+        printf("Scale %zu (scale %.3f, occlusion %.3f '%s') will use range min (x,y) == (%i, %i), max (x,y) == (%i, %i)\n",
+               scale_index,
+               detection_window_scale, // instead of scaled_range.detection_window_scale,
+               scaled_range.detector_occlusion_level,
+               get_occlusion_type_name(scaled_range.detector_occlusion_type).c_str(),
+               scaled_range.min_x, scaled_range.min_y,
+               scaled_range.max_x, scaled_range.max_y);
+    }
+
+
+    if((scaled_range.max_x == 0) or (scaled_range.max_y == 0))
+    {
+        log_info()
+                << boost::str(
+                       boost::format(
+                           "Scale %i (scale %.3f, occlusion %.3f '%s') has an empty search range\n")
+                       % scale_index
+                       % detection_window_scale // instead of scaled_range.detection_window_scale,
+                       % scaled_range.detector_occlusion_level
+                       % get_occlusion_type_name(scaled_range.detector_occlusion_type));
+    }
+
+    return scaled_range;
+}
+
+
+void BaseVeryFastIntegralChannelsDetector::check_extra_data_per_scale()
+{
+
+    if(extra_data_per_scale.size() != search_ranges_data.size())
+    {
+        throw std::runtime_error("BaseVeryFastIntegralChannelsDetector::check_extra_data_per_scale "
+                                 "(extra_data_per_scale.size() != search_ranges.size())");
+    }
+
+
+    // IntegralChannelsForPedestrians::get_shrinking_factor() == GpuIntegralChannelsForPedestrians::get_shrinking_factor()
+    const int shrinking_factor = IntegralChannelsForPedestrians::get_shrinking_factor();
+    //const float channels_resizing_factor = 1.0f/shrinking_factor;
+
+    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index+=1)
+    {
+        const ScaleData &extra_data = extra_data_per_scale[scale_index];
+        //const image_size_t &scaled_input_size = extra_data.scaled_input_image_size;
+        const DetectorSearchRange &scaled_search_range = extra_data.scaled_search_range;
+        //const detection_window_size_t &scaled_detection_window_size = extra_data.scaled_detection_window_size;
+
+        // strict check
+        {
+            const variant_stages_t &cascade = detection_cascade_per_scale[scale_index];
+            const int
+                    //shrunk_width = get_input_width() / shrinking_factor,
+                    //shrunk_height = get_input_height() / shrinking_factor;
+                    shrunk_width = extra_data.scaled_input_image_size.x() / shrinking_factor,
+                    shrunk_height = extra_data.scaled_input_image_size.y() / shrinking_factor;
+
+            check_stages_and_range_visitor visitor(scale_index, scaled_search_range, shrunk_width, shrunk_height);
+            const bool everything_is_fine = boost::apply_visitor(visitor, cascade);
+
+            if(not everything_is_fine)
+            {
+                printf("Model with occlusion '%s' (occlusion level %.3f) at scale %zi failed the safety checks\n",
+                       get_occlusion_type_name(scaled_search_range.detector_occlusion_type).c_str(),
+                       scaled_search_range.detector_occlusion_level,
+                       scale_index);
+                throw std::runtime_error("BaseVeryFastIntegralChannelsDetector::check_extra_data_per_scale "
+                                         "one of the scales failed the (strict) safety checks");
+            }
+        } // end of "do strict check"
+
+    } // end of "for each search range"
+
     return;
 }
 

@@ -221,7 +221,7 @@ void recompute_weights(const Eigen::MatrixXf &A,
 
     if(use_horizontal_distance == false)
     {
-        std::runtime_error("recompute_weights with vertical distance it not yet implemented");
+       throw std::runtime_error("recompute_weights with vertical distance it not yet implemented");
     }
 
     Eigen::VectorXf &horizontal_error = w;

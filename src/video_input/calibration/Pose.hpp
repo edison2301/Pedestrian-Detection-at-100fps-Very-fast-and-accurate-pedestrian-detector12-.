@@ -19,9 +19,9 @@ public:
 
     /// copy constructor
     Pose(const Pose &pose);
-
     ~Pose();
 
+    Pose &operator=(const Pose &pose);
 
     /// Global rotation (world -> camera)
     RotationMatrix rotation;

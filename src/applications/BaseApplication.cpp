@@ -133,6 +133,9 @@ program_options::options_description BaseApplication::get_args_options(const std
      "where should the data log be recorded.\n" \
      "if 'stdout' is indicated, all the messages will be written to the console\n" \
      "if 'none' is indicate, no message will be shown nor recorded")
+    ("recording_path", program_options::value<string>()->default_value("none"),
+             "overwrites the default recording path (year_month_day_timestamp_recordings).\n" \
+             )
 
     ;
 
@@ -279,8 +282,11 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
     rules_for_stdout.add_rule(logging::InfoMessage, "detector");
     logging::get_log().set_console_stream(std::cout, rules_for_stdout);
 
+
+
     const string log_option_value = get_option_value<string>(options, "log");
     // should we also have a log_level option ?
+
 
     if(log_option_value != "none")
     {
@@ -350,8 +356,14 @@ void BaseApplication::save_solution()
     return;
 }
 
-void  BaseApplication::create_recording_path() const
+void  BaseApplication::create_recording_path()
 {
+
+    //allow for fixed output filenames
+    string new_recording_path = get_option_value<string>(options, "recording_path");
+    if (new_recording_path != "none"){
+        this->recording_path = boost::filesystem::path(new_recording_path);
+    }
 
     if(exists(recording_path) == false)
     {
@@ -390,7 +402,7 @@ void BaseApplication::record_program_options() const
 
 
 
-const boost::filesystem::path &BaseApplication::get_recording_path() const
+const boost::filesystem::path &BaseApplication::get_recording_path()
 {
     create_recording_path();
     return recording_path;

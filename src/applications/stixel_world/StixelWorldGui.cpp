@@ -1,10 +1,9 @@
 #include "StixelWorldGui.hpp"
 
-#include "draw_stixel_world.hpp"
+#include "drawing/gil/draw_stixel_world.hpp"
 
 #include "StixelWorldApplication.hpp"
 #include "video_input/AbstractVideoInput.hpp"
-
 
 #include "stereo_matching/stixels/StixelWorldEstimator.hpp"
 #include "stereo_matching/stixels/FastStixelWorldEstimator.hpp"
@@ -405,7 +404,7 @@ void draw_stixel_motion_matrix( const AbstractStixelMotionEstimator& motion_esti
 
         ///////////////
 
-        if( current_stixels.size() != 0 && motion_cost_column_maxima_indices.rows() != 0 )
+        if( current_stixels.size() != 0 and motion_cost_column_maxima_indices.rows() != 0 )
         {
             assert(motion_cost_column_maxima_indices.rows() == current_stixels.size());
             assert(stixels_one_to_many_assignment_map.cols() == current_stixels.size());
@@ -434,11 +433,11 @@ void draw_stixel_motion_matrix( const AbstractStixelMotionEstimator& motion_esti
                      y <= upper_limit_y;
                      ++y )
                 {
-                    if( y >= 0 && y < right_top_sub_view1.height() )
+                    if( y >= 0 and y < right_top_sub_view1.height() )
                     {
                         for( int x = current_stixel.x - current_stixel.width / 2, upper_limit_x = current_stixel.x + current_stixel.width / 2; x <= upper_limit_x; ++x )
                         {
-                            if( x >= 0 && x < right_top_sub_view1.width() )
+                            if( x >= 0 and x < right_top_sub_view1.width() )
                             {
                                 right_top_sub_view1( x, y ) = drawing_color;
                             }
@@ -458,7 +457,58 @@ void draw_stixel_motion_matrix( const AbstractStixelMotionEstimator& motion_esti
 }
 
 
-void draw_stixel_motion( const AbstractStixelMotionEstimator& motion_estimator, AbstractVideoInput& video_input, BaseSdlGui& self)
+void draw_color_wheel(const boost::gil::rgb8c_view_t &input_view, boost::gil::rgb8_view_t &view)
+{
+    assert(input_view.dimensions() == view.dimensions());
+
+    const float
+            alpha = 0.9,
+            saturation = 0.80,
+            value = 0.99,
+            center_u = view.width() / 2.0f,
+            center_v = view.height() / 2.0f;
+
+    const int
+            border = 10,
+            width = view.width(),
+            height = view.height();
+
+    for( int v = 0; v < height; ++v )
+    {
+        for( int u = 0; u < width; ++u )
+        {
+            if( (u < border)
+                or (u > width - border)
+                or (v < border)
+                or (v > height - border) )
+            {
+                const float
+                        delta_u = u - center_u,
+                        delta_v = v - center_v,
+                        hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
+
+                float R, G, B;
+                hsv_to_rgb( hue, saturation, value, R, G, B );
+
+                const rgb8c_pixel_t
+                        original_color = input_view( u, v ),
+                        t_color = rgb8c_pixel_t( alpha * R + ( 1 - alpha ) * original_color[ 0 ],
+                                                 alpha * G + ( 1 - alpha ) * original_color[ 1 ],
+                                                 alpha * B + ( 1 - alpha ) * original_color[ 2 ] );
+                view( u, v ) = t_color;
+            }
+
+        } // end of "for each column"
+    } // end of "for each row"
+
+
+    return;
+}
+
+
+void draw_stixel_motion( const AbstractStixelMotionEstimator& motion_estimator,
+                         AbstractVideoInput& /*video_input*/,
+                         BaseSdlGui& self)
 {
     using namespace boost::gil;
 
@@ -467,189 +517,144 @@ void draw_stixel_motion( const AbstractStixelMotionEstimator& motion_estimator, 
     typedef color_converted_view_type< AbstractVideoInput::input_image_view_t, rgba8_pixel_t >::type input_image_view_rgba_t;
     input_image_view_rgba_t current_input_view_rgba = color_converted_view< rgb8_pixel_t >( current_input_view );
 
-    if( current_input_view_rgba.width() != current_input_view.width() ||
-        current_input_view_rgba.height() != current_input_view.height() )
+    if( current_input_view_rgba.dimensions() != current_input_view.dimensions() )
     {
-        throw std::runtime_error( "@ draw_stixel_motion() -- Image view dimensions must agree !" );
+        throw std::runtime_error( "draw_stixel_motion(...) Image view dimensions must agree" );
     }
 
     const stixels_t current_stixels = motion_estimator.get_current_stixels();
     const stixels_t previous_stixels = motion_estimator.get_previous_stixels();
 
-    /*
-     * Draw the left screen
-     *
-     * Draw the current frame with current stixels
-     */
-
+    // Draw the left screen
+    // Draw the current frame with current stixels
     {
         copy_and_convert_pixels( current_input_view, self.screen_left_view );
         draw_the_stixels( self.screen_left_view, current_stixels );
     }
 
-    /*
-     * Draw the right screen
-     *
-     * Draw the current frame with color coded current stixels motion
-     */
 
+    // Draw the right screen
+    // Draw the current frame with color coded current stixels motion
     {
         copy_and_convert_pixels( current_input_view, self.screen_right_view );
         draw_the_stixels( self.screen_right_view, current_stixels );
 
-        const bool draw_color_wheel = false;
+        const bool should_draw_color_wheel = false;
+        if(should_draw_color_wheel)
+        {
+            draw_color_wheel(current_input_view, self.screen_right_view);
+        }
 
-        if(draw_color_wheel)
-        { // Draw the color wheel
 
-            float alpha = 0.9;
+        // Draw the stixels --
 
-            const int border = 10;
+        float alpha = 0.75;
 
-            const float saturation = 0.80;
-            const float value = 0.99;
+        const float saturation = 0.80;
+        float value = 0.99;
 
-            const float center_u = current_input_view_rgba.width() / 2;
-            const float center_v = current_input_view_rgba.height() / 2;
+        for( size_t stixel_index = 0; stixel_index < current_stixels.size(); ++stixel_index)
+        {
+            const Stixel& current_stixel = current_stixels[ stixel_index ];
 
-            const int width = current_input_view_rgba.width();
-            const int height = current_input_view_rgba.height();
-
-            for( int v = 0; v < height; ++v )
+            if( current_stixel.valid_backward_delta_x == false )
             {
-                for( int u = 0; u < width; ++u )
-                {
-                    if( u < border || u > width - border ||
-                        v < border || v > height - border )
-                    {
-                        const float delta_u = u - center_u;
-                        const float delta_v = v - center_v;
+                continue; // we simply skip this stixel
+            }
 
-                        const float hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
 
-                        float R, G, B;
+            const int
+                    u = current_stixel.x,
+                    v = current_stixel.bottom_y;
 
-                        hsv_to_rgb( hue, saturation, value, R, G, B );
+            int previous_u = u + current_stixel.backward_delta_x;
+            int previous_v = v;
 
-                        const rgb8c_pixel_t original_color = current_input_view( u, v );
+            int min_delta_u = std::numeric_limits< int >::max();
 
-                        const rgb8c_pixel_t t_color = rgb8c_pixel_t( alpha * R + ( 1 - alpha ) * original_color[ 0 ],
-                                                                     alpha * G + ( 1 - alpha ) * original_color[ 1 ],
-                                                                     alpha * B + ( 1 - alpha ) * original_color[ 2 ] );
-                        self.screen_right_view( u, v ) = t_color;
-
-                    }
-
-                } // End of for(u)
-            } // End of for(v)
-
-        } // End of drawing the color wheel
-
-        { // Draw the stixels
-
-            float alpha = 0.75;
-
-            const float saturation = 0.80;
-            float value = 0.99;
-
-            for( int s_current = 0, number_of_current_stixels = current_stixels.size(); s_current < number_of_current_stixels; ++s_current )
+            for( size_t previous_stixel_index = 0;
+                 previous_stixel_index < previous_stixels.size();
+                 ++previous_stixel_index )
             {
-                const Stixel& current_stixel = current_stixels[ s_current ];
+                const Stixel& previous_stixel = previous_stixels[ previous_stixel_index ];
 
-                if( current_stixel.valid_backward_delta_x )
+                int delta_u = abs(previous_stixel.x - previous_u);
+
+                if( delta_u < min_delta_u )
                 {
-                    const int u = current_stixel.x;
-                    const int v = current_stixel.bottom_y;
-
-                    int previous_u = u + current_stixel.backward_delta_x;
-                    int previous_v = v;
-
-                    int min_delta_u = std::numeric_limits< int >::max();
-
-                    for( int s_prev = 0, number_of_previous_stixels = previous_stixels.size();
-                         s_prev < number_of_previous_stixels;
-                         ++s_prev )
+                    min_delta_u = delta_u;
+                    previous_v = previous_stixel.bottom_y;
+                    if ( delta_u == 0 )
                     {
-                        const Stixel& previous_stixel = previous_stixels[ s_prev ];
-
-                        int delta_u = abs(previous_stixel.x - previous_u);
-
-                        if( delta_u < min_delta_u )
-                        {
-                            min_delta_u = delta_u;
-                            previous_v = previous_stixel.bottom_y;
-                            if ( delta_u == 0 )
-                            {
-                                break;
-                            }
-
-                        }
-
-                    } // End of for( s_prev )
-
-                    float R, G, B;
-
-                    int delta_u = u - previous_u;
-
-                    const bool draw_angle = false;
-
-                    if(draw_angle)
-                    {
-                        int delta_v = ( v - previous_v ) / 10;
-
-                        const float hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
-
-                        hsv_to_rgb( hue, saturation, value, R, G, B );
+                        break;
                     }
-                    else
-                    {
-                        // FIXME hardcoded parameter (is read from option, just too lazy to retrieve the value)
-                        const int maximum_possible_motion_in_pixels = 66;
+                }
+            } // End of for( s_prev )
 
-                        //value = std::min< float >( 1, sqrt( delta_u * delta_u + delta_v * delta_v ) / 10.f );
-                        //const float hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
-                        //const float hue = 360 * ( float( delta_u ) / (2 * 66) + 0.5 );
+            float R, G, B;
 
-                        //const float saturated_delta_u = std::max( std::min(delta_u, 30), -30);
+            int delta_u = u - previous_u;
 
-                        const float delta_u_ratio = float( delta_u ) / maximum_possible_motion_in_pixels;
+            const bool draw_angle = false;
 
-                        //const float mapped_delta_u_ratio = ( 2 / ( 1 + std::exp( -4 * delta_u_ratio ) ) - 1 ); // between 0 and 1.
-                        const float mapped_delta_u_ratio = ( 2 / ( 1 + std::exp( -6 * delta_u_ratio ) ) - 1 ); // between 0 and 1.
-                        const float mapped_delta_u = maximum_possible_motion_in_pixels * mapped_delta_u_ratio;
+            if(draw_angle)
+            {
+                int delta_v = ( v - previous_v ) / 10;
 
-                        //std::cout << "delta_u --> delta_u_ratio : " << delta_u << " -- " << delta_u_ratio << std::endl;
+                const float hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
 
-                        const float hue = 360 * ( float( mapped_delta_u ) / (2 * maximum_possible_motion_in_pixels) + 0.5 );
-                        //const float hue = 180 * ( float( mapped_delta_u ) / (2 * maximum_possible_motion_in_pixels) + 0.5 ) + 180;
-                        //const float hue = 360 * ( float( saturated_delta_u ) / (2 * 30) + 0.5 );
+                hsv_to_rgb( hue, saturation, value, R, G, B );
+                alpha = 0.75;
+            }
+            else
+            {
+                // FIXME hardcoded parameter (is read from option, just too lazy to retrieve the value)
+                const int maximum_possible_motion_in_pixels = 66;
 
-                        //const float value = 0.7 + 0.3 * std::abs( mapped_delta_u_ratio );
-                        //const float saturation = 0.8 + 0.2 * std::abs( mapped_delta_u_ratio );
+                //value = std::min< float >( 1, sqrt( delta_u * delta_u + delta_v * delta_v ) / 10.f );
+                //const float hue = 360 * ( 0.5 + ( atan2( delta_v, delta_u ) / ( 2 * pi ) ) );
+                //const float hue = 360 * ( float( delta_u ) / (2 * 66) + 0.5 );
 
-                        hsv_to_rgb( hue, saturation, value, R, G, B );
-                    }
+                //const float saturated_delta_u = std::max( std::min(delta_u, 30), -30);
+
+                const float delta_u_ratio = float( delta_u ) / maximum_possible_motion_in_pixels;
+
+                //const float mapped_delta_u_ratio = ( 2 / ( 1 + std::exp( -4 * delta_u_ratio ) ) - 1 ); // between 0 and 1.
+                const float mapped_delta_u_ratio = ( 2 / ( 1 + std::exp( -6 * delta_u_ratio ) ) - 1 ); // between 0 and 1.
+                const float mapped_delta_u = maximum_possible_motion_in_pixels * mapped_delta_u_ratio;
+
+                //std::cout << "delta_u --> delta_u_ratio : " << delta_u << " -- " << delta_u_ratio << std::endl;
+
+                const float hue = 360 * ( float( mapped_delta_u ) / (2 * maximum_possible_motion_in_pixels) + 0.5 );
+                //const float hue = 180 * ( float( mapped_delta_u ) / (2 * maximum_possible_motion_in_pixels) + 0.5 ) + 180;
+                //const float hue = 360 * ( float( saturated_delta_u ) / (2 * 30) + 0.5 );
+
+                //const float value = 0.7 + 0.3 * std::abs( mapped_delta_u_ratio );
+                //const float saturation = 0.8 + 0.2 * std::abs( mapped_delta_u_ratio );
+
+                hsv_to_rgb( hue, saturation, value, R, G, B );
+
+                const float mapped_delta_u_ratio_bis = ( 2 / ( 1 + std::exp( -15 * delta_u_ratio ) ) - 1 ); // between 0 and 1.
+                alpha = std::min(0.85f, std::max(0.2f, std::abs(mapped_delta_u_ratio_bis)));
+            }
 
 
-                    for( int stixel_v = current_stixel.top_y; stixel_v < current_stixel.bottom_y; ++stixel_v )
-                    {
-                        const rgb8c_pixel_t original_color = current_input_view( u, stixel_v );
+            for( int stixel_v = current_stixel.top_y; stixel_v < current_stixel.bottom_y; ++stixel_v )
+            {
+                const rgb8c_pixel_t
+                        original_color = current_input_view( u, stixel_v ),
+                        t_color = rgb8c_pixel_t( alpha * R + ( 1 - alpha ) * original_color[ 0 ],
+                                                 alpha * G + ( 1 - alpha ) * original_color[ 1 ],
+                                                 alpha * B + ( 1 - alpha ) * original_color[ 2 ] );
 
-                        const rgb8c_pixel_t t_color = rgb8c_pixel_t( alpha * R + ( 1 - alpha ) * original_color[ 0 ],
-                                                                     alpha * G + ( 1 - alpha ) * original_color[ 1 ],
-                                                                     alpha * B + ( 1 - alpha ) * original_color[ 2 ] );
+                self.screen_right_view( u, stixel_v ) = t_color;
 
-                        self.screen_right_view( u, stixel_v ) = t_color;
+            } // end of "for the stixel height"
 
-                    } // End of for( stixel_v )
 
-                } // End of if( current_stixel.valid_backward_delta_x )
+        } // end of "for each stixel"
 
-            } // End of for( s_current )
-
-        } // End of drawing stixels
-
-    } // End of drawing right screen view
+    } // end of "drawing right screen view"
 
     return;
 } // end of draw_stixel_motion(...)
@@ -1032,7 +1037,7 @@ void pixel_disparity_colorizer::operator()(PixelType &pixel_value) const
 
 
     // non valid disparities are set to max_possible_channel_value
-    const bool is_valid_disparity = (d >= 0) && (d < max_possible_channel_value);
+    const bool is_valid_disparity = (d >= 0) and (d < max_possible_channel_value);
 
     float saturation, value, hue;
 
@@ -1072,7 +1077,7 @@ void pixel_disparity_colorizer::operator()(PixelType &pixel_value) const
                 S = saturation,
                 V = value,
                 R = 0, G = 0, B = 0;
-        if (H==0 && S==0)
+        if (H==0 and S==0)
         {
             R = G = B = V;
         }
@@ -1145,7 +1150,7 @@ void StixelWorldGui::colorize_disparity_map(const gil::rgb8_planar_view_t &view)
         gil::rgb8_planar_view_t::iterator pixels_it;
         for(pixels_it = view.begin(); pixels_it != view.end(); ++pixels_it )
         {
-            if((*pixels_it)[0] > max_value && (*pixels_it)[0] != max_possible_channel_value)
+            if((*pixels_it)[0] > max_value and (*pixels_it)[0] != max_possible_channel_value)
             {
                 max_value = (*pixels_it)[0] ;
             }
@@ -1252,7 +1257,7 @@ void StixelWorldGui::save_screenshot()
     const bool save_rectified_images = false;
     const bool save_colored_stixel_motion_images = true;
 
-    if( save_rectified_images || save_colored_stixel_motion_images )
+    if( save_rectified_images or save_colored_stixel_motion_images )
     {
         const boost::filesystem::path &recording_path = base_application.get_recording_path();
 

@@ -48,6 +48,7 @@ protected:
 
     float max_score_last_frame;
 
+    DetectorSearchRange compute_scaled_search_range(const size_t scale_index) const;
 };
 
 } // end of namespace doppia

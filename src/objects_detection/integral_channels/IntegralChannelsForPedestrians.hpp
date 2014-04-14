@@ -153,8 +153,9 @@ std::vector<float> get_binomial_kernel_1d(const int binomial_filter_radius);
 
 #if not defined(OBJECTS_DETECTION_LIB)
 /// helper method to debuc the integral images content
-Eigen::MatrixXf get_channel_matrix(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
-                                   const size_t channel_index);
+void get_channel_matrix(const IntegralChannelsForPedestrians::integral_channels_t &integral_channels,
+                        const size_t channel_index,
+                        Eigen::MatrixXf &channel_matrix);
 #endif
 
 /// helper method to visualize the integral images content

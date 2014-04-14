@@ -12,6 +12,14 @@ cmake_minimum_required (VERSION 2.6)
 
 set(doppia_root "../../../")
 
+set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "/home/rodrigob/work/code/doppia_references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "/users/visics/rbenenso/code/references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+
+# ----------------------------------------------------------------------
+# Setup the project
+
 include(FindPkgConfig)
 project (TestObjectsDetection)
 
@@ -25,6 +33,14 @@ include(${doppia_root}/common_settings.cmake)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
 pkg_check_modules(libpng REQUIRED libpng)
 
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
+
 # ----------------------------------------------------------------------
 # Setup CUDA
 
@@ -34,24 +50,41 @@ include_directories(${CUDA_INCLUDE_DIRS} ${CUDA_CUT_INCLUDE_DIR})
 endif(USE_GPU)
 
 # ----------------------------------------------------------------------
-set(local_INCLUDE_DIRS 
-  "${doppia_root}/libs"
-  "${doppia_root}/src"
-  #"/usr/include/eigen2"
-  #"/usr/local/include/eigen2"
-  "/users/visics/rbenenso/no_backup/usr/local/include"
-  "${doppia_root}/libs/cudatemplates/include"
+set(local_LIBRARY_DIRS
+  "/usr/local/lib"
+  "/users/visics/rbenenso/no_backup/usr/local/lib"
+  "/usr/lib64"
+  "/usr/lib64/atlas"
+  "/usr/lib/sse2/atlas"
+  "/usr/lib/llvm-2.8/lib"
+  ${local_CUDA_LIB_DIR}
 )
 
-include_directories(
-  ${local_INCLUDE_DIRS}
+set(local_INCLUDE_DIRS
+  "/users/visics/rbenenso/no_backup/usr/local/include"
+  "/usr/include/eigen2/"
+   "/usr/local/include/eigen2"
+   "/usr/local/cuda/include"
+   ${CUDA_INCLUDE_DIRS}
 )
+
 
 link_directories(
   ${libpng_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
-  ${local_CUDA_LIB_DIR}
+  ${local_LIBRARY_DIRS}
 )
+
+include_directories(
+  "${doppia_root}/libs"
+  "${doppia_root}/src"
+  ${libpng_INCLUDE_DIRS}
+  ${OpenEXR_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${local_INCLUDE_DIRS}
+  "${doppia_root}/libs/cudatemplates/include"
+)
+
 
 if(USE_GPU)
 cuda_include_directories("${doppia_root}/libs/")
@@ -72,6 +105,7 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/*Model*.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
   "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/integral_channels/Integral*.c*"
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
@@ -79,7 +113,8 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/Greedy*.c*"
   "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
 
-  "${doppia_src}/objects_tracking/*.c*"
+  "${doppia_src}/objects_tracking/*.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/*.cpp"
 
   "${doppia_src}/applications/Abstract*.cpp"
   "${doppia_src}/applications/Base*.cpp"
@@ -87,6 +122,7 @@ file(GLOB SrcCpp
 
   "${doppia_src}/applications/objects_detection/ObjectsDetection*.cpp"
   "${doppia_src}/applications/objects_detection/draw*.cpp"
+  "${doppia_src}/applications/objects_tracking/*Application.cpp"
 
 # -------------------------------------
 # Copy-pasted from cmake file of ObjectsDetectionApplication
@@ -105,6 +141,8 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
   "${doppia_src}/objects_detection/*.pb.c*"
+  "${doppia_src}/objects_detection/cascade_stages/*.c*"
+  "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
 
   "${doppia_src}/applications/*.cpp"
   "${doppia_src}/applications/stixel_world/*Gui.cpp"
@@ -148,11 +186,7 @@ file(GLOB SrcCpp
 
 # ---------------------------------------
 
-
-
-  # FIXME should be moved to video_input or helpers
-  "${doppia_src}/applications/objects_detection/ImagesFromDirectory.cpp"
-
+  "${doppia_src}/video_input/ImagesFromDirectory.cpp"
   "${doppia_src}/video_input/*.cpp"
   "${doppia_src}/video_input/calibration/*.c*"
   "${doppia_src}/video_input/preprocessing/*.cpp"
@@ -173,12 +207,14 @@ file(GLOB HelpersCpp
 file(GLOB SrcGpuCpp
   "${doppia_src}/objects_detection/Gpu*.cpp"
   "${doppia_src}/objects_detection/integral_channels/Gpu*.cpp"
-  "${doppia_src}/helpers/gpu/*.c*"
+  "${doppia_src}/helpers/gpu/*.cpp"
 )
 
 file(GLOB SrcCuda
-  "${doppia_src}/objects_detection/integral_channels/gpu/*.c*"
-  "${doppia_src}/objects_detection/gpu/*.c*"
+  "${doppia_src}/objects_detection/integral_channels/gpu/*.cu"
+  "${doppia_src}/objects_detection/integral_channels/gpu/*.cpp"
+  "${doppia_src}/objects_detection/gpu/*.cu"
+  "${doppia_src}/objects_detection/gpu/*.cpp"
 
   #"${doppia_stereo}/*.cu.c*"
   #"${doppia_stereo}/*.cu"
@@ -206,7 +242,7 @@ link_directories(${local_CUDA_CUT_LIBRARY_DIRS})
 cuda_add_library(cuda_stuff_library ${SrcCuda})
 target_link_libraries(cuda_stuff_library
   ${CUDA_LIBRARIES}
-  #cutil
+  ${cutil_LIB}
 )
 endif(USE_GPU)
 # ----------------------------------------------------------------------
@@ -219,7 +255,6 @@ add_executable(test_objects_detection
 )
 
 target_link_libraries(test_objects_detection
-
   boost_unit_test_framework-mt
   boost_program_options-mt boost_filesystem-mt boost_system-mt
   boost_thread-mt pthread gomp

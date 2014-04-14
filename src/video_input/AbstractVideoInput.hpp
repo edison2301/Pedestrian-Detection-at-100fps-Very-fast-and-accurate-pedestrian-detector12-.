@@ -8,6 +8,7 @@
 #include <boost/gil/image.hpp>
 #include <boost/gil/typedefs.hpp>
 
+
 namespace doppia
 {
 
