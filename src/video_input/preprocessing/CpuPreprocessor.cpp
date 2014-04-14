@@ -5,7 +5,7 @@
 
 #include "helpers/Log.hpp"
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include <boost/gil/extension/numeric/sampler.hpp>
 #include <boost/math/special_functions/round.hpp>
@@ -238,7 +238,7 @@ Smooth given image with a Gaussian
 */
 void CpuPreprocessor::compute_smoothing(const input_image_view_t &src, const output_image_view_t &dst)
 {
-    // see toyota/lib/graphics/ImageSmooth.hpp
+    // see codebase/lib/graphics/ImageSmooth.hpp
 
     // FIXME hardcoded value
     //const int num_iterations = 20;
