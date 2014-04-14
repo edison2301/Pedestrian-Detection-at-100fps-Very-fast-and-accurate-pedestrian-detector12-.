@@ -119,6 +119,7 @@ Step 1: where is what ?
 
 Before trying to compile anything you must edit the file `common_settings.cmake` to add the configuration specfic to your own machine.
 
+You should also execute (once) `generate_protocol_buffer_files.sh` to make sure the protocol buffer files match the version installed in your system.
 
 Step 2: compile CPU only code
 ------------------------------
