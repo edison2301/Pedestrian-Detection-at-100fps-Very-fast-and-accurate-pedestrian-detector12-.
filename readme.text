@@ -18,16 +18,20 @@ The doppia repository contains the open source release of the following research
 * Fast stixels estimation for fast pedestrian detection  
   R. Benenson, M. Mathias, R. Timofte, L. Van Gool; presented at ECCV 2012, CVVT workshop.
 
+* Seeking the strongest rigid detector
+  R. Benenson, M. Mathias, T. Tuytelaars, L. Van Gool; presented at CVPR 2012.
+
 the code is released with a _research only_ license (see license.text),  
 the license is _not_ [OSI compatible](http://opensource.org/docs/osd) (due, at least, to term 6 since we do discriminate against "fields of endeavor").
 
 The main authors of this work are
 
 * [Rodrigo Benenson](http://rodrigob.github.com) (code architecture, test time code)
-* Markus Mathias (training time code)
-* [Radu Timofte](http://homes.esat.kuleuven.be/~rtimofte) (contributed to stixels estimation code)
+* [Markus Mathias](http://homes.esat.kuleuven.be/~mmathias) (training time code)
+* Mohamed Omran (training time code)
+* [Radu Timofte](http://www.vision.ee.ethz.ch/~timofter) (contributed to stixels estimation code)
 
-and the code is owned by the [KU Leuven university](https://securewww.esat.kuleuven.be/psi/visics).
+and the code is owned by the [KU Leuven university](https://securewww.esat.kuleuven.be/psi/visics) and the [MPI-Inf](https://www.mpi-inf.mpg.de).
 
 This C++ and CUDA code base provides means to compute stixels estimates from stereo images, detect pedestrians for single images, and train the detector for new classes.
 
@@ -46,11 +50,36 @@ Before starting looking into the code a few warning need to be provided:
 
 2. The name `doppia` aims to hint about "double". Doppia is a library for _stereo images_ processing, the assumed default input is stereo images. The monocular images input is a special case. This is visible in the code. 
 
-3. In case it is not already clear, this is **research quality code**. The code has been developed over a 3 year lapse, mainly with the focus on easy exploration of multiple variants and some concern on computational efficiency. The readability and compactness of the code where secondary considerations.  
+3. In case it is not already clear, this is **research quality code**. The code has been developed over a 4 year lapse, mainly with the focus on easy exploration of multiple variants and some concern on computational efficiency. The readability and compactness of the code where secondary considerations.  
    We are releasing the code with the hope that it will enable other researchers push forward the frontiers of human knowledge.
 
-4. We did our best to keep a regular code style everywhere. The main exception is the folder `doppia/src/applications/boosted_learning` which has a more loose style, since it contains code imported from a previously separate code base.
+4. We did our best to keep a regular code style everywhere, but there might be some exceptions: sorry about that. 
+
+
+Changes between v1 and v2
+==========================
+
+Persons who have used v1 will find v2 very familiar. The code base is still 90% the same.
+There are however some important changes:
+
+1. Some bugs regarding the feature channels computation and reading have been fixed.
+
+2. The training code is now cleaner in more in line with the style of the rest of the code.
+
+3. We now provide configuration files to reproduce the CVPR 2013 baseline, and for a quick training (less than 20 minutes in our machine).
  
+Point 1 is the most critical one. 
+Models created with v1 are still usable with v2, however the quality will be slightly lower because the channels are now slightly different.
+It is advised to re-train v1 models for v2. We provide some pre-trained models for v2.
+
+Regarding point 2, if you created some training configuration scripts for v1, they will need to be updated for v2. 
+The changes are simple name changes that should be straighforward. 
+Feel free to contact us if you have doubts about this.
+
+Please note that if you want to reproduce exactly our CVPR 2012 we recommend using v1.
+If you only care about detection results please use the detection bounding boxes provided in the [Caltech benchmark](http://www.vision.caltech.edu/Image_Datasets/CaltechPedestrians/).
+If you care about correctness, please use v2. Speed should be comparable to v1.
+
 
 Requirements
 ============
@@ -60,7 +89,7 @@ Requirements
 * A GPU with CUDA capability 2.0 or higher (only for objects detection code, stixels code is CPU only), and ~200 Mb of free memory (for images of 640x480 pixels).
 * All boost libraries.
 * Google protocol buffer.
-* OpenCv installed (2.4, but code also work with older versions).  
+* OpenCv installed (2.4, but code also work with older versions. 3.0 not yet suppoted, but pull requests welcome).  
   If speed is your concern, I strongly recommend to compile OpenCv on your machine using CUDA, enabled all relevant SIMD instructions and using `-ffast-math -funroll-loops -march=native` flags.
 * libjpeg, libpng.
 * libSDL 
