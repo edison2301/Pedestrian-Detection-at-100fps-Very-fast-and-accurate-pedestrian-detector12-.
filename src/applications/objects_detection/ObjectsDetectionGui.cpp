@@ -25,7 +25,10 @@
 #include "stereo_matching/stixels/FastStixelsEstimatorWithHeightEstimation.hpp"
 
 #include "objects_detection/AbstractObjectsDetector.hpp"
+
+#if defined(USE_GPU)
 #include "objects_detection/GpuVeryFastIntegralChannelsDetector.hpp"
+#endif
 
 #include "objects_tracking/AbstractObjectsTracker.hpp"
 #include "objects_tracking/DummyObjectsTracker.hpp"
@@ -175,7 +178,10 @@ ObjectsDetectionGui::ObjectsDetectionGui(ObjectsDetectionApplication &applicatio
     views_map[SDLK_7] = view_t(boost::bind(&ObjectsDetectionGui::draw_stixels_height_estimation, this), "draw_stixels_height_estimation");
     views_map[SDLK_8] = view_t(boost::bind(&ObjectsDetectionGui::draw_disparity_map, this), "draw_disparity_map");
     //views_map[SDLK_9] = view_t(boost::bind(&ObjectsDetectionGui::draw_optical_flow, this), "draw_optical_flow");
+
+#if defined(USE_GPU)
     views_map[SDLK_9] = view_t(boost::bind(&ObjectsDetectionGui::draw_gpu_stixel_world, this), "draw_gpu_stixel_world");
+#endif
 
     // draw the first image --
     draw_video_input();
@@ -610,6 +616,7 @@ void ObjectsDetectionGui::draw_stixel_world()
     return;
 }
 
+#if defined(USE_GPU)
 void ObjectsDetectionGui::draw_gpu_stixel_world()
 {
     StixelWorldGui::draw_stixel_world();
@@ -664,7 +671,7 @@ void ObjectsDetectionGui::draw_gpu_stixel_world()
 
     return;
 }
-
+#endif
 
 } // end of namespace doppia
 
