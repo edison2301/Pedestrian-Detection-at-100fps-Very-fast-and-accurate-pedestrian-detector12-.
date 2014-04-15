@@ -54,10 +54,6 @@ set(D2_NO_GPU_MACHINES
   "infno7900"
 )
 
-set(TOYOTA_USA_MACHINES "yellow.ant" "jupiter.tr")
-
-list(FIND TOYOTA_USA_MACHINES ${HOSTNAME} HOSTED_AT_TOYOTA_USA)
-
 list(FIND VISICS_MACHINES ${HOSTNAME} HOSTED_AT_VISICS)
 #message(STATUS "HOSTED_AT_VISICS == ${HOSTED_AT_VISICS}")
 
@@ -135,7 +131,7 @@ elseif(${HOSTNAME} STREQUAL  "mmp-laptop")
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/mmp/NVIDIA_GPU_Computing_SDK/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/mmp/NVIDIA_GPU_Computing_SDK/C/lib")
   set(local_CUDA_LIB_DIR "/usr/lib")
-  set(cuda_LIBS "cuda") 
+  set(cuda_LIBS "cuda")
   set(cutil_LIB "cutil")
 
 
@@ -182,9 +178,9 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
   option(USE_GPU "Should the GPU be used ?" TRUE)
   #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
   set(CUDA_BUILD_CUBIN OFF)
-  
+
   # work around to use gcc-4.4 instead of 4.5
-  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh") 
+  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_21)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
@@ -341,7 +337,7 @@ elseif(HOSTED_AT_D2_NO_GPU GREATER -1)
 
 else ()
   message(FATAL_ERROR, "Unknown machine, please add your configuration inside doppia/common_settings.cmake")
-  
+
 endif ()
 
 # ----------------------------------------------------------------------
@@ -363,12 +359,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g") # add debug information, even in release mode
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -DNDEBUG -DBOOST_DISABLE_ASSERTS ${OPT_CXX_FLAGS}")
 #set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CMAKE_CXX_FLAGS_RELEASE}")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")  
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG") 
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 
 if(USE_GPU)
-  add_definitions(-DUSE_GPU) 
+  add_definitions(-DUSE_GPU)
 endif(USE_GPU)
 
 
