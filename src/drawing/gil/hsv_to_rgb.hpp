@@ -1,5 +1,5 @@
-#ifndef BICLOP_HSV_TO_RGB_HPP
-#define BICLOP_HSV_TO_RGB_HPP
+#ifndef DOPPIA_HSV_TO_RGB_HPP
+#define DOPPIA_HSV_TO_RGB_HPP
 
 #include <boost/gil/pixel.hpp>
 #include <boost/gil/typedefs.hpp>
@@ -15,4 +15,4 @@ void hsv_to_rgb( float H, float S, float V, float& R, float& G, float& B );
 
 } // end of namespace doppia
 
-#endif // BICLOP_CONVERT_HSV_TO_RGB_HPP
+#endif // DOPPIA_CONVERT_HSV_TO_RGB_HPP

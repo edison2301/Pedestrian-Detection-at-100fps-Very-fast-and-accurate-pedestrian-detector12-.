@@ -1,5 +1,5 @@
-#ifndef BICLOP_DUMMYOBJECTSTRACKER_HPP
-#define BICLOP_DUMMYOBJECTSTRACKER_HPP
+#ifndef DOPPIA_DUMMYOBJECTSTRACKER_HPP
+#define DOPPIA_DUMMYOBJECTSTRACKER_HPP
 
 #include "AbstractObjectsTracker.hpp"
 #include "tracked_detections/TrackedDetection2d.hpp"
@@ -60,4 +60,4 @@ float intersection_over_union(const TrackedDetection2d::rectangle_t &a, const Tr
 
 } // namespace doppia
 
-#endif // BICLOP_DUMMYOBJECTSTRACKER_HPP
+#endif // DOPPIA_DUMMYOBJECTSTRACKER_HPP

@@ -1,5 +1,5 @@
-#ifndef BICLOP_COMPUTE_CASCADE_WINDOW_SIZE_HPP
-#define BICLOP_COMPUTE_CASCADE_WINDOW_SIZE_HPP
+#ifndef DOPPIA_COMPUTE_CASCADE_WINDOW_SIZE_HPP
+#define DOPPIA_COMPUTE_CASCADE_WINDOW_SIZE_HPP
 
 #include "objects_detection/ScaleData.hpp"
 
@@ -71,4 +71,4 @@ void compute_cascade_window_size_visitor::update_window_size
 
 } // end of namespace doppia
 
-#endif // BICLOP_COMPUTE_CASCADE_WINDOW_SIZE_HPP
+#endif // DOPPIA_COMPUTE_CASCADE_WINDOW_SIZE_HPP

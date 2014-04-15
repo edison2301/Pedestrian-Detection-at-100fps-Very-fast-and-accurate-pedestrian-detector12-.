@@ -37,13 +37,13 @@ pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(opencv REQUIRED opencv>=2.3)
 #set(vw_LIBRARIES "-lvwCore -lvwImage -lvwStereo -lvwFileIO -lvwMath -lvwInterestPoint")
 
-set(opencv_LIBRARIES
-    opencv_core opencv_imgproc opencv_highgui opencv_ml
-    opencv_video opencv_features2d
-    opencv_calib3d
-    #opencv_objdetect opencv_contrib
-    opencv_legacy opencv_flann
-   ) # quick hack for opencv2.4 support
+#set(opencv_LIBRARIES
+#    opencv_core opencv_imgproc opencv_highgui opencv_ml
+#    opencv_video opencv_features2d
+#    opencv_calib3d
+#    #opencv_objdetect opencv_contrib
+#    opencv_legacy opencv_flann
+#   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -92,7 +92,7 @@ include_directories(
 if(USE_GPU)
 cuda_include_directories("${doppia_root}/libs/")
 endif(USE_GPU)
-        
+
 # ----------------------------------------------------------------------
 # Collect source files
 
@@ -149,6 +149,10 @@ file(GLOB SrcCpp
   "${doppia_stereo}/ground_plane/*.cpp"
   "${doppia_stereo}/stixels/*.cpp"
    #"${doppia_stereo}/stixels/*.cc"
+
+  "${doppia_src}/objects_detection/Detection2d.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/TrackedDetection2d.cpp"
+
   "${doppia_src}/video_input/*.cpp"
   "${doppia_src}/video_input/calibration/*.c*"
   "${doppia_src}/video_input/preprocessing/*.cpp"
@@ -165,7 +169,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
   "${doppia_src}/helpers/Log.cpp"
-  "${doppia_src}/helpers/loggers.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
   "${doppia_src}/helpers/replace_environment_variables.cpp"
   "${doppia_src}/helpers/objects_detection/*.cpp"
@@ -217,7 +221,7 @@ target_link_libraries(cuda_stuff_library
 )
 
 #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --generate-line-info) # used during profiling
-  
+
 endif(USE_GPU)
 # ----------------------------------------------------------------------
 # Create the executable
@@ -240,7 +244,7 @@ target_link_libraries(objects_detection
    SDL X11 Xext #Xrandr
    gomp
    ${libpng_LIBRARIES} jpeg
-#  ${OpenEXR_LIBRARIES} 
+#  ${OpenEXR_LIBRARIES}
    ${opencv_LIBRARIES}
 
    #${vw_LIBRARIES}
@@ -257,7 +261,7 @@ target_link_libraries(objects_detection
    #LLVMAsmPrinter LLVMMCParser LLVMX86AsmPrinter LLVMX86Info LLVMJIT
    #LLVMExecutionEngine LLVMCodeGen LLVMScalarOpts LLVMInstCombine LLVMTransformUtils LLVMipa
    #LLVMAnalysis LLVMTarget LLVMMC LLVMCore LLVMSupport LLVMSystem
-)   
+)
 
 if(USE_GPU)
 target_link_libraries(objects_detection cuda_stuff_library ${local_CUDA_LIB})

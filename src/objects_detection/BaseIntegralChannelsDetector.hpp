@@ -1,5 +1,5 @@
-#ifndef BICLOP_BASEINTEGRALCHANNELSDETECTOR_HPP
-#define BICLOP_BASEINTEGRALCHANNELSDETECTOR_HPP
+#ifndef DOPPIA_BASEINTEGRALCHANNELSDETECTOR_HPP
+#define DOPPIA_BASEINTEGRALCHANNELSDETECTOR_HPP
 
 #include "BaseObjectsDetectorWithNonMaximalSuppression.hpp"
 #include "ScaleData.hpp"
@@ -113,4 +113,4 @@ void add_detection_for_bootstrapping(
 
 } // end of namespace doppia
 
-#endif // BICLOP_BASEINTEGRALCHANNELSDETECTOR_HPP
+#endif // DOPPIA_BASEINTEGRALCHANNELSDETECTOR_HPP

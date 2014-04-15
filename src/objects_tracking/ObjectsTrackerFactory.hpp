@@ -1,7 +1,8 @@
-#ifndef BICLOP_OBJECTSTRACKERFACTORY_HPP
-#define BICLOP_OBJECTSTRACKERFACTORY_HPP
+#ifndef DOPPIA_OBJECTSTRACKERFACTORY_HPP
+#define DOPPIA_OBJECTSTRACKERFACTORY_HPP
 
-#include <boost/program_options.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <boost/shared_ptr.hpp>
 
 namespace doppia {
@@ -19,4 +20,4 @@ public:
 } // end of namespace doppia
 
 
-#endif // BICLOP_OBJECTSTRACKERFACTORY_HPP
+#endif // DOPPIA_OBJECTSTRACKERFACTORY_HPP

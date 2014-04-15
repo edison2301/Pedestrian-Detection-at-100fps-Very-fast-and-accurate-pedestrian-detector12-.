@@ -1,5 +1,5 @@
-#ifndef BICLOP_DUMMYSTIXELMOTIONESTIMATOR_HPP
-#define BICLOP_DUMMYSTIXELMOTIONESTIMATOR_HPP
+#ifndef DOPPIA_DUMMYSTIXELMOTIONESTIMATOR_HPP
+#define DOPPIA_DUMMYSTIXELMOTIONESTIMATOR_HPP
 
 #include "AbstractStixelMotionEstimator.hpp"
 
@@ -157,4 +157,4 @@ int DummyStixelMotionEstimator::compute_stixel_horizontal_padding( const Stixel&
 
 } // namespace doppia
 
-#endif // BICLOP_DUMMYSTIXELMOTIONESTIMATOR_HPP
+#endif // DOPPIA_DUMMYSTIXELMOTIONESTIMATOR_HPP

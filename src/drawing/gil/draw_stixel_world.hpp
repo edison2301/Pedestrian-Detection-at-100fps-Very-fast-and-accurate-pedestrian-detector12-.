@@ -1,5 +1,5 @@
-#ifndef BICLOP_DRAW_STIXEL_WORLD_HPP
-#define BICLOP_DRAW_STIXEL_WORLD_HPP
+#ifndef DOPPIA_DRAW_STIXEL_WORLD_HPP
+#define DOPPIA_DRAW_STIXEL_WORLD_HPP
 
 #include "video_input/AbstractVideoInput.hpp"
 
@@ -57,4 +57,4 @@ void draw_the_stixels(boost::gil::rgb8_view_t &view, const stixels_t &the_stixel
 
 } // end of namespace doppia
 
-#endif // BICLOP_DRAW_STIXEL_WORLD_HPP
+#endif // DOPPIA_DRAW_STIXEL_WORLD_HPP

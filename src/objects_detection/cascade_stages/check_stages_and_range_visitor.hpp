@@ -1,5 +1,5 @@
-#ifndef BICLOP_CHECK_STAGES_AND_RANGE_VISITOR_HPP
-#define BICLOP_CHECK_STAGES_AND_RANGE_VISITOR_HPP
+#ifndef DOPPIA_CHECK_STAGES_AND_RANGE_VISITOR_HPP
+#define DOPPIA_CHECK_STAGES_AND_RANGE_VISITOR_HPP
 
 #include "objects_detection/DetectorSearchRange.hpp"
 
@@ -185,4 +185,4 @@ bool check_stages_and_range_visitor::check_stage
 
 } // end of namespace doppia
 
-#endif // BICLOP_CHECK_STAGES_AND_RANGE_VISITOR_HPP
+#endif // DOPPIA_CHECK_STAGES_AND_RANGE_VISITOR_HPP

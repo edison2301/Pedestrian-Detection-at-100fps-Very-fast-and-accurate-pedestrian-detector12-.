@@ -29,7 +29,6 @@
 
 #include "objects_tracking/AbstractObjectsTracker.hpp"
 #include "objects_tracking/DummyObjectsTracker.hpp"
-#include "objects_tracking/FrameData.hpp"
 
 #include "helpers/data/DataSequence.hpp"
 #include "objects_detection/detections.pb.h"
@@ -350,7 +349,7 @@ void ObjectsDetectionGui::resize_if_necessary()
             application.directory_input_p->get_image().dimensions();
 
     if((screen_left_view.width() < input_dimensions.x) or
-       (screen_left_view.height() < input_dimensions.y))
+            (screen_left_view.height() < input_dimensions.y))
     {
 
         const int
@@ -365,7 +364,7 @@ void ObjectsDetectionGui::resize_if_necessary()
 
 // FIXME should this be part of the BaseSdlGui ? (and video_input_p ?)
 void ObjectsDetectionGui::draw_video_input()
-{    
+{
 
     resize_if_necessary();
 
@@ -546,84 +545,16 @@ void ObjectsDetectionGui::draw_tracks()
         const DummyObjectsTracker *dummy_objects_tracker_p = \
                 dynamic_cast<const DummyObjectsTracker *>(application.objects_tracker_p.get());
 
-        const Dummy3dObjectsTracker *dummy_3d_objects_tracker_p = \
-                dynamic_cast<const Dummy3dObjectsTracker *>(application.objects_tracker_p.get());
 
-        SpectrObjectsTracker *spectr_objects_tracker_p = \
-                dynamic_cast<SpectrObjectsTracker *>(application.objects_tracker_p.get());
+        //AbstractVideoInput &video_input = *(application.video_input_p);
 
-
-        AbstractVideoInput &video_input = *(application.video_input_p);
-
-        if((dummy_objects_tracker_p != NULL)
-           or (dummy_3d_objects_tracker_p != NULL)
-           or (spectr_objects_tracker_p != NULL))
+        if(dummy_objects_tracker_p != NULL)
         {
-
-            if(dummy_objects_tracker_p != NULL)
-            {
-                const DummyObjectsTracker::tracks_t &tracks = dummy_objects_tracker_p->get_tracks();
-                draw_the_tracks(tracks,
-                                max_detection_score, application.additional_border,
-                                track_id_to_hue,
-                                screen_left_view);
-            }
-            else if(dummy_3d_objects_tracker_p != NULL)
-            {
-
-                GroundPlane ground_plane_estimate;
-
-                if(application.stixel_world_estimator_p)
-                {
-                    ground_plane_estimate = application.stixel_world_estimator_p->get_ground_plane();
-                }
-                else
-                { // we use the prior
-                    ground_plane_estimate.set_from_metric_units(
-                                video_input.camera_pitch, video_input.camera_roll, video_input.camera_height);
-                }
-
-                const Dummy3dObjectsTracker::tracks_t &tracks = dummy_3d_objects_tracker_p->get_tracks();
-
-                ObjectsTrackingApplication *tracking_application_p = \
-                        dynamic_cast<ObjectsTrackingApplication *>(&application);
-
-                if(tracking_application_p)
-                {
-
-                    FrameData &frame_data = *(dummy_3d_objects_tracker_p->latest_frame_data_p);
-                    MetricCamera camera(*(frame_data.camera_calibration_p), frame_data.pose);
-
-                    draw_the_tracks(tracks,
-                                    max_detection_score, application.additional_border,
-                                    track_id_to_hue,
-                                    ground_plane_estimate,
-                                    camera,
-                                    screen_left_view);
-
-                }
-                else
-                {
-                    draw_the_tracks(tracks,
-                                    max_detection_score, application.additional_border,
-                                    track_id_to_hue,
-                                    ground_plane_estimate,
-                                    video_input.get_metric_camera().get_left_camera(),
-                                    screen_left_view);
-                }
-            }
-            else
-            {
-                // FIXME just for debugging
-                const hypotheses_t &tracks = spectr_objects_tracker_p->get_interesting_hypotheses();
-                //const hypotheses_t &tracks = spectr_objects_tracker_p->get_all_hypotheses();
-                draw_the_tracks(tracks,
-                                max_detection_score, application.additional_border,
-                                track_id_to_hue,
-                                video_input.get_metric_camera().get_left_camera(),
-                                screen_left_view);
-            }
-
+            const DummyObjectsTracker::tracks_t &tracks = dummy_objects_tracker_p->get_tracks();
+            draw_the_tracks(tracks,
+                            max_detection_score, application.additional_border,
+                            track_id_to_hue,
+                            screen_left_view);
 
             // draw ground truth
             for(size_t i=0; i < ground_truth_detections.size(); i+=1)

@@ -1,5 +1,5 @@
-#ifndef BICLOP_DRAW_THE_TRACKS_HPP
-#define BICLOP_DRAW_THE_TRACKS_HPP
+#ifndef DOPPIA_DRAW_THE_TRACKS_HPP
+#define DOPPIA_DRAW_THE_TRACKS_HPP
 
 #include "objects_tracking/DummyObjectsTracker.hpp"
 
@@ -17,4 +17,4 @@ void draw_the_tracks(
 
 } // end of namespace doppia
 
-#endif // BICLOP_DRAW_THE_TRACKS_HPP
+#endif // DOPPIA_DRAW_THE_TRACKS_HPP

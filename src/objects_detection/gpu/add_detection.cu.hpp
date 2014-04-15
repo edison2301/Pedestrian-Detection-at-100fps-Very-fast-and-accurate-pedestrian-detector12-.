@@ -1,5 +1,5 @@
-#ifndef BICLOP_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
-#define BICLOP_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
+#ifndef DOPPIA_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
+#define DOPPIA_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
 
 #include "integral_channels_detector.cu.hpp"
 
@@ -41,4 +41,4 @@ void add_detection(
 } // end of namespace objects_detection
 } // end of namespace doppia
 
-#endif // BICLOP_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
+#endif // DOPPIA_OBJECTS_DETECTION_ADD_DETECTION_CU_HPP
