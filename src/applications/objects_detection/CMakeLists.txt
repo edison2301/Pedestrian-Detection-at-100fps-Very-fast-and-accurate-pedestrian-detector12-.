@@ -34,7 +34,7 @@ include(${doppia_root}/common_settings.cmake)
 # Setup required libraries
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(OpenEXR REQUIRED OpenEXR)
-#pkg_check_modules(opencv REQUIRED opencv>=2.3)
+pkg_check_modules(opencv REQUIRED opencv>=2.3)
 #set(vw_LIBRARIES "-lvwCore -lvwImage -lvwStereo -lvwFileIO -lvwMath -lvwInterestPoint")
 
 #set(opencv_LIBRARIES
@@ -96,15 +96,15 @@ endif(USE_GPU)
 # ----------------------------------------------------------------------
 # Collect source files
 
-set(doppia_src "${doppia_root}/src")
-set(doppia_stereo "${doppia_root}/src/stereo_matching")
+set(doppia_src ${doppia_root}/src)
+set(doppia_stereo ${doppia_root}/src/stereo_matching)
 
 file(GLOB SrcCpp
   "./ObjectsDetection*.cpp"
   "./draw*.cpp"
   "${doppia_src}/*.cpp"
   #"${doppia_src}/objects_detection/*.c*"
-  "${doppia_src}/objects_detection/Abstract*.c*"
+  "${doppia_src}/objects_detection/Abstract[^G]*.c*"
   "${doppia_src}/objects_detection/*Converter.c*"
   "${doppia_src}/objects_detection/Base*.c*"
   "${doppia_src}/objects_detection/*Factory.c*"
@@ -112,10 +112,13 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/Detection*.c*"
   "${doppia_src}/objects_detection/*Model.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
-  "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/Integral*.c*"
+  "${doppia_src}/objects_detection/[^(Gpu)]*Integral*.c*"
   "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
-  "${doppia_src}/objects_detection/integral_channels/Integral*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Abstract[^(Gpu)]*ChannelsComputer.cpp"
+  "${doppia_src}/objects_detection/integral_channels/[^(Gpu)|(AbstractGpu)]*.cpp"
+
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
   "${doppia_src}/objects_detection/*.pb.c*"
@@ -176,7 +179,9 @@ file(GLOB HelpersCpp
 )
 
 file(GLOB SrcGpuCpp
+  "${doppia_src}/objects_detection/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/Gpu*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/integral_channels/Gpu*.cpp"
   "${doppia_src}/helpers/gpu/*.cpp"
 
@@ -230,14 +235,11 @@ endif(USE_GPU)
 
 add_library(cpp_stuff_library  ${SrcCpp} ${HelpersCpp})
 
-add_executable(objects_detection "./objects_detection.cpp")
+add_executable(objects_detection ./objects_detection.cpp)
 
 target_link_libraries(objects_detection
 
    cpp_stuff_library
-
-   ${cg_LIBRARIES}
-   # linking with CgGL _after_ boost_program_options generates a segmentation fault ! boost_program_options 1.39 has a bug
 
    boost_program_options boost_filesystem boost_system boost_thread
    protobuf pthread

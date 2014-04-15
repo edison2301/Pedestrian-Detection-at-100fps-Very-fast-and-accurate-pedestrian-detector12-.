@@ -55,7 +55,10 @@ protected:
     void draw_detections();
     void draw_tracks();
     void draw_stixel_world();
+
+#if defined(USE_GPU)
     void draw_gpu_stixel_world();
+#endif
 
     /// used by draw_tracks
     std::map<int, float> track_id_to_hue;
