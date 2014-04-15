@@ -1,5 +1,5 @@
-#ifndef BICLOP_ANGLEBINCOMPUTER_HPP
-#define BICLOP_ANGLEBINCOMPUTER_HPP
+#ifndef DOPPIA_ANGLEBINCOMPUTER_HPP
+#define DOPPIA_ANGLEBINCOMPUTER_HPP
 
 #include <boost/multi_array.hpp>
 #include <cmath>
@@ -92,4 +92,4 @@ float AngleBinComputer<num_bins>::soft_binning(const float &y, const float &x, c
 
 } // end of namespace doppia
 
-#endif // BICLOP_ANGLEBINCOMPUTER_HPP
+#endif // DOPPIA_ANGLEBINCOMPUTER_HPP

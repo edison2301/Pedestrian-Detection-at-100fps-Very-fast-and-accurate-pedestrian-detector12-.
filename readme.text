@@ -45,8 +45,8 @@ Before starting looking into the code a few warning need to be provided:
 
 1. The doppia open source release is code that has been _extracted_ from a much larger code base (that includes more stereo methods, optical flow, visual odometry and many other things).
    Because of this:
-   * There is chances some things may break down, since (more) bug may have been introduced while extracting the code.
-   * If wonder "why is this method templated?" or "why there is an abstract class for something that has only one child?"; the answer is always "because in the original code base has many variants of this method".
+     * There is chances some things may break down, since (more) bug may have been introduced while extracting the code.
+     * If wonder "why is this method templated?" or "why there is an abstract class for something that has only one child?"; the answer is always "because in the original code base has many variants of this method".
 
 2. The name `doppia` aims to hint about "double". Doppia is a library for _stereo images_ processing, the assumed default input is stereo images. The monocular images input is a special case. This is visible in the code. 
 

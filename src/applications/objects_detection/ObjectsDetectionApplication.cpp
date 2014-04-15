@@ -273,7 +273,8 @@ void ObjectsDetectionApplication::setup_problem(const program_options::variables
 
     if(video_input_p)
     { // for process folder, objects_tracker_p stays empty
-        objects_tracker_p.reset(ObjectsTrackerFactory::new_instance(options, video_input_p->get_metric_camera()));
+        objects_tracker_p.reset(ObjectsTrackerFactory::new_instance(options));
+        //, video_input_p->get_metric_camera()));
     }
     return;
 }

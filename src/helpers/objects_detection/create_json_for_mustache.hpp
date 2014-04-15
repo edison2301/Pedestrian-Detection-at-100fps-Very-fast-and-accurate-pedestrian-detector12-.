@@ -1,5 +1,5 @@
-#ifndef BICLOP_CREATE_JSON_FOR_MUSTACHE_HPP
-#define BICLOP_CREATE_JSON_FOR_MUSTACHE_HPP
+#ifndef DOPPIA_CREATE_JSON_FOR_MUSTACHE_HPP
+#define DOPPIA_CREATE_JSON_FOR_MUSTACHE_HPP
 
 #include "objects_detection/BaseIntegralChannelsDetector.hpp"
 
@@ -11,4 +11,4 @@ void create_json_for_mustache(std::vector<BaseIntegralChannelsDetector::cascade_
 
 } // end namespace doppia
 
-#endif // BICLOP_CREATE_JSON_FOR_MUSTACHE_HPP
+#endif // DOPPIA_CREATE_JSON_FOR_MUSTACHE_HPP

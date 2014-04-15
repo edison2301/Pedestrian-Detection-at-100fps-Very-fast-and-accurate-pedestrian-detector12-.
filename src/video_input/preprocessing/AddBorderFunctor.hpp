@@ -1,5 +1,5 @@
-#ifndef BICLOP_ADDBORDERFUNCTOR_HPP
-#define BICLOP_ADDBORDERFUNCTOR_HPP
+#ifndef DOPPIA_ADDBORDERFUNCTOR_HPP
+#define DOPPIA_ADDBORDERFUNCTOR_HPP
 
 #if defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 #include <boost/gil/image.hpp>
@@ -41,4 +41,4 @@ protected:
 
 } // end of namespace doppia
 
-#endif // BICLOP_ADDBORDERFUNCTOR_HPP
+#endif // DOPPIA_ADDBORDERFUNCTOR_HPP

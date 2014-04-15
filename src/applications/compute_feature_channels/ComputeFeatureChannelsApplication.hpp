@@ -1,5 +1,5 @@
-#ifndef BICLOP_ComputeFeatureChannelsApplication_HPP
-#define BICLOP_ComputeFeatureChannelsApplication_HPP
+#ifndef DOPPIA_ComputeFeatureChannelsApplication_HPP
+#define DOPPIA_ComputeFeatureChannelsApplication_HPP
 
 #include "applications/BaseApplication.hpp"
 #include <boost/filesystem/path.hpp>
@@ -51,4 +51,4 @@ protected:
 
 } // end of namespace doppia
 
-#endif // BICLOP_ComputeFeatureChannelsApplication_HPP
+#endif // DOPPIA_ComputeFeatureChannelsApplication_HPP

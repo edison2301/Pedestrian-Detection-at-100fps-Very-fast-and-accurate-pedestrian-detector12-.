@@ -1,5 +1,5 @@
-#ifndef BICLOP_PROGRESS_DISPLAY_WITH_ETA_HPP
-#define BICLOP_PROGRESS_DISPLAY_WITH_ETA_HPP
+#ifndef DOPPIA_PROGRESS_DISPLAY_WITH_ETA_HPP
+#define DOPPIA_PROGRESS_DISPLAY_WITH_ETA_HPP
 
 
 #include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -71,4 +71,4 @@ protected:
 
 } // end of namespace doppia
 
-#endif // BICLOP_PROGRESS_DISPLAY_WITH_ETA_HPP
+#endif // DOPPIA_PROGRESS_DISPLAY_WITH_ETA_HPP

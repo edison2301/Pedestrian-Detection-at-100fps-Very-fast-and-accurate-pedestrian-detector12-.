@@ -1,5 +1,5 @@
-#ifndef BICLOP_SCALEDATA_HPP
-#define BICLOP_SCALEDATA_HPP
+#ifndef DOPPIA_SCALEDATA_HPP
+#define DOPPIA_SCALEDATA_HPP
 
 #include "DetectorSearchRange.hpp"
 
@@ -22,4 +22,4 @@ struct ScaleData
 
 } // namespace doppia
 
-#endif // BICLOP_SCALEDATA_HPP
+#endif // DOPPIA_SCALEDATA_HPP

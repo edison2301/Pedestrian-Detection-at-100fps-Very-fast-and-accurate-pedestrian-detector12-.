@@ -1,5 +1,5 @@
-#ifndef BICLOP_DRAW_THE_DETECTIONS_HPP
-#define BICLOP_DRAW_THE_DETECTIONS_HPP
+#ifndef DOPPIA_DRAW_THE_DETECTIONS_HPP
+#define DOPPIA_DRAW_THE_DETECTIONS_HPP
 
 #include "objects_detection/AbstractObjectsDetector.hpp"
 
@@ -15,4 +15,4 @@ void draw_the_detections(
 
 } // end of namespace doppia
 
-#endif // BICLOP_DRAW_THE_DETECTIONS_HPP
+#endif // DOPPIA_DRAW_THE_DETECTIONS_HPP

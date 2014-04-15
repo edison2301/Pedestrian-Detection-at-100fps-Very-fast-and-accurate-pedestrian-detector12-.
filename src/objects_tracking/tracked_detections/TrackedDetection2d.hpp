@@ -1,5 +1,5 @@
-#ifndef BICLOP_TRACKEDDETECTION2D_HPP
-#define BICLOP_TRACKEDDETECTION2D_HPP
+#ifndef DOPPIA_TRACKEDDETECTION2D_HPP
+#define DOPPIA_TRACKEDDETECTION2D_HPP
 
 #include "objects_tracking/AbstractObjectsTracker.hpp"
 
@@ -68,4 +68,4 @@ protected:
 
 } // end of namespace doppia
 
-#endif // BICLOP_TRACKEDDETECTION2D_HPP
+#endif // DOPPIA_TRACKEDDETECTION2D_HPP
