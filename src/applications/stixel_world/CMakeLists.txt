@@ -61,15 +61,21 @@ set(local_INCLUDE_DIRS
 
 
 link_directories(${libpng_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
-include_directories("${doppia_root}/libs/" "${doppia_root}/src"
-     ${libpng_INCLUDE_DIRS}  ${opencv_INCLUDE_DIRS} ${local_INCLUDE_DIRS})
-#cuda_include_directories(./libs )
+include_directories(
+  ${doppia_root}/libs
+  ${doppia_root}/src
+  ${libpng_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${local_INCLUDE_DIRS}
+)
 
 # ----------------------------------------------------------------------
 # Collect source files
 
 set(doppia_src "${doppia_root}/src")
 set(doppia_stereo "${doppia_root}/src/stereo_matching")
+
+include_directories(${doppia_stereo}/ground_plane)  # for protoc plane3d.pb.h
 
 file(GLOB SrcCpp
   "./*.cpp"
@@ -98,6 +104,10 @@ file(GLOB SrcCpp
   "${doppia_stereo}/stixels/*.cpp"
   "${doppia_stereo}/stixels/*.cc"
   "${doppia_stereo}/stixels/motion/*.cpp"
+
+  "${doppia_src}/objects_detection/Detection2d.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/TrackedDetection2d.cpp"
+
   "${doppia_src}/video_input/*.cpp"
   "${doppia_src}/video_input/calibration/*.c*"
   "${doppia_src}/video_input/preprocessing/*.cpp"
@@ -113,7 +123,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
   "${doppia_src}/helpers/Log.cpp"
-  "${doppia_src}/helpers/loggers.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
 )
 
@@ -149,5 +159,5 @@ target_link_libraries(stixel_world
    #lapack blas atlas
 
 #   ${google_perftools_LIBS}
-)   
+)
 # ----------------------------------------------------------------------

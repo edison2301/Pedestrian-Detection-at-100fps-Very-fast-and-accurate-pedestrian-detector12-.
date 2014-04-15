@@ -1,6 +1,6 @@
 /*
     Copyright 2005-2007 Adobe Systems Incorporated
-   
+
     Use, modification and distribution are subject to the Boost Software License,
     Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
     http://www.boost.org/LICENSE_1_0.txt).
@@ -32,6 +32,10 @@
 #include <stdio.h>
 #include <string>
 extern "C" {
+// int_p_NULL redefined inside png.h, without a check for previous definition
+#if defined(int_p_NULL)
+#undef int_p_NULL
+#endif
 #include "png.h"
 }
 #include <boost/static_assert.hpp>
@@ -76,7 +80,7 @@ struct png_read_support {
 /// \ingroup PNG_IO
 /// \brief Loads the image specified by the given png image file name into the given view.
 /// Triggers a compile assert if the view color space and channel depth are not supported by the PNG library or by the I/O extension.
-/// Throws std::ios_base::failure if the file is not a valid PNG file, or if its color space or channel depth are not 
+/// Throws std::ios_base::failure if the file is not a valid PNG file, or if its color space or channel depth are not
 /// compatible with the ones specified by View, or if its dimensions don't match the ones of the view.
 template <typename View>
 inline void png_read_view(const char* filename,const View& view) {
@@ -95,7 +99,7 @@ inline void png_read_view(const std::string& filename,const View& view) {
 /// \ingroup PNG_IO
 /// \brief Allocates a new image whose dimensions are determined by the given png image file, and loads the pixels into it.
 /// Triggers a compile assert if the image color space or channel depth are not supported by the PNG library or by the I/O extension.
-/// Throws std::ios_base::failure if the file is not a valid PNG file, or if its color space or channel depth are not 
+/// Throws std::ios_base::failure if the file is not a valid PNG file, or if its color space or channel depth are not
 /// compatible with the ones specified by Image
 template <typename Image>
 inline void png_read_image(const char* filename,Image& im) {

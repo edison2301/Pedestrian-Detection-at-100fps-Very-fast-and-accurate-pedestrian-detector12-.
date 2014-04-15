@@ -15,7 +15,7 @@ class DummyStixelMotionEstimator : public doppia::AbstractStixelMotionEstimator
 {
 public:
 
-    typedef std::vector< Eigen::MatrixXf > stixel_representation_t;    
+    typedef std::vector< Eigen::MatrixXf > stixel_representation_t;
 
     static boost::program_options::options_description get_args_options();
 
@@ -30,7 +30,7 @@ public:
     void update_stixel_tracks_image();
     void reset_stixel_tracks_image();
 
-protected:  
+protected:
 
     void compute_motion_cost_matrix();
     void compute_motion();
@@ -43,7 +43,7 @@ protected:
     unsigned int compute_maximum_motion_in_pixels();
     unsigned int compute_maximum_pixelwise_motion_for_stixel( const Stixel& stixel );
 
-    inline unsigned int compute_stixel_horizontal_padding( const Stixel& stixel );
+    inline int compute_stixel_horizontal_padding( const Stixel& stixel );
 
     float compute_pixelwise_sad( const Stixel& stixel1, const Stixel& stixel2,
                                  const input_image_const_view_t& image_view1, const input_image_const_view_t& image_view2,
@@ -60,7 +60,7 @@ protected:
     /// Computes the 3D motion vector from reference_stixel to destination_stixel
     Eigen::Vector3f compute_real_motion_between_stixels( const Stixel& reference_stixel, const Stixel& destination_stixel ) const;
     Eigen::Vector3f compute_real_motion_between_stixels( const Stixel& reference_stixel, const Stixel& destination_stixel,
-                                                         const float reference_stixel_depth, const float destination_stixel_depth ) const;    
+                                                         const float reference_stixel_depth, const float destination_stixel_depth ) const;
 
     void compute_stixel_representation( const Stixel &stixel, const input_image_const_view_t& image_hosting_the_stixel,
                                         stixel_representation_t &stixel_representation, const unsigned int stixel_horizontal_padding ) const;
@@ -123,7 +123,7 @@ protected:
     motion_cost_matrix_t pixelwise_sad_matrix;
     motion_cost_matrix_t real_height_differences_matrix;
     motion_cost_matrix_t pixelwise_height_differences_matrix;
-    motion_cost_matrix_t depth_differences_matrix;    
+    motion_cost_matrix_t depth_differences_matrix;
 
     // Stored for easy access
     Eigen::VectorXf current_stixel_depths;
@@ -149,7 +149,7 @@ protected:
 };
 
 /// FIXME : Should this be inline ?
-unsigned int DummyStixelMotionEstimator::compute_stixel_horizontal_padding( const Stixel& stixel )
+int DummyStixelMotionEstimator::compute_stixel_horizontal_padding( const Stixel& stixel )
 {
     // FIXME hardcoded parameter
     return ( (stixel.width / 2) + 2 );

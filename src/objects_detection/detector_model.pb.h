@@ -1185,7 +1185,7 @@ class DetectorModel : public ::google::protobuf::Message {
   inline ::std::string* release_training_dataset_name();
   inline void set_allocated_training_dataset_name(::std::string* training_dataset_name);
 
-  // optional string semantic_category = 300;
+  // optional string semantic_category = 300 [default = "/m/017r8p"];
   inline bool has_semantic_category() const;
   inline void clear_semantic_category();
   static const int kSemanticCategoryFieldNumber = 300;
@@ -1291,6 +1291,7 @@ class DetectorModel : public ::google::protobuf::Message {
   ::std::string* detector_name_;
   ::std::string* training_dataset_name_;
   ::std::string* semantic_category_;
+  static ::std::string* _default_semantic_category_;
   ::doppia_protobuf::Point2d* model_window_size_;
   ::doppia_protobuf::Box* object_window_;
   ::doppia_protobuf::LinearSvmModel* linear_svm_model_;
@@ -2606,7 +2607,7 @@ inline void DetectorModel::set_allocated_training_dataset_name(::std::string* tr
   }
 }
 
-// optional string semantic_category = 300;
+// optional string semantic_category = 300 [default = "/m/017r8p"];
 inline bool DetectorModel::has_semantic_category() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -2617,8 +2618,8 @@ inline void DetectorModel::clear_has_semantic_category() {
   _has_bits_[0] &= ~0x00000004u;
 }
 inline void DetectorModel::clear_semantic_category() {
-  if (semantic_category_ != &::google::protobuf::internal::kEmptyString) {
-    semantic_category_->clear();
+  if (semantic_category_ != _default_semantic_category_) {
+    semantic_category_->assign(*_default_semantic_category_);
   }
   clear_has_semantic_category();
 }
@@ -2627,44 +2628,44 @@ inline const ::std::string& DetectorModel::semantic_category() const {
 }
 inline void DetectorModel::set_semantic_category(const ::std::string& value) {
   set_has_semantic_category();
-  if (semantic_category_ == &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ == _default_semantic_category_) {
     semantic_category_ = new ::std::string;
   }
   semantic_category_->assign(value);
 }
 inline void DetectorModel::set_semantic_category(const char* value) {
   set_has_semantic_category();
-  if (semantic_category_ == &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ == _default_semantic_category_) {
     semantic_category_ = new ::std::string;
   }
   semantic_category_->assign(value);
 }
 inline void DetectorModel::set_semantic_category(const char* value, size_t size) {
   set_has_semantic_category();
-  if (semantic_category_ == &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ == _default_semantic_category_) {
     semantic_category_ = new ::std::string;
   }
   semantic_category_->assign(reinterpret_cast<const char*>(value), size);
 }
 inline ::std::string* DetectorModel::mutable_semantic_category() {
   set_has_semantic_category();
-  if (semantic_category_ == &::google::protobuf::internal::kEmptyString) {
-    semantic_category_ = new ::std::string;
+  if (semantic_category_ == _default_semantic_category_) {
+    semantic_category_ = new ::std::string(*_default_semantic_category_);
   }
   return semantic_category_;
 }
 inline ::std::string* DetectorModel::release_semantic_category() {
   clear_has_semantic_category();
-  if (semantic_category_ == &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ == _default_semantic_category_) {
     return NULL;
   } else {
     ::std::string* temp = semantic_category_;
-    semantic_category_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    semantic_category_ = const_cast< ::std::string*>(_default_semantic_category_);
     return temp;
   }
 }
 inline void DetectorModel::set_allocated_semantic_category(::std::string* semantic_category) {
-  if (semantic_category_ != &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ != _default_semantic_category_) {
     delete semantic_category_;
   }
   if (semantic_category) {
@@ -2672,7 +2673,7 @@ inline void DetectorModel::set_allocated_semantic_category(::std::string* semant
     semantic_category_ = semantic_category;
   } else {
     clear_has_semantic_category();
-    semantic_category_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    semantic_category_ = const_cast< ::std::string*>(_default_semantic_category_);
   }
 }
 

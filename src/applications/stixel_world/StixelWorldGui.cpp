@@ -1,5 +1,6 @@
 #include "StixelWorldGui.hpp"
 
+#include "drawing/gil/draw_the_ground_corridor.hpp"
 #include "drawing/gil/draw_stixel_world.hpp"
 
 #include "StixelWorldApplication.hpp"
@@ -113,7 +114,7 @@ StixelWorldGui::StixelWorldGui(
       video_input_p(video_input_p_),
       stixel_world_estimator_p(stixel_world_estimator_p_),
       stixel_motion_estimator_p(stixel_motion_estimator_p_)
-{    
+{
 
     // stixel_world_estimator_p may be empty (specially when used from ObjectsDetectionGui)
     // video_input_p may also be empty (when used from ObjectsDetectionGui, with process_folder option)

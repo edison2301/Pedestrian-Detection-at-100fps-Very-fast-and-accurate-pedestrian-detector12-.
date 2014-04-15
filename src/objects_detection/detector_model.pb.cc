@@ -328,6 +328,7 @@ void protobuf_ShutdownFile_detector_5fmodel_2eproto() {
   delete SoftCascadeOverIntegralChannelsModel::_default_channels_description_;
   delete DetectorModel::default_instance_;
   delete DetectorModel_reflection_;
+  delete DetectorModel::_default_semantic_category_;
   delete MultiScalesDetectorModel::default_instance_;
   delete MultiScalesDetectorModel_reflection_;
   delete DetectorModelsBundle::default_instance_;
@@ -382,31 +383,32 @@ void protobuf_AddDesc_detector_5fmodel_2eproto() {
     "\030\001 \003(\01325.doppia_protobuf.SoftCascadeOver"
     "IntegralChannelsStage\022&\n\024channels_descri"
     "ption\030\002 \001(\t:\010hog6_luv\022\033\n\020shrinking_facto"
-    "r\030\003 \001(\r:\0014\"\325\005\n\rDetectorModel\022\025\n\rdetector"
+    "r\030\003 \001(\r:\0014\"\340\005\n\rDetectorModel\022\025\n\rdetector"
     "_name\030\001 \001(\t\022\035\n\025training_dataset_name\030\002 \002"
-    "(\t\022\032\n\021semantic_category\030\254\002 \001(\t\0223\n\021model_"
-    "window_size\030\n \001(\0132\030.doppia_protobuf.Poin"
-    "t2d\022+\n\robject_window\030\013 \001(\0132\024.doppia_prot"
-    "obuf.Box\022C\n\rdetector_type\030\003 \002(\0162,.doppia"
-    "_protobuf.DetectorModel.DetectorTypes\0229\n"
-    "\020linear_svm_model\030d \001(\0132\037.doppia_protobu"
-    "f.LinearSvmModel\022Q\n\022soft_cascade_model\030f"
-    " \001(\01325.doppia_protobuf.SoftCascadeOverIn"
-    "tegralChannelsModel\022\021\n\005scale\030\310\001 \001(\002:\0011\022\033"
-    "\n\017occlusion_level\030\322\001 \001(\002:\0010\022W\n\016occlusion"
-    "_type\030\323\001 \001(\0162-.doppia_protobuf.DetectorM"
-    "odel.OcclusionTypes:\017BottomOcclusion\"T\n\r"
-    "DetectorTypes\022\r\n\tLinearSvm\020\000\022#\n\037SoftCasc"
-    "adeOverIntegralChannels\020\n\022\017\n\013HoughForest"
-    "\020\024\"^\n\016OcclusionTypes\022\021\n\rLeftOcclusion\020\n\022"
-    "\022\n\016RightOcclusion\020\013\022\023\n\017BottomOcclusion\020\024"
-    "\022\020\n\014TopOcclusion\020\025\"\203\001\n\030MultiScalesDetect"
-    "orModel\022\025\n\rdetector_name\030\001 \001(\t\022\035\n\025traini"
-    "ng_dataset_name\030\002 \002(\t\0221\n\tdetectors\030\003 \003(\013"
-    "2\036.doppia_protobuf.DetectorModel\"}\n\024Dete"
-    "ctorModelsBundle\022\023\n\013bundle_name\030\001 \001(\t\022\035\n"
-    "\025training_dataset_name\030\002 \002(\t\0221\n\tdetector"
-    "s\030\003 \003(\0132\036.doppia_protobuf.DetectorModel", 2599);
+    "(\t\022%\n\021semantic_category\030\254\002 \001(\t:\t/m/017r8"
+    "p\0223\n\021model_window_size\030\n \001(\0132\030.doppia_pr"
+    "otobuf.Point2d\022+\n\robject_window\030\013 \001(\0132\024."
+    "doppia_protobuf.Box\022C\n\rdetector_type\030\003 \002"
+    "(\0162,.doppia_protobuf.DetectorModel.Detec"
+    "torTypes\0229\n\020linear_svm_model\030d \001(\0132\037.dop"
+    "pia_protobuf.LinearSvmModel\022Q\n\022soft_casc"
+    "ade_model\030f \001(\01325.doppia_protobuf.SoftCa"
+    "scadeOverIntegralChannelsModel\022\021\n\005scale\030"
+    "\310\001 \001(\002:\0011\022\033\n\017occlusion_level\030\322\001 \001(\002:\0010\022W"
+    "\n\016occlusion_type\030\323\001 \001(\0162-.doppia_protobu"
+    "f.DetectorModel.OcclusionTypes:\017BottomOc"
+    "clusion\"T\n\rDetectorTypes\022\r\n\tLinearSvm\020\000\022"
+    "#\n\037SoftCascadeOverIntegralChannels\020\n\022\017\n\013"
+    "HoughForest\020\024\"^\n\016OcclusionTypes\022\021\n\rLeftO"
+    "cclusion\020\n\022\022\n\016RightOcclusion\020\013\022\023\n\017Bottom"
+    "Occlusion\020\024\022\020\n\014TopOcclusion\020\025\"\203\001\n\030MultiS"
+    "calesDetectorModel\022\025\n\rdetector_name\030\001 \001("
+    "\t\022\035\n\025training_dataset_name\030\002 \002(\t\0221\n\tdete"
+    "ctors\030\003 \003(\0132\036.doppia_protobuf.DetectorMo"
+    "del\"}\n\024DetectorModelsBundle\022\023\n\013bundle_na"
+    "me\030\001 \001(\t\022\035\n\025training_dataset_name\030\002 \002(\t\022"
+    "1\n\tdetectors\030\003 \003(\0132\036.doppia_protobuf.Det"
+    "ectorModel", 2610);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "detector_model.proto", &protobuf_RegisterTypes);
   LinearSvmModel::default_instance_ = new LinearSvmModel();
@@ -419,6 +421,8 @@ void protobuf_AddDesc_detector_5fmodel_2eproto() {
   SoftCascadeOverIntegralChannelsModel::_default_channels_description_ =
       new ::std::string("hog6_luv", 8);
   SoftCascadeOverIntegralChannelsModel::default_instance_ = new SoftCascadeOverIntegralChannelsModel();
+  DetectorModel::_default_semantic_category_ =
+      new ::std::string("/m/017r8p", 9);
   DetectorModel::default_instance_ = new DetectorModel();
   MultiScalesDetectorModel::default_instance_ = new MultiScalesDetectorModel();
   DetectorModelsBundle::default_instance_ = new DetectorModelsBundle();
@@ -3166,6 +3170,7 @@ const DetectorModel_OcclusionTypes DetectorModel::OcclusionTypes_MIN;
 const DetectorModel_OcclusionTypes DetectorModel::OcclusionTypes_MAX;
 const int DetectorModel::OcclusionTypes_ARRAYSIZE;
 #endif  // _MSC_VER
+::std::string* DetectorModel::_default_semantic_category_ = NULL;
 #ifndef _MSC_VER
 const int DetectorModel::kDetectorNameFieldNumber;
 const int DetectorModel::kTrainingDatasetNameFieldNumber;
@@ -3202,7 +3207,7 @@ void DetectorModel::SharedCtor() {
   _cached_size_ = 0;
   detector_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   training_dataset_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  semantic_category_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  semantic_category_ = const_cast< ::std::string*>(_default_semantic_category_);
   model_window_size_ = NULL;
   object_window_ = NULL;
   detector_type_ = 0;
@@ -3225,7 +3230,7 @@ void DetectorModel::SharedDtor() {
   if (training_dataset_name_ != &::google::protobuf::internal::kEmptyString) {
     delete training_dataset_name_;
   }
-  if (semantic_category_ != &::google::protobuf::internal::kEmptyString) {
+  if (semantic_category_ != _default_semantic_category_) {
     delete semantic_category_;
   }
   if (this != default_instance_) {
@@ -3270,8 +3275,8 @@ void DetectorModel::Clear() {
       }
     }
     if (has_semantic_category()) {
-      if (semantic_category_ != &::google::protobuf::internal::kEmptyString) {
-        semantic_category_->clear();
+      if (semantic_category_ != _default_semantic_category_) {
+        semantic_category_->assign(*_default_semantic_category_);
       }
     }
     if (has_model_window_size()) {
@@ -3466,7 +3471,7 @@ bool DetectorModel::MergePartialFromCodedStream(
         break;
       }
 
-      // optional string semantic_category = 300;
+      // optional string semantic_category = 300 [default = "/m/017r8p"];
       case 300: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -3565,7 +3570,7 @@ void DetectorModel::SerializeWithCachedSizes(
       211, this->occlusion_type(), output);
   }
 
-  // optional string semantic_category = 300;
+  // optional string semantic_category = 300 [default = "/m/017r8p"];
   if (has_semantic_category()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->semantic_category().data(), this->semantic_category().length(),
@@ -3652,7 +3657,7 @@ void DetectorModel::SerializeWithCachedSizes(
       211, this->occlusion_type(), target);
   }
 
-  // optional string semantic_category = 300;
+  // optional string semantic_category = 300 [default = "/m/017r8p"];
   if (has_semantic_category()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->semantic_category().data(), this->semantic_category().length(),
@@ -3687,7 +3692,7 @@ int DetectorModel::ByteSize() const {
           this->training_dataset_name());
     }
 
-    // optional string semantic_category = 300;
+    // optional string semantic_category = 300 [default = "/m/017r8p"];
     if (has_semantic_category()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
