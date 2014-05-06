@@ -82,9 +82,9 @@ cv::gpu::GpuMat get_slice(ChannelsType &channels, const size_t slice_index)
 {
     // GpuMat(rows, cols, ...)
     return cv::gpu::GpuMat(channels.getSlice(slice_index).size[1], channels.getSlice(slice_index).size[0],
-                           cv::DataType<typename ChannelsType::Type>::type,
-                           channels.getSlice(slice_index).getBuffer(),
-                           channels.getSlice(slice_index).getPitch() );
+            cv::DataType<typename ChannelsType::Type>::type,
+            channels.getSlice(slice_index).getBuffer(),
+            channels.getSlice(slice_index).getPitch() );
 }
 
 } // end of namespace doppia
@@ -228,11 +228,19 @@ create_pre_smoothing_gpu_filter()
         const cv::Mat binomial_kernel_2d =  binomial_kernel_1d * binomial_kernel_1d.t();
 
         const cv::Point default_anchor = cv::Point(-1,-1);
+
+#if CV_MINOR_VERSION <= 3
+        // opencv 2.3
+        pre_smoothing_filter_p =
+                cv::gpu::createLinearFilter_GPU(CV_8UC4, CV_8UC4, binomial_kernel_2d, default_anchor);
+#else
+        // opencv 2.4 (or superior)
         const int border_type = BORDER_DEFAULT;
         //const int border_type = BORDER_REPLICATE;
         //const int border_type = BORDER_REFLECT;
         pre_smoothing_filter_p =
                 cv::gpu::createLinearFilter_GPU(CV_8UC4, CV_8UC4, binomial_kernel_2d, default_anchor, border_type);
+#endif
     }
 
 
@@ -790,7 +798,7 @@ void implementation_t::resize_and_integrate_channels_v0()
         if(check_channels_sizes)
         {
             if((shrunk_channel.rows != shrunk_channel_size.y)
-               or (shrunk_channel.cols != shrunk_channel_size.x))
+                    or (shrunk_channel.cols != shrunk_channel_size.x))
             {
                 printf("shrunk_channel size == (%i, %i)\n",
                        shrunk_channel.cols, shrunk_channel.rows);
@@ -800,7 +808,7 @@ void implementation_t::resize_and_integrate_channels_v0()
             }
 
             if((integral_channels.size[0] != static_cast<size_t>(shrunk_channel_size.x + 1))
-               or (integral_channels.size[1] != static_cast<size_t>(shrunk_channel_size.y + 1)))
+                    or (integral_channels.size[1] != static_cast<size_t>(shrunk_channel_size.y + 1)))
             {
                 printf("integral channel size == (%zi, %zi)\n",
                        integral_channels.size[0], integral_channels.size[1]);
@@ -907,7 +915,7 @@ void implementation_t::resize_and_integrate_channels_v0()
 
 
 void implementation_t::resize_and_integrate_channels_v1()
-{    
+{
     if(not boost::is_same<gpu_integral_channels_t, gpu_3d_integral_channels_t>::value)
     {
         throw std::runtime_error("resize_and_integrate_channels_v1 should only be used with gpu_3d_integral_channels_t, "
@@ -1028,15 +1036,15 @@ void implementation_t::resize_and_integrate_channels_v2()
         // GpuMat(rows, cols, type)
         const gpu::GpuMat shrunk_channels_gpu_mat(
                     shrunk_channels.size[1]*shrunk_channels.size[2], shrunk_channels.size[0],
-                    cv::DataType<gpu_channels_t::Type>::type,
-                    shrunk_channels.getBuffer(),
-                    shrunk_channels.getPitch());
+                cv::DataType<gpu_channels_t::Type>::type,
+                shrunk_channels.getBuffer(),
+                shrunk_channels.getPitch());
 
         gpu::GpuMat integral_channels_gpu_mat(
                     integral_channels.size[1], integral_channels.size[0],
-                    cv::DataType<gpu_integral_channels_t::Type>::type,
-                    integral_channels.getBuffer(),
-                    integral_channels.getPitch());
+                cv::DataType<gpu_integral_channels_t::Type>::type,
+                integral_channels.getBuffer(),
+                integral_channels.getPitch());
 
         // sum will have CV_32S type, but will contain unsigned int values
         cv::gpu::integralBuffered(shrunk_channels_gpu_mat, integral_channels_gpu_mat, integral_channel_buffer_a);
@@ -1216,13 +1224,13 @@ void integral_channels_gpu_to_cpu(
 
         printf("integral_channels shape == [%zi, %zi, %zi]\n",
                integral_channels.shape()[0],
-               integral_channels.shape()[1],
-               integral_channels.shape()[2]);
+                integral_channels.shape()[1],
+                integral_channels.shape()[2]);
 
         printf("integral_channels strides == [%zi, %zi, %zi]\n",
                integral_channels.strides()[0],
-               integral_channels.strides()[1],
-               integral_channels.strides()[2]);
+                integral_channels.strides()[1],
+                integral_channels.strides()[2]);
 
         throw std::runtime_error("Stopping everything so you can inspect the last printed values");
     }
@@ -1303,19 +1311,19 @@ void integral_channels_gpu_to_cpu <GpuIntegralChannelsForPedestrians::gpu_2d_int
 
         printf("long_integral_channels shape == [%zu, %zu]; strides == [%zu, %zu]\n",
                long_integral_channels.shape()[0],
-               long_integral_channels.shape()[1],
-               long_integral_channels.strides()[0],
-               long_integral_channels.strides()[1]);
+                long_integral_channels.shape()[1],
+                long_integral_channels.strides()[0],
+                long_integral_channels.strides()[1]);
 
         printf("integral_channels shape == [%zu, %zu, %zu]\n",
                integral_channels.shape()[0],
-               integral_channels.shape()[1],
-               integral_channels.shape()[2]);
+                integral_channels.shape()[1],
+                integral_channels.shape()[2]);
 
         printf("integral_channels strides == [%zu, %zu, %zu]\n",
                integral_channels.strides()[0],
-               integral_channels.strides()[1],
-               integral_channels.strides()[2]);
+                integral_channels.strides()[1],
+                integral_channels.strides()[2]);
 
         throw std::runtime_error("Stopping everything so you can inspect the last printed values");
     }
