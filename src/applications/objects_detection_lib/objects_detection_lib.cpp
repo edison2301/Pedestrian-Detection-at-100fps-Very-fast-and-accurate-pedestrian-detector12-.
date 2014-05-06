@@ -8,6 +8,7 @@
 #if defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
 #include "video_input/AbstractVideoInput.hpp"
+#include "video_input/MetricCamera.hpp"
 
 #else // not defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
@@ -78,13 +79,14 @@ shared_ptr<MetricCamera> metric_camera_p;
 #else  // not monocular
 shared_ptr<StereoCameraCalibration> stereo_calibration_p;
 shared_ptr<MetricStereoCamera> stereo_camera_p;
+
+boost::gil::rgb8_image_t left_image, right_image;
+#endif // defined(MONOCULAR_OBJECTS_DETECTION_LIB)
+
 float
 ground_plane_prior_pitch = 0, // [radians]
 ground_plane_prior_roll = 0, // [radians]
 ground_plane_prior_height = 1.0; // [meters]
-
-boost::gil::rgb8_image_t left_image, right_image;
-#endif // defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
 bool
 first_frame = true,
@@ -302,7 +304,7 @@ void init_objects_detection(const boost::program_options::variables_map input_op
 }
 
 
-
+#if defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 void init_objects_detection(const boost::program_options::variables_map input_options,
                             boost::shared_ptr<doppia::CameraCalibration> calibration_p,
                             const bool use_ground_plane)
@@ -343,7 +345,8 @@ void init_objects_detection(const boost::program_options::variables_map input_op
 
         if(not calibration_p)
         {
-            throw std::invalid_argument("When using ground plane, init_objects_detection expects to receive a non-empty calibration shared pointer");
+            throw std::invalid_argument("When using ground plane, "
+                                        "init_objects_detection expects to receive a non-empty calibration shared pointer");
         }
 
 
@@ -362,15 +365,15 @@ void init_objects_detection(const boost::program_options::variables_map input_op
             printf("Camera pitch == %.4f\n", ground_plane_prior_pitch);
 
              printf("camera focal x,y == (%.3f, %.3f)\n",
-                   metric_camera_p->get_calibration().get_left_camera_calibration().get_focal_length_x(),
-                   metric_camera_p->get_calibration().get_left_camera_calibration().get_focal_length_y() );
+                   metric_camera_p->get_calibration().get_focal_length_x(),
+                   metric_camera_p->get_calibration().get_focal_length_y() );
         }
 
     }
 
     return;
 }
-
+#endif // defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
 
 

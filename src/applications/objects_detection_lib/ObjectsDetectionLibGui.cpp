@@ -32,8 +32,9 @@ void FakeObjectsDetectionLibGui::update()
 #include "video_input/AbstractVideoInput.hpp"
 #include "video_input/MetricStereoCamera.hpp"
 
-#include "applications/stixel_world/draw_stixel_world.hpp"
-#include "applications/objects_detection/draw_the_detections.hpp"
+#include "drawing/gil/draw_the_detections.hpp"
+#include "drawing/gil/draw_the_ground_corridor.hpp"
+#include "drawing/gil/draw_stixel_world.hpp"
 
 #include "stereo_matching/stixels/AbstractStixelWorldEstimator.hpp"
 #include "stereo_matching/stixels/StixelWorldEstimator.hpp"

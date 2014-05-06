@@ -4,6 +4,7 @@
 #include "IntegralChannelsComputer.hpp"
 #include "boosted_learning/ImageData.hpp"
 
+#include <boost/program_options/variables_map.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/function.hpp>
 #include <vector>

@@ -14,7 +14,7 @@
 #include "objects_detection/SoftCascadeOverIntegralChannelsModel.hpp"
 
 #include "video_input/ImagesFromDirectory.hpp" // for the open_image helper method
-#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
+//#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
 #include "video_input/preprocessing/AddBorderFunctor.hpp"
 
 #include "helpers/add_to_parsed_options.hpp"
@@ -603,7 +603,7 @@ const boost::program_options::variables_map &options)
     //desc.add(AbstractObjectsDetector::get_args_options());
     //desc.add(IntegralChannelsDetector::get_args_options());
     desc.add(ObjectsDetectorFactory::get_args_options()); // may add more than we need, but should be ok
-    desc.add(IntegralChannelsComputerFactory::get_args_options());
+    //desc.add(IntegralChannelsComputerFactory::get_args_options());
 
     const bool print_options = false;
     if(print_options)
