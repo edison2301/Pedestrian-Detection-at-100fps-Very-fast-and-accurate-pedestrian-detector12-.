@@ -100,7 +100,8 @@ float get_feature_value_tex1d(const IntegralChannelsFeature &feature,
 #define tex integral_channels_1d_texture
     //const gpu_integral_channels_t::Type  // could cause overflows during a + c
     // tex1Dfetch should be used to access linear memory (not text1D)
-    const float
+    const gpu_integral_channels_t::Type 
+    //const float
             a = tex1Dfetch(tex, top_left_index),
             b = tex1Dfetch(tex, top_right_index),
             c = tex1Dfetch(tex, bottom_right_index),
@@ -147,7 +148,8 @@ float get_feature_value_tex1d(const IntegralChannelsFractionalFeature &feature,
 #define tex integral_channels_1d_texture
     //const gpu_integral_channels_t::Type  // could cause overflows during a + c
     // tex1Dfetch should be used to access linear memory (not text1D)
-    const float
+    const gpu_integral_channels_t::Type 
+    //const float
             a = tex1Dfetch(tex, top_left_index),
             b = tex1Dfetch(tex, top_right_index),
             c = tex1Dfetch(tex, bottom_right_index),
@@ -179,7 +181,8 @@ float get_feature_value_tex2d(const FeatureType &feature,
     const typename FeatureType::rectangle_t &box = feature.box;
 
     //const gpu_integral_channels_t::Type  // could cause overflows during a + c
-    const float
+    const gpu_integral_channels_t::Type 
+    //const float
             a = tex2D(tex, x + box.min_corner().x(), box.min_corner().y() + y_offset), // top left
             b = tex2D(tex, x + box.max_corner().x(), box.min_corner().y() + y_offset), // top right
             c = tex2D(tex, x + box.max_corner().x(), box.max_corner().y() + y_offset), // bottom right
@@ -212,7 +215,8 @@ float get_feature_value_tex2d(const FeatureType &feature,
     const typename FeatureType::rectangle_t &box = feature.box;
 
     //const gpu_integral_channels_t::Type  // could cause overflows during a + c
-    const float
+    //const float
+    const gpu_integral_channels_t::Type 
             a = tex2D(tex, x + box.min_corner().x(), box.min_corner().y() + y_offset), // top left
             b = tex2D(tex, x + box.max_corner().x(), box.min_corner().y() + y_offset), // top right
             c = tex2D(tex, x + box.max_corner().x(), box.max_corner().y() + y_offset), // bottom right
