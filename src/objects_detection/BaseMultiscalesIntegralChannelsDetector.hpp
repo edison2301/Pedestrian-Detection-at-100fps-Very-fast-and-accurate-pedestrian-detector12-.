@@ -66,7 +66,7 @@ void reorder_by_search_range_scale(
 
 
 /// helper function called inside BaseMultiscalesIntegralChannelsDetector::compute_scaled_detection_cascades
-const IntegralChannelsDetectorModelsBundle::detector_t *find_nearest_scale_detector_model(
+std::vector<const IntegralChannelsDetectorModelsBundle::detector_t *>find_nearest_scale_detector_model(
         const float detection_window_scale,
         const IntegralChannelsDetectorModelsBundle::detectors_t &detectors);
 

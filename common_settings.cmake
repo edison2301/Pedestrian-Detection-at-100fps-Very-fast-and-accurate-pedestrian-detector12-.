@@ -94,7 +94,7 @@ if(HOSTED_AT_VISICS GREATER -1)
   set(CUDA_NVCC_EXECUTABLE  /usr/local/cuda-5.5/bin/nvcc )
   #set(CUDA_SDK_ROOT_DIR  /users/visics/rbenenso/code/references/cuda_sdk_4.0.17/C)
   set(CUDA_SDK_ROOT_DIR  /users/visics/mmathias/devel/doppia/)
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8 --pre-include /users/visics/mmathias/devel/doppia/undef_atomics_int128.h) # black magic required on Visics machines
+  #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8 --pre-include /users/visics/mmathias/devel/doppia/undef_atomics_int128.h) # black magic required on Visics machines
 
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_20) # only matar, jabbah and yildun can run current code
 

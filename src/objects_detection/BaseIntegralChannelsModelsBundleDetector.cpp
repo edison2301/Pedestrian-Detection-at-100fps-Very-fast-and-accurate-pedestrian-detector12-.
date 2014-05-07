@@ -214,12 +214,13 @@ detector_search_ranges_data_t get_occluded_search_ranges_data(
 
 /// helper function called inside BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
 /// will search for the closest scale, but for an exact match on the occlusion_level
-const detector_t *find_nearest_scale_detector_model(const float detection_window_scale,
+std::vector<const detector_t *>find_nearest_scale_detector_model(const float detection_window_scale,
                                                     const float occlusion_level,
                                                     const detectors_t &detectors)
 {
     const detector_t *nearest_detector_scale_p = NULL;
 
+    std::vector<const detector_t *>nearest_detector_scale_p_vector;
     float min_abs_log_scale = std::numeric_limits<float>::max();
 
     const float search_range_log_scale = log(detection_window_scale);
@@ -246,8 +247,34 @@ const detector_t *find_nearest_scale_detector_model(const float detection_window
         throw std::runtime_error("find_nearest_scale_detector_model failed to find a model "
                                  "for the requested occlusion level");
     }
+    nearest_detector_scale_p_vector.push_back(nearest_detector_scale_p);
+    bool first = true;
+    BOOST_FOREACH(const detector_t &detector, detectors)
+    {
+        if(detector.get_occlusion_level() != occlusion_level)
+        { // we skip
+            continue;
+    }
 
-    return nearest_detector_scale_p;
+        const float
+                log_detector_scale = log(detector.get_scale()),
+                abs_log_scale = std::abs<float>(search_range_log_scale - log_detector_scale);
+
+        if (first){
+            first = false;
+            continue;
+
+        }
+        if((abs_log_scale == min_abs_log_scale) and (!first))
+        {
+            min_abs_log_scale = abs_log_scale;
+            nearest_detector_scale_p = &detector;
+            nearest_detector_scale_p_vector.push_back(nearest_detector_scale_p);
+        }
+    } // end of "for each detector"
+
+
+    return nearest_detector_scale_p_vector;
 }
 
 
@@ -346,22 +373,22 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
     } // end of "if no NoOcclusion detectors"
 
 
+    detector_search_ranges_data_t additional_component_range_data;
     for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index+=1)
     {
-        DetectorSearchRangeMetaData &search_range_data = search_ranges_data[search_range_index];
+        DetectorSearchRangeMetaData search_range_data = search_ranges_data[search_range_index];
 
         if(search_range_data.detection_window_ratio != 1.0)
         {
             throw std::invalid_argument("BaseIntegralChannelsModelsBundleDetector does not handle ratios != 1");
         }
 
-        original_detection_window_scales.push_back(search_range_data.detection_window_scale);
 
         // search the nearest scale model (with the proper occlusion level) ---
         const detector_t::occlusion_type_t occlusion_type = search_range_data.detector_occlusion_type;
         // occlusion_type can be detector_t::NoOcclusion
         const detectors_t &detectors_with_same_occlusion_type = detectors_per_occlusion_type[occlusion_type];
-        const detector_t *nearest_detector_scale_p =
+        std::vector<const detector_t *>nearest_detector_scale_p_vector =
                 (occlusion_type == detector_t::NoOcclusion)
                 // if no occlusion we do not constrain the occlusion level
                 ? find_nearest_scale_detector_model(search_range_data.detection_window_scale,
@@ -370,6 +397,9 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
                 : find_nearest_scale_detector_model(search_range_data.detection_window_scale,
                                                     search_range_data.detector_occlusion_level,
                                                     detectors_with_same_occlusion_type);
+        float detect_win_scale = search_range_data.detection_window_scale;
+        for(size_t i =0; i< nearest_detector_scale_p_vector.size(); ++i){
+            const detector_t * nearest_detector_scale_p = nearest_detector_scale_p_vector[i];
 
         if(nearest_detector_scale_p == NULL)
         {
@@ -378,18 +408,12 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
                                      "BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades");
         }
 
-        if(first_call)
-        {
-            printf("Selected model scale %.3f (occlusion type %s,\tocclusion level %.3f) for detection window scale %.3f\n",
-                   nearest_detector_scale_p->get_scale(),
-                   get_occlusion_type_name(nearest_detector_scale_p->get_occlusion_type()).c_str(),
-                   nearest_detector_scale_p->get_occlusion_level(),
-                   search_range_data.detection_window_scale);
-        }
-
+    
         // update the search range scale --
         {
-            search_range_data.detection_window_scale /= nearest_detector_scale_p->get_scale();
+                original_detection_window_scales.push_back(detect_win_scale);
+                search_range_data.detection_window_scale = detect_win_scale / nearest_detector_scale_p->get_scale();
+                search_range_data.semantic_category = nearest_detector_scale_p->get_semantic_category();
 
             const float relative_scale = 1.0f; // we rescale the images, not the the features
             const cascade_stages_t cascade_stages = nearest_detector_scale_p->get_rescaled_stages(relative_scale);
@@ -398,9 +422,30 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
             detector_cascade_relative_scale_per_scale.push_back(relative_scale);
             detection_window_size_per_scale.push_back(nearest_detector_scale_p->get_model_window_size());
         }
+            if(first_call)
+            {
+                printf("Selected model scale %.3f (occlusion type %s,\tocclusion level %.3f) for detection window scale %.3f , semantic category = %s\n",
+                       nearest_detector_scale_p->get_scale(),
+                       get_occlusion_type_name(nearest_detector_scale_p->get_occlusion_type()).c_str(),
+                       nearest_detector_scale_p->get_occlusion_level(),
+                       search_range_data.detection_window_scale,
+                       nearest_detector_scale_p->get_semantic_category().c_str());
+            }
+            if (i>0){
+
+                additional_component_range_data.push_back(search_range_data);
+            }else{
+                search_ranges_data[search_range_index] = search_range_data;
+            }
+
+
+        } // end of "for each nearest detector"
 
     } // end of "for each search range"
 
+    //add search ranges for additional components
+    search_ranges_data.insert(search_ranges_data.end(),
+                              additional_component_range_data.begin(), additional_component_range_data.end());
 
     if(use_ground_plane == false)
     { // we only re-order when not using ground planes

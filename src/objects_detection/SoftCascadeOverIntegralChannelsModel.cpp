@@ -67,6 +67,44 @@ typedef SoftCascadeOverIntegralChannelsModel::three_stumps_stages_t three_stumps
 typedef SoftCascadeOverIntegralChannelsModel::four_stumps_stage_t four_stumps_stage_t;
 typedef SoftCascadeOverIntegralChannelsModel::four_stumps_stages_t four_stumps_stages_t;
 
+void normalize_maximum_detection_score(const doppia_protobuf::DetectorModel &model,
+                                       doppia_protobuf::DetectorModel &rescaled_model)
+{
+    rescaled_model.CopyFrom(model);
+
+    const float desired_max_score = 1;
+
+    log_info() << "Detector model is being normalized to have maximum detection score == "
+               << desired_max_score << std::endl;
+
+    doppia_protobuf::SoftCascadeOverIntegralChannelsModel &soft_cascade =
+            *(rescaled_model.mutable_soft_cascade_model());
+
+    float weights_sum = 0;
+    for(int stage_index = 0; stage_index < soft_cascade.stages_size(); stage_index += 1)
+{
+        weights_sum += soft_cascade.stages(stage_index).weight();
+    } // end for "for each cascade stage"
+
+    log_debug() << "The Detector model out of training had a max score of " << weights_sum << std::endl;
+
+    const float weight_scaling_factor = desired_max_score / weights_sum;
+
+    for(int stage_index = 0; stage_index < soft_cascade.stages_size(); stage_index += 1)
+    {
+        doppia_protobuf::SoftCascadeOverIntegralChannelsStage &stage =
+                *(soft_cascade.mutable_stages(stage_index));
+
+        stage.set_weight(stage.weight() * weight_scaling_factor);
+
+        if(stage.cascade_threshold() > -1E5)
+        { // rescale the cascade threshold if it has a non-absurd value
+            stage.set_cascade_threshold(stage.cascade_threshold() * weight_scaling_factor);
+    }
+    } // end for "for each cascade stage"
+
+    return;
+}
 
 SoftCascadeOverIntegralChannelsModel::SoftCascadeOverIntegralChannelsModel(const doppia_protobuf::DetectorModel &model)
 {
@@ -74,13 +112,7 @@ SoftCascadeOverIntegralChannelsModel::SoftCascadeOverIntegralChannelsModel(const
     if(model.has_detector_name())
     {
         log_info() << "Parsing model " << model.detector_name() << std::endl;
-
-    }
-    semantic_category = "dummy_name";
-    if(model.has_semantic_category())
-    {
-        log_info() << "Parsing model " << model.detector_name() << std::endl;
-        semantic_category = model.semantic_category();
+        //semantic_category = model.semantic_category();
     }
 
     if(model.detector_type() != doppia_protobuf::DetectorModel::SoftCascadeOverIntegralChannels)
@@ -93,13 +125,24 @@ SoftCascadeOverIntegralChannelsModel::SoftCascadeOverIntegralChannelsModel(const
         throw std::runtime_error("The model content does not match the model type");
     }
 
-    set_stages_from_model(model.soft_cascade_model());
-
-    shrinking_factor = model.soft_cascade_model().shrinking_factor();
-
-    if(model.has_scale())
+    doppia_protobuf::DetectorModel normalized_model;
+    const bool normalize_the_models = true;
+    if(normalize_the_models)
     {
-        scale = model.scale();
+        normalize_maximum_detection_score(model, normalized_model);
+    }
+    else
+    {
+        normalized_model.CopyFrom(model);
+    }
+
+    set_stages_from_model(normalized_model.soft_cascade_model());
+
+    shrinking_factor = normalized_model.soft_cascade_model().shrinking_factor();
+
+    if(normalized_model.has_scale())
+    {
+        scale = normalized_model.scale();
     }
     else
     {
@@ -107,7 +150,7 @@ SoftCascadeOverIntegralChannelsModel::SoftCascadeOverIntegralChannelsModel(const
         scale = 1.0;
     }
 
-    if(model.has_model_window_size())
+    if(normalized_model.has_model_window_size())
     {
         model_window_size.x(model.model_window_size().x());
         model_window_size.y( model.model_window_size().y());
@@ -119,7 +162,17 @@ SoftCascadeOverIntegralChannelsModel::SoftCascadeOverIntegralChannelsModel(const
         model_window_size.y(128);
     }
 
-    if(model.has_object_window())
+    if(normalized_model.has_semantic_category())
+    {
+        semantic_category = model.semantic_category();
+    }
+    else
+    {
+        log_warning() << "No semantic category found in model, assuming a pedestrian detector" << std::endl;
+        semantic_category = "/m/017r8p"; // see http://www.freebase.com/m/017r8p
+    }
+
+    if(normalized_model.has_object_window())
     {
         const doppia_protobuf::Box &the_object_window = model.object_window();
         object_window.min_corner().x(the_object_window.min_corner().x());
@@ -1605,7 +1658,7 @@ void SoftCascadeOverIntegralChannelsModel::sanity_check() const
                 should_touch_borders);
     bool everything_is_fine = boost::apply_visitor(visitor, stages);
     // FIXME, terrible HACK !
-    everything_is_fine = true;
+    //everything_is_fine = true;
     if(not everything_is_fine)
     {
         throw std::runtime_error("SoftCascadeOverIntegralChannelsModel::sanity_check failed");

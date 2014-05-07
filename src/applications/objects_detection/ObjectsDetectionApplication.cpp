@@ -410,6 +410,7 @@ void ObjectsDetectionApplication::main_loop()
         if(should_process_folder)
         {
             input_view = directory_input_p->get_image();
+            log_info() << "Processing image: " << directory_input_p->get_image_name() << std::endl;
         }
         else
         {
