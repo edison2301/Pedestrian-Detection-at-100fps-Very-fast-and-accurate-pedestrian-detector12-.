@@ -1,7 +1,7 @@
 # use glob syntax.
 syntax: glob
 
-applications/biclop/biclop
+applications/doppia/doppia
 applications/simple_stereo/simple_stereo
 applications/simple_stereo_lib/test_simple_stereo_lib
 applications/simple_gpu_stereo/simple_gpu_stereo
@@ -58,7 +58,7 @@ output/*
 sceneflow_devernay/*
 folki/*
 
-src/applications/biclop/*_recordings/
+src/applications/doppia/*_recordings/
 src/applications/tracks_classifier_evaluation/*.txt
 src/applications/objects_detection/training_runs
 src/applications/linear_svm_learning/inria_model*.txt
