@@ -42,8 +42,8 @@ public:
     typedef boost::shared_ptr<TrainingData> shared_ptr_t;
     typedef boost::shared_ptr<const TrainingData> const_shared_ptr_t;
 
-    //typedef bootstrapping::integral_channels_computer_t integral_channels_computer_t;
-    typedef doppia::AbstractIntegralChannelsComputer integral_channels_computer_t;
+    typedef bootstrapping::integral_channels_computer_t integral_channels_computer_t;
+    //typedef doppia::AbstractIntegralChannelsComputer integral_channels_computer_t;
     typedef boost::shared_ptr<integral_channels_computer_t> integral_channels_computer_shared_ptr_t;
 
 public:
