@@ -37,6 +37,7 @@ set(VISICS_MACHINES
   "kochab" "oculus"  "izar" "yildun" "watar" "sadr" # intel v7, core i7 860  @ 2.80GHz
   "unuk" # intel v7, cire i7 870 @ 2.93GHz
   "jabbah" "matar" # top of the line cpu and gpu
+  "kochab.esat.kuleuven.be"
 )
 
 
@@ -47,11 +48,12 @@ if(HOSTED_AT_VISICS GREATER -1)
   message(STATUS "Using ${VISICS_MACHINES} optimisation options")
 
   # since gcc 4.6 the option -Ofast provides faster than -O3
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -Dint_p_NULL='\(\(int*\)0\)'")
+  #set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
   #set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
 
   # add local compiled opencv trunk in the pkg-config paths
-  set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/users/visics/rbenenso/no_backup/usr/local/lib/pkgconfig)
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/users/visics/rbenenso/no_backup/usr/local/lib/pkgconfig)
 
   #set(OPT_CXX_FLAGS "-fopenmp -march=native -mtune=native -ffast-math -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2") # just for testing
   
@@ -59,20 +61,25 @@ if(HOSTED_AT_VISICS GREATER -1)
   #option(USE_GPU "Should the GPU be used ?" OFF) # set to false for testing purposes only
   set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
   set(CUDA_BUILD_CUBIN OFF)
-  set(local_CUDA_CUT_INCLUDE_DIRS "/users/visics/rbenenso/code/references/cuda/cuda_sdk/C/common/inc")
-  set(local_CUDA_CUT_LIBRARY_DIRS "/users/visics/rbenenso/code/references/cuda/cuda_sdk/C/lib")
+  set(local_CUDA_CUT_INCLUDE_DIRS "/usr/local/cuda-5.5/include")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/usr/local/cuda-5.5/lib")
+  #set(local_CUDA_CUT_INCLUDE_DIRS "/users/visics/rbenenso/code/references/cuda/cuda_sdk/C/common/inc")
+  #set(local_CUDA_CUT_LIBRARY_DIRS "/users/visics/rbenenso/code/references/cuda/cuda_sdk/C/lib")
   set(local_CUDA_LIB_DIR "/usr/lib64/nvidia")
   set(local_CUDA_LIB "/usr/lib64/nvidia/libcuda.so")
-  set(cuda_LIBS "cuda")
-  set(cutil_LIB "cutil")
+  set(cuda_LIBS "cuda-5.5")
+  #set(cutil_LIB "cutil")
 
   # if you get error messages in nvcc-generated files,
   # enable the following line for debugging:
   #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS};--keep")
   #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --host-compilation c++ --device-compilation c++)
-  set(CUDA_NVCC_EXECUTABLE  /users/visics/rbenenso/code/references/cuda/gcc-4.4/nvcc-4.4.sh)
-  set(CUDA_SDK_ROOT_DIR  /users/visics/rbenenso/code/references/cuda_sdk_4.0.17/C)
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8) # black magic required on Visics machines
+  #set(CUDA_NVCC_EXECUTABLE  /users/visics/rbenenso/code/references/cuda/gcc-4.4/nvcc-4.4.sh)
+  set(CUDA_NVCC_EXECUTABLE  /usr/local/cuda-5.5/bin/nvcc )
+  #set(CUDA_SDK_ROOT_DIR  /users/visics/rbenenso/code/references/cuda_sdk_4.0.17/C)
+  set(CUDA_SDK_ROOT_DIR  /users/visics/mmathias/no_backup/code/reference/cuda-5.5_toolkit)
+  #set(CUDA_SDK_ROOT_DIR  /usr/local/cuda-5.5/)
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8 --pre-include /users/visics/mmathias/devel/doppia/undef_atomics_int128.h) # black magic required on Visics machines
 
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_20) # only matar, jabbah and yildun can run current code
 
@@ -80,10 +87,52 @@ if(HOSTED_AT_VISICS GREATER -1)
   #set(google_perftools_LIBS tcmalloc profiler)
   set(google_perftools_LIBS tcmalloc_and_profiler)
 
-  set(liblinear_INCLUDE_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
-  set(liblinear_LIBRARY_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
+  #set(liblinear_INCLUDE_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
+  #set(liblinear_LIBRARY_DIRS "/users/visics/rbenenso/code/references/machine_learning/liblinear-1.8")
 
- add_definitions("-Dint_p_NULL=((int*)0)")
+  #add_definitions("-Dint_p_NULL=((int*)0)")
+
+elseif(${HOSTNAME} STREQUAL  "biwi-desktop")
+  message(STATUS "Using biwi-desktop optimisation options")
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+  set(GCC43_DIRECTORY "/home/biwi/aess/aess/projects/3rdparty/gcc-4.3/")
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/biwi/NVIDIA_GPU_Computing_SDK/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/biwi/NVIDIA_GPU_Computing_SDK/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/lib")
+  set(cuda_LIBS "cuda")
+  set(cutil_LIB "cutil")
+
+
+elseif(${HOSTNAME} STREQUAL  "mmp-laptop")
+  # Aachen @ Europa computer
+  message(STATUS "Using mmp Aaechen @ Europa optimisation options")
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(GCC43_DIRECTORY "/usr/bin")
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/mmp/NVIDIA_GPU_Computing_SDK/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/mmp/NVIDIA_GPU_Computing_SDK/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/lib")
+  set(cuda_LIBS "cuda") 
+  set(cutil_LIB "cutil")
+
+
+elseif(${HOSTNAME} STREQUAL  "sammy")
+  # Sammy @ IURO TUM ACE robot computer
+  message(STATUS "Using sammy @ IURO optimisation options")
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+  set(GCC43_DIRECTORY "/usr/bin")
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/sammy/cuda/NVIDIA_GPU_Computing_SDK/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/sammy/cuda/NVIDIA_GPU_Computing_SDK/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/local/cuda/lib")
+  set(cuda_LIBS "cuda")
+  set(cutil_LIB "cutil_x86_64")
 
 elseif(${HOSTNAME} STREQUAL  "rodrigob-laptop")
   message(STATUS "Using rodrigob-laptop optimisation options")
@@ -91,20 +140,20 @@ elseif(${HOSTNAME} STREQUAL  "rodrigob-laptop")
   option(USE_GPU "Should the GPU be used ?" FALSE)
   set(CUDA_BUILD_EMULATION ON CACHE BOOL "enable emulation mode")
   set(CUDA_BUILD_CUBIN OFF)
-  set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/work/code/biclop_references/cuda/cuda_sdk/C/common/inc")
-  set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/work/code/biclop_references/cuda/cuda_sdk/C/lib")
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/work/code/doppia_references/cuda/cuda_sdk/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/work/code/doppia_references/cuda/cuda_sdk/C/lib")
   set(cuda_LIBS "")
   set(cutil_LIB "cutil")
 
-  set(GCC44_DIRECTORY "/home/rodrigob/work/code/biclop_references/cuda/gcc-4.4/")
+  set(GCC44_DIRECTORY "/home/rodrigob/work/code/doppia_references/cuda/gcc-4.4/")
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-bindir ${GCC44_DIRECTORY})
 
   # faster malloc, and a good profiler via http://google-perftools.googlecode.com
   set(google_perftools_LIBS tcmalloc profiler)
   set(EUROPA_SVN "/home/rodrigob/work/code/europa_svn/code")
 
-  set(liblinear_INCLUDE_DIRS "/home/rodrigob/work/code/biclop_references/liblinear-1.8")
-  set(liblinear_LIBRARY_DIRS "/home/rodrigob/work/code/biclop_references/liblinear-1.8")
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/work/code/doppia_references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/work/code/doppia_references/liblinear-1.8")
 
 
 elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
@@ -123,6 +172,48 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
   set(local_CUDA_LIB_DIR "/usr/local/cuda/lib64")
   set(cuda_LIBS "")
   set(cutil_LIB "cutil")
+  # faster malloc, and a good profiler via http://google-perftools.googlecode.com
+  set(google_perftools_LIBS tcmalloc profiler)
+  set(EUROPA_SVN "/home/rodrigob/code/europa_svn/code")
+
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+
+elseif(${HOSTNAME} STREQUAL  "ruegen")
+  message(STATUS "Using ruegen optimisation options")
+  
+  # add local compiled opencv trunk in the pkg-config paths
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
+  set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
+
+  set(opencv_INCLUDE_DIRS "/home/mfritz/local/opencv_2.4.3/include/")
+  set(opencv_LIBRARY_DIRS "/home/mfritz/local/opencv_2.4.3/lib/")
+
+  option(USE_GPU "Should the GPU be used ?" TRUE)
+  #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+  
+  # work around to use gcc-4.4 instead of 4.5
+  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh") 
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_21)
+
+  set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
+  set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
+  set(local_CUDA_LIB_DIR "/usr/local/cuda/lib64")
+  set(cuda_LIBS "")
+  #set(cutil_LIB "cutil")
+  set(cutil_LIB "") # no cutil
+
+  include_directories(
+    /home/mfritz/software/protobuf-readonly
+    /home/mfritz/local/opencv_2.4.3/include
+    /home/mfritz/local/include
+  )
+
+  link_directories(
+    /home/mfritz/local/opencv_2.4.3/lib
+    /home/mfritz/local/lib
+  )
 
   # faster malloc, and a good profiler via http://google-perftools.googlecode.com
   set(google_perftools_LIBS tcmalloc profiler)
@@ -131,19 +222,52 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
   set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
   set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
 
+
+elseif(${HOSTNAME} STREQUAL  "wks-12-23")
+  message(STATUS "Using wks-12-23 optimisation options")
+  
+  # add local compiled opencv trunk in the pkg-config paths
+  #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
+  set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
+
+  set(opencv_INCLUDE_DIRS "/home/mfritz/local/opencv_2.4.3/include/")
+  set(opencv_LIBRARY_DIRS "/home/mfritz/local/opencv_2.4.3/lib/")
+
+  option(USE_GPU "Should the GPU be used ?" FALSE)
+  #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
+  set(CUDA_BUILD_CUBIN OFF)
+  
+  include_directories(
+    /home/mfritz/software/protobuf-readonly
+    /home/mfritz/local/opencv_2.4.3/include
+    /home/mfritz/local/include
+  )
+
+  link_directories(
+    /home/mfritz/local/opencv_2.4.3/lib
+    /home/mfritz/local/lib
+  )
+
+  # faster malloc, and a good profiler via http://google-perftools.googlecode.com
+  set(google_perftools_LIBS tcmalloc profiler)
+
+  set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+  set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
+
+
 elseif(${HOSTNAME} STREQUAL  "lap-12-31")
   message(STATUS "Using lap-12-31 optimisation options")
-
+   
   set(CMAKE_CXX_COMPILER "/usr/bin/g++-4.7")
   set(CMAKE_C_COMPILER "/usr/bin/g++-4.7")
   # since gcc 4.6 -Ofast is faster than -O3
-  set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG")
-  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
+  set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG") 
+  set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG") 
 
   set(CUDA_PROPAGATE_HOST_FLAGS "OFF") # since nvcc does not handle -Ofast
-  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -DNDEBUG")
+  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -DNDEBUG") 
   set(CUDA_NVCC_FLAGS_RELWITHDEBINFO "-O3 -DNDEBUG")
-
+ 
   # add local compiled opencv trunk in the pkg-config paths
   #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
   #set(PKG_CONFIG_PATH /home/mfritz/local/lib/pkgconfig)
@@ -154,9 +278,9 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
   option(USE_GPU "Should the GPU be used ?" TRUE)
   #set(CUDA_BUILD_EMULATION OFF CACHE BOOL "enable emulation mode")
   set(CUDA_BUILD_CUBIN OFF)
-
+  
   # work around to use gcc-4.4 instead of 4.5
-  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
+  #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh") 
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_30)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
@@ -173,16 +297,8 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
   set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
   set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
 
-  include_directories(
-   # "/home/rodrigob/code/references/libwebp-0.3.0-linux-x86-64/include"
-  )
-
-  link_directories(
-   # "/home/rodrigob/code/references/libwebp-0.3.0-linux-x86-64/lib"
-  )
-
 else ()
-  message(FATAL_ERROR, "Unknown machine, please add your configuration inside biclop/common_settings.cmake")
+  message(FATAL_ERROR, "Unknown machine, please add your configuration inside doppia/common_settings.cmake")
   
 endif ()
 

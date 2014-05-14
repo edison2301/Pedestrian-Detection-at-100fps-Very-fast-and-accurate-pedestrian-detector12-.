@@ -17,8 +17,8 @@ set(doppia_root "../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
-set(CMAKE_MODULE_PATH "/home/rodrigob/work/code/doppia_references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
-set(CMAKE_MODULE_PATH "/users/visics/rbenenso/code/references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+#set(CMAKE_MODULE_PATH "/home/rodrigob/work/code/doppia_references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH "/users/visics/mmathias/no_backup/code/references/cuda/FindCUDA/CMake/cuda" ${CMAKE_MODULE_PATH})
 
 # ----------------------------------------------------------------------
 # Setup the project
@@ -34,7 +34,7 @@ include(${doppia_root}/common_settings.cmake)
 # Setup required libraries
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(OpenEXR REQUIRED OpenEXR)
-pkg_check_modules(opencv REQUIRED opencv>=2.3)
+#pkg_check_modules(opencv REQUIRED opencv>=2.3)
 #set(vw_LIBRARIES "-lvwCore -lvwImage -lvwStereo -lvwFileIO -lvwMath -lvwInterestPoint")
 
 set(opencv_LIBRARIES
@@ -57,7 +57,7 @@ endif(USE_GPU)
 
 set(local_LIBRARY_DIRS
   "/usr/local/lib"
-  "/users/visics/rbenenso/no_backup/usr/local/lib"
+  "/users/visics/mmathias/no_backup/usr/local/lib"
   "/usr/lib64"
   "/usr/lib64/atlas"
   "/usr/lib/sse2/atlas"
@@ -65,10 +65,10 @@ set(local_LIBRARY_DIRS
   ${local_CUDA_LIB_DIR}
 )
 set(local_INCLUDE_DIRS
-  "/users/visics/rbenenso/no_backup/usr/local/include"
+  "/users/visics/mmathias/no_backup/usr/local/include"
   "/usr/include/eigen2/"
    "/usr/local/include/eigen2"
-   "/usr/local/cuda/include"
+   "/usr/local/cuda-5.5/include"
    ${CUDA_INCLUDE_DIRS}
 )
 
@@ -113,18 +113,25 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/*Model.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
   "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
   "${doppia_src}/objects_detection/integral_channels/Integral*.cpp"
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
   "${doppia_src}/objects_detection/*.pb.c*"
+  "${doppia_src}/objects_detection/cascade_stages/*.c*"
   "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
 
   "${doppia_src}/objects_tracking/*.cpp"
+  "${doppia_src}/objects_tracking/motion_models/*.cpp"
+  "${doppia_src}/objects_tracking/detection_descriptors/*.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/*.cpp"
 
   "${doppia_src}/applications/*.cpp"
   "${doppia_src}/applications/stixel_world/*Gui.cpp"
-  "${doppia_src}/applications/stixel_world/draw*.cpp"
+  "${doppia_src}/applications/stixel_world/draw_stixel_world.cpp"
+  "${doppia_src}/applications/objects_tracking/*Application.cpp"
+  "${doppia_src}/visual_odometry/Abstract*.cpp"
 
   #"${doppia_stereo}/*.cpp"
   "${doppia_stereo}/cost_volume/*CostVolume.cpp"
@@ -151,6 +158,7 @@ file(GLOB SrcCpp
   "${doppia_src}/video_input/preprocessing/*.cpp"
   #"${doppia_src}/features_tracking/*.cpp"
   "${doppia_src}/image_processing/*.cpp"
+
   "${doppia_src}/drawing/gil/*.cpp"
 )
 
@@ -164,6 +172,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
   "${doppia_src}/helpers/replace_environment_variables.cpp"
+  "${doppia_src}/helpers/Timers.cpp"
   "${doppia_src}/helpers/objects_detection/*.cpp"
 )
 
@@ -243,7 +252,7 @@ target_link_libraries(objects_detection
    #csparse sparse spblas mv
    #lapack blas atlas
 
-   ${google_perftools_LIBS} # enables profiling, see http://code.google.com/p/google-perftools
+   #${google_perftools_LIBS} # enables profiling, see http://code.google.com/p/gperftools
 
    #`OcelotConfig -l`
    #ocelot
