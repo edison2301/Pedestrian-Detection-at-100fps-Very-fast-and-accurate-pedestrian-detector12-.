@@ -3,13 +3,9 @@
 #include "boosted_learning/ModelIO.hpp"
 
 #include "applications/EmptyGui.hpp"
-#include "objects_detection/integral_channels/IntegralChannelsComputer.hpp"
-#include "objects_detection/integral_channels/AbstractIntegralChannelsComputer.hpp"
-#include "objects_detection/integral_channels/ChannelsComputerFactory.hpp"
-#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
 #include "objects_detection/integral_channels/IntegralChannelsForPedestrians.hpp"
-#include "objects_detection/integral_channels/IntegralChannelsFromFiles.hpp"
-#include "objects_detection/integral_channels/Hog6LuvChannelsComputer.hpp"
+//#include "objects_detection/integral_channels/AbstractIntegralChannelsComputer.hpp"
+//#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
 #include "video_input/ImagesFromDirectory.hpp"
 
 #include "helpers/get_option_value.hpp"
