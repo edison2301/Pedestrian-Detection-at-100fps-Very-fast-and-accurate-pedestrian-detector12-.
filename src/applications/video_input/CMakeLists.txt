@@ -35,7 +35,15 @@ include(${doppia_root}/common_settings.cmake)
 # Setup require libraries
 pkg_check_modules(libpng REQUIRED libpng)
 pkg_check_modules(opencv REQUIRED opencv>=2.1)
-set(vw_LIBRARIES "-lvwCore -lvwImage -lvwStereo -lvwFileIO -lvwMath -lvwInterestPoint")
+list(APPEND opencv_LIBRARIES opencv_legacy)
+
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -107,11 +115,11 @@ target_link_libraries(video_input
    boost_program_options-mt boost_filesystem-mt boost_system-mt boost_thread-mt protobuf
    SDL
    gomp Xext Xrandr X11
-   ${libpng_LIBRARIES} 
+   ${libpng_LIBRARIES}  jpeg
    ${opencv_LIBRARIES}
 
    #csparse sparse spblas mv
    #lapack blas atlas
-)   
- 
+)
+
 # ----------------------------------------------------------------------

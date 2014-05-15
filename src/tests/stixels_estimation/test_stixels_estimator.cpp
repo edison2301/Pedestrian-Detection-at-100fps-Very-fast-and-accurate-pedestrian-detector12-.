@@ -50,7 +50,7 @@ public:
 EmptyDisparityCostVolume::EmptyDisparityCostVolume(const int max_disparity_)
     : DisparityCostVolume()
 {
-    this->max_disparity = max_disparity_;
+    //this->max_disparity = max_disparity_;
     return;
 }
 
@@ -105,16 +105,14 @@ void StixelsEstimatorTester::set_costs(const u_disparity_cost_t &ground_cost, co
 
     const int num_disparities = ground_cost.rows();
     this->pixels_cost_volume_p.reset(new EmptyDisparityCostVolume(num_disparities));
-    this->pixels_cost_volume_p->resize(
-                EmptyDisparityCostVolume::point_t(ground_cost.cols(), ground_cost.rows()) );
-
+    this->pixels_cost_volume_p->resize(ground_cost.rows(), ground_cost.cols(),  num_disparities);
 
     const int num_rows = pixels_cost_volume_p->rows();
     v_given_disparity.resize(num_disparities);
     disparity_given_v.resize(num_rows);
 
-    const int minimum_v = 0;
-    minimum_v_given_disparity.resize(num_disparities, minimum_v);
+    //const int minimum_v = 0;
+    //minimum_v_given_disparity.resize(num_disparities, minimum_v);
 
     return;
 }
@@ -349,7 +347,7 @@ void save_images(
         {
             const float col_max_value = M_cost_normalized.col(c).maxCoeff();
             const float col_min_value = M_cost_normalized.col(c).minCoeff();
-            M_cost_normalized.col(c).cwise() -= col_min_value;
+            M_cost_normalized.col(c).array() -= col_min_value;
 
             if(col_max_value > col_min_value)
             {
@@ -359,7 +357,7 @@ void save_images(
         }
 
         // log scaling --
-        M_cost_normalized = (M_cost_normalized.cwise() + 1).cwise().log();
+        M_cost_normalized = (M_cost_normalized.array() + 1).array().log();
 
         draw_matrix(M_cost_normalized, t_view);
         png_write_view(m_cost_normalized_filename, t_view);

@@ -8,7 +8,8 @@ NUM_THREADS=15
 build_all()
 {
 
-for dirname in src/applications/*/ src/tests/*/ ;
+#for dirname in src/applications/*/ src/tests/*/ ;
+for dirname in src/applications/*/ ;
 do
   cd ${dirname}
   cmake -D CMAKE_BUILD_TYPE=RelWithDebInfo .
@@ -23,7 +24,8 @@ while true; do
 		case $yn in
 		[Yy]* ) build_all; break;;
 		[Nn]* ) exit ;;
-		* ) echo "Please answer yes or no.";;
+		#* ) echo "Please answer yes or no.";;
+		* ) exit ;;
 		esac
 	done
 
