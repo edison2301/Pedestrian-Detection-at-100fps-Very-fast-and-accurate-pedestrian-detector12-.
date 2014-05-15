@@ -10,7 +10,7 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-set(doppia_root "../../..")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
@@ -21,6 +21,7 @@ project (StixelWorldLib)
 # ----------------------------------------------------------------------
 # Site specific configurations
 include(${doppia_root}/common_settings.cmake)
+set(USE_GPU OFF CACHE BOOL "Should the GPU be used ?" FORCE)
 
 # ----------------------------------------------------------------------
 # Setup required libraries
@@ -40,15 +41,15 @@ set(opencv_LIBRARIES
 # ----------------------------------------------------------------------
 # Setup link and include directories
 
-set(local_INCLUDE_DIRS 
-    "${doppia_root}/libs" 
+set(local_INCLUDE_DIRS
+    "${doppia_root}/libs"
     "${doppia_root}/src"
     "${doppia_root}/src/applications/boosted_learning"
     #"/usr/include/eigen2"
     #"/usr/local/include/eigen2"
     "/users/visics/rbenenso/no_backup/usr/local/include"
     )
-    
+
 include_directories(
  ${local_INCLUDE_DIRS}
  "${doppia_root}/src/applications/bootstrapping_lib"
@@ -85,6 +86,9 @@ file(GLOB SrcCpp
   "${doppia_src}/applications/*Application.cpp"
   "${doppia_src}/applications/AbstractGui.cpp"
   "${doppia_src}/applications/EmptyGui.cpp"
+
+  "${doppia_src}/objects_detection/Detection2d.cpp"
+  "${doppia_src}/objects_tracking/tracked_detections/TrackedDetection2d.cpp"
 
   "${doppia_src}/image_processing/*.cpp"
   "${doppia_src}/drawing/gil/draw_matrix.cpp"
@@ -132,6 +136,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/data/*.c*"
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/Log.cpp"
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
@@ -149,7 +154,7 @@ target_link_libraries(stixel_world
    boost_program_options-mt boost_filesystem-mt boost_system-mt
    boost_thread-mt pthread gomp
    protobuf
-   ${opencv_LIBRARIES} 
+   ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
 )
