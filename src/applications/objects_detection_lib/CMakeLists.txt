@@ -12,7 +12,7 @@
 # Base CMake setup
 cmake_minimum_required (VERSION 2.6)
 
-set(doppia_root "../../..")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})

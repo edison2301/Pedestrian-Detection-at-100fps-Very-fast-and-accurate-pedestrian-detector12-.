@@ -14,7 +14,7 @@ include(FindPkgConfig)
 project(ComputeFeatureChannels)
 
 
-set(doppia_root "../../../")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 # ----------------------------------------------------------------------
 # Site specific configurations
