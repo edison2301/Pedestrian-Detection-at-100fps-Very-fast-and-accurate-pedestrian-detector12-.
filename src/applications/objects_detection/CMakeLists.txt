@@ -13,7 +13,7 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-set(doppia_root "../../..")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
@@ -37,13 +37,13 @@ pkg_check_modules(libpng REQUIRED libpng)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
 #set(vw_LIBRARIES "-lvwCore -lvwImage -lvwStereo -lvwFileIO -lvwMath -lvwInterestPoint")
 
-#set(opencv_LIBRARIES
-#    opencv_core opencv_imgproc opencv_highgui opencv_ml
-#    opencv_video opencv_features2d
-#    opencv_calib3d
-#    #opencv_objdetect opencv_contrib
-#    opencv_legacy opencv_flann
-#   ) # quick hack for opencv2.4 support
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup CUDA

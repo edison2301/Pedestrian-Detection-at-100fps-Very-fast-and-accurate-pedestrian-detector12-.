@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 2.6)
 
-set(doppia_root "../../../")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
@@ -28,6 +28,7 @@ project (StixelWorld)
 # ----------------------------------------------------------------------
 # Site specific configurations
 include(${doppia_root}/common_settings.cmake)
+set(USE_GPU OFF CACHE BOOL "Should the GPU be used ?" FORCE)
 
 # ----------------------------------------------------------------------
 # Setup require libraries
@@ -137,7 +138,7 @@ file(GLOB HelpersCpp
 #set(CMAKE_CXX_FLAGS "-fprofile-use -fprofile-correction ${CMAKE_CXX_FLAGS}")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2") # enable sse2 even in debug mode
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Dint_p_NULL=\"((int*)0)\"")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Dint_p_NULL=\"((int*)0)\"")
 
 add_executable(stixel_world
   ${SrcCpp}
