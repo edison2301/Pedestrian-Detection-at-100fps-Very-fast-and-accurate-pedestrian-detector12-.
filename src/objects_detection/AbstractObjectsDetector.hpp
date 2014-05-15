@@ -37,7 +37,8 @@ public:
     AbstractObjectsDetector(const boost::program_options::variables_map &options);
     virtual ~AbstractObjectsDetector();
 
-    virtual void set_image(const boost::gil::rgb8c_view_t &input_image) = 0;
+    virtual void set_image(const boost::gil::rgb8c_view_t &input_image,
+						   const std::string &image_file_path = std::string()) = 0;
     virtual void set_stixels(const stixels_t &stixels);
     virtual void set_ground_plane_corridor(const ground_plane_corridor_t &corridor);
     virtual void compute() = 0;

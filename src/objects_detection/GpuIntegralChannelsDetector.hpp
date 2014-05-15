@@ -22,8 +22,8 @@
 #include <opencv2/gpu/gpu.hpp> // opencv 2.4, for CudaMem (copied by hand from the svn)
 #endif
 
-
-#include <boost/program_options.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <boost/variant/variant.hpp>
 
 #include <vector>
@@ -83,14 +83,15 @@ public:
             const float score_threshold, const int additional_border);
     ~GpuIntegralChannelsDetector();
 
-    void set_image(const boost::gil::rgb8c_view_t &input_image);
+    void set_image(const boost::gil::rgb8c_view_t &input_image,
+                   const std::string &image_file_path = std::string());
     void compute();
 
 protected:
 
     const bool frugal_memory_usage;
 
-    boost::scoped_ptr<GpuIntegralChannelsForPedestrians> integral_channels_computer_p;
+    boost::shared_ptr<AbstractGpuIntegralChannelsComputer> integral_channels_computer_p;
 
     cv::gpu::CudaMem input_rgb8_gpu_mem; // allows for faster data upload
     cv::Mat input_rgb8_gpu_mem_mat; // allows for faster data upload

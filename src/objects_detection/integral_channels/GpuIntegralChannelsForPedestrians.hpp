@@ -1,26 +1,14 @@
 #ifndef DOPPIA_GPUINTEGRALCHANNELSFORPEDESTRIANS_HPP
 #define DOPPIA_GPUINTEGRALCHANNELSFORPEDESTRIANS_HPP
 
+#include "AbstractGpuIntegralChannelsComputer.hpp"
 #include "IntegralChannelsForPedestrians.hpp"
 
-#include "../gpu/DeviceMemoryPitched2DWithHeight.hpp"
-
+//#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include <opencv2/core/version.hpp>
-#if CV_MINOR_VERSION <= 3
-#include <opencv2/gpu/gpu.hpp> // opencv 2.3
-#else
-#include <opencv2/core/gpumat.hpp> // opencv 2.4
-#endif
-
-
-#include <cudatemplates/devicememorypitched.hpp>
-
 namespace doppia {
-
-/// we keep the gory implementation details out of the header
-class GpuIntegralChannelsForPedestriansImplementation;
 
 /// This is the GPU mirror of the IntegralChannelsForPedestrians
 /// IntegralChannelsForPedestrians and GpuIntegralChannelsForPedestrians do not have a common basis class, because
@@ -28,7 +16,7 @@ class GpuIntegralChannelsForPedestriansImplementation;
 /// In particular GpuIntegralChannelsForPedestrians does not aim at provide CPU access to the integral channels,
 /// but GPU access to a following up GPU detection algorithm. CPU transfer of the integral channels is only
 /// provided for debugging purposes
-class GpuIntegralChannelsForPedestrians
+class GpuIntegralChannelsForPedestrians: public AbstractGpuIntegralChannelsComputer
 {
 
 public:
@@ -37,75 +25,109 @@ public:
 
     typedef boost::gil::rgb8_pixel_t pixel_t;
 
-    // the computed channels are uint8, after shrinking they are uint12
-    // on CPU we use uint16, however opencv's GPU code only supports int16,
-    // which is compatible with uint12
-    // using gpu_channels_t::element == uint8 means loosing 4 bits,
-    // this however generates only a small loss in the detections performance
-    //typedef Cuda::DeviceMemoryPitched3D<boost::uint16_t> gpu_channels_t;
-    //typedef Cuda::DeviceMemoryPitched3D<boost::int16_t> gpu_channels_t;
-    typedef Cuda::DeviceMemoryPitched3D<boost::uint8_t> gpu_channels_t;
-    typedef Cuda::DeviceMemoryPitched3D<boost::uint32_t> gpu_3d_integral_channels_t;
-    //typedef Cuda::DeviceMemoryPitched2D<boost::uint32_t> gpu_2d_integral_channels_t;
-    typedef doppia::DeviceMemoryPitched2DWithHeight<boost::uint32_t> gpu_2d_integral_channels_t;
-    //typedef gpu_3d_integral_channels_t gpu_integral_channels_t; // 818.6 Hz on Kochab
-    typedef gpu_2d_integral_channels_t gpu_integral_channels_t; // 1007.7 Hz on Kochab
+    typedef AbstractGpuIntegralChannelsComputer::gpu_channels_t gpu_channels_t;
+    typedef AbstractGpuIntegralChannelsComputer::gpu_integral_channels_t gpu_integral_channels_t; // 1007.7 Hz on Kochab
 
     //typedef IntegralChannelsForPedestrians::channels_t channels_t;
-    typedef boost::multi_array<gpu_channels_t::Type, 3> channels_t;
+    //typedef boost::multi_array<gpu_channels_t::Type, 3> channels_t;
+    typedef AbstractChannelsComputer::input_channels_t channels_t;
+
     typedef IntegralChannelsForPedestrians::integral_channels_t integral_channels_t;
     typedef IntegralChannelsForPedestrians::integral_channels_view_t integral_channels_view_t;
     typedef IntegralChannelsForPedestrians::integral_channels_const_view_t integral_channels_const_view_t;
 
+    /// preprocessing filter
+    typedef cv::gpu::FilterEngine_GPU filter_t;
+    typedef cv::Ptr<filter_t> filter_shared_pointer_t;
+
 public:
-    GpuIntegralChannelsForPedestrians();
+
+    //static boost::program_options::options_description get_options_description();
+
+    /// main constructor to use
+    GpuIntegralChannelsForPedestrians(const boost::program_options::variables_map &options,
+                                      const bool use_presmoothing_ = true);
+
+    /// helper constructor used in HogTwoSixEighteenLuvChannels
+    GpuIntegralChannelsForPedestrians(const size_t num_hog_angle_bins_ = 6,
+                                      const bool use_presmoothing_ = true);
+
     ~GpuIntegralChannelsForPedestrians();
 
     /// how much we shrink the channel images ?
     static int get_shrinking_factor();
 
-    /// transfer CPU image data into the GPU
-    void set_image(const boost::gil::rgb8c_view_t &input_image);
+    size_t get_num_channels() const;
 
-    /// keep a reference to an existing GPU image
-    /// we assume that the given gpu image will not change during the compute calls
-    void set_image(const cv::gpu::GpuMat &input_image);
+    /// helper function, just for debugging
+    void save_channels_to_file();
+
+    void compute_channels_at_canonical_scales(const cv::gpu::GpuMat &input_image,
+                                              const std::string image_file_name = "");
+
+public:
 
     void compute();
-
-    /// returns a reference to the GPU 3d structure holding the integral channels
-    /// returns a non-const reference because cuda structures do not play nice with const-ness
-    gpu_integral_channels_t& get_gpu_integral_channels() const;
+    void compute_v0();
+    void compute_v1();
 
     /// helper function to access the compute channels on cpu
     /// this is quite slow (large data transfer between GPU and CPU)
     /// this method should be used for debugging only
     const channels_t &get_channels();
 
-    /// helper function to access the integral channels on cpu
-    /// this is quite slow (large data transfer between GPU and CPU)
-    /// this method should be used for debugging only
-    const integral_channels_t &get_integral_channels();
+    const AbstractIntegralChannelsComputer::input_channels_t &get_input_channels_uint8();
+    const AbstractIntegralChannelsComputer::channels_t &get_input_channels_uint16();
 
 protected:
 
-    /// how much we shrink the channel images ?
-    const int resizing_factor;
+    const int num_hog_angle_bins;
+    const bool use_presmoothing;
 
     /// cpu copy of the computed channels
     channels_t channels;
 
-    /// cpu copy of the integral channels
-    integral_channels_t integral_channels;
+protected:
 
-    /// the implementation object goes together with "this"
-    /// this is only a trick to avoid exposing too many implementation details in the header file
-    friend class GpuIntegralChannelsForPedestriansImplementation;
-    boost::scoped_ptr<GpuIntegralChannelsForPedestriansImplementation> self_p;
-    GpuIntegralChannelsForPedestriansImplementation &self;
+    void compute_smoothed_image_v0();
+    void compute_hog_channels_v0();
+    void compute_luv_channels_v0();
+    void compute_hog_and_luv_channels_v1();
+
+    void resize_and_integrate_gpu_channels_v0();
+    void resize_and_integrate_gpu_channels_v1();
+    void resize_and_integrate_gpu_channels_v2();
+
+    void shrink_gpu_channel_v0(cv::gpu::GpuMat &gpu_feature_channel, cv::gpu::GpuMat &shrunk_gpu_channel,
+                           const int shrinking_factor, cv::gpu::Stream &stream);
+    void shrink_gpu_channel_v1(cv::gpu::GpuMat &gpu_feature_channel, cv::gpu::GpuMat &shrunk_gpu_channel,
+                           const int shrinking_factor, cv::gpu::Stream &stream);
+    void shrink_gpu_channel_v2(cv::gpu::GpuMat &gpu_feature_channel, cv::gpu::GpuMat &shrunk_gpu_channel,
+                           const int shrinking_factor, cv::gpu::Stream &stream);
+    void shrink_gpu_channel_v3(cv::gpu::GpuMat &gpu_feature_channel, cv::gpu::GpuMat &shrunk_gpu_channel,
+                           const int shrinking_factor, cv::gpu::Stream &stream);
+
+    cv::gpu::GpuMat
+    smoothed_input_gpu_mat,
+    hog_input_gpu_mat,
+    luv_gpu_mat;
+
+    /// helper variable to avoid doing memory re-allocations for each channel shrinking
+    cv::gpu::GpuMat shrink_gpu_channel_buffer_a, shrink_gpu_channel_buffer_b;
+
+    /// helper variable to avoid doing memory re-allocations for each channel index integral computation
+    cv::gpu::GpuMat gpu_integral_channel_buffer_a, gpu_integral_channel_buffer_b;
+
+    /// the size of one_half and shrunk_channel is the same of all channels,
+    /// thus we can reuse the same matrices
+    cv::gpu::GpuMat one_half, shrunk_gpu_channel;
+
+    filter_shared_pointer_t pre_smoothing_filter_p;
 
 };
 
+
 } // end of namespace doppia
+
 
 #endif // DOPPIA_GPUINTEGRALCHANNELSFORPEDESTRIANS_HPP

@@ -13,8 +13,9 @@
 
 #include "drawing/gil/draw_matrix.hpp"
 
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 #include "helpers/fill_multi_array.hpp"
+#include "helpers/get_option_value.hpp"
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -108,6 +109,7 @@ std::vector<float> get_binomial_kernel_1d(const int binomial_filter_radius)
     return coefficients;
 }
 
+
 filter_shared_pointer_t
 create_pre_smoothing_filter()
 {
@@ -122,21 +124,70 @@ create_pre_smoothing_filter()
     return pre_smoothing_filter_p;
 }
 
-IntegralChannelsForPedestrians::IntegralChannelsForPedestrians()
-    : num_angle_bins(angle_bin_computer.get_num_bins()),
-      resizing_factor(get_shrinking_factor())
+
+boost::program_options::options_description IntegralChannelsForPedestrians::get_options_description()
 {
-    // nothing to do here
+    using namespace boost::program_options;
+    options_description desc("IntegralChannelsForPedestrians options");
+
+    desc.add_options()
+
+            ("channels.num_hog_angle_bins", value<int>()->default_value(6),
+             "Number of angle bins used when computing the HOG channels.\n"
+             "Currently supported values are 6 or 18."
+             )
+
+            ;
+
+    return desc;
+}
+
+
+IntegralChannelsForPedestrians::IntegralChannelsForPedestrians(const program_options::variables_map &options,
+                                                               const bool use_presmoothing_)
+    : num_hog_angle_bins(get_option_value<int>(options, "channels.num_hog_angle_bins")),
+      use_presmoothing(use_presmoothing_),
+      shrinking_factor(get_shrinking_factor())
+{
+    if (num_hog_angle_bins != angle_bin_computer.get_num_bins())
+    {
+        log_error() << "Received channels.num_hog_angle_bins == " << num_hog_angle_bins
+                    << " but only value " <<  angle_bin_computer.get_num_bins() << " is currently supported"
+                       << std::endl;
+        throw std::invalid_argument("Requested a value channels.num_hog_angle_bins "
+                                    "not currently supported by IntegralChannelsForPedestrians");
+    }
 
     pre_smoothing_filter_p = create_pre_smoothing_filter();
     return;
 }
+
+
+IntegralChannelsForPedestrians::IntegralChannelsForPedestrians(const size_t num_hog_angle_bins_, const bool use_presmoothing_)
+    : num_hog_angle_bins(num_hog_angle_bins_),
+      use_presmoothing(use_presmoothing_),
+      shrinking_factor(get_shrinking_factor())
+{
+    if (num_hog_angle_bins != angle_bin_computer.get_num_bins())
+    {
+        log_error() << "Received channels.num_hog_angle_bins == " << num_hog_angle_bins
+                    << " but only value " <<  angle_bin_computer.get_num_bins() << " is currently supported"
+                       << std::endl;
+        throw std::invalid_argument("Requested a value channels.num_hog_angle_bins "
+                                    "not currently supported by IntegralChannelsForPedestrians");
+    }
+
+    pre_smoothing_filter_p = create_pre_smoothing_filter();
+    return;
+}
+
 
 IntegralChannelsForPedestrians::~IntegralChannelsForPedestrians()
 {
     // nothing to do here
     return;
 }
+
 
 IntegralChannelsForPedestrians & IntegralChannelsForPedestrians::operator=(const IntegralChannelsForPedestrians &/*other*/)
 {
@@ -145,21 +196,28 @@ IntegralChannelsForPedestrians & IntegralChannelsForPedestrians::operator=(const
 }
 
 
-void IntegralChannelsForPedestrians::set_image(const boost::gil::rgb8c_view_t &the_input_view)
+size_t IntegralChannelsForPedestrians::get_num_channels() const
+{
+    // HOG bins + 1 gradient magnitude + LU
+    return num_hog_angle_bins + 4;
+}
+
+
+void IntegralChannelsForPedestrians::set_input_image(const boost::gil::rgb8c_view_t &the_input_view)
 {
     // 6 gradients orientations, 1 gradient intensity, 3 LUV color channels
     const int num_channels = 10;
 
     input_size = the_input_view.dimensions();
 
-    //channel_size = input_image.dimensions() / resizing_factor;
-    // +resizing_factor/2 to round-up
-    if(resizing_factor == 4)
+    //channel_size = input_image.dimensions() / shrinking_factor;
+    // +shrinking_factor/2 to round-up
+    if(shrinking_factor == 4)
     {
-        channel_size.x = (( (input_size.x+1)/2) + 1)/2;
-        channel_size.y = (( (input_size.y+1)/2) + 1)/2;
+        channel_size.x = (( (input_size.x+1) / 2) + 1) / 2;
+        channel_size.y = (( (input_size.y+1) / 2) + 1) / 2;
     }
-    else if(resizing_factor == 2)
+    else if(shrinking_factor == 2)
     {
         channel_size.x = (input_size.x+1) / 2;
         channel_size.y = (input_size.y+1) / 2;
@@ -170,7 +228,7 @@ void IntegralChannelsForPedestrians::set_image(const boost::gil::rgb8c_view_t &t
     }
 
     static int num_calls = 0;
-    if(num_calls < 100)
+    if(num_calls < 50)
     { // we only log the first N calls
 
         log_debug() << "Input image dimensions ("
@@ -192,14 +250,13 @@ void IntegralChannelsForPedestrians::set_image(const boost::gil::rgb8c_view_t &t
     }
 
     // allocate the channel images
+    input_channels.resize(boost::extents[num_channels][input_size.y][input_size.x]);
     channels.resize(boost::extents[num_channels][channel_size.y][channel_size.x]);
     integral_channels.resize(boost::extents[num_channels][channel_size.y+1][channel_size.x+1]);
-    input_channels.resize(boost::extents[10][input_size.y][input_size.x]);
-    // since  hog_input_channels[angle_index][y][x] does set the value for all hog channels,
+    // since  hog_input_channels[angle_index][y][x] does not set the value for all hog channels,
     // we need to set them all to zero
     fill(input_channels, 0);
     // all other channels will be completelly overwritten, so no need to fill them in
-
 
     // copy the input image
     input_image.recreate(input_size);
@@ -207,6 +264,7 @@ void IntegralChannelsForPedestrians::set_image(const boost::gil::rgb8c_view_t &t
     gil::copy_pixels(the_input_view, boost::gil::view(input_image));
     return;
 }
+
 
 void IntegralChannelsForPedestrians::compute()
 {
@@ -274,7 +332,6 @@ void compute_derivative(cv::InputArray _src, cv::OutputArray _dst, int ddepth, c
 }
 
 
-
 /// Imitating Pedro Felzenszwalb HOG code, we take the maximum of each color channel
 void compute_color_derivatives(cv::InputArray _src, cv::OutputArray _dst_dx, cv::OutputArray _dst_dy)
 {
@@ -319,6 +376,7 @@ void compute_color_derivatives(cv::InputArray _src, cv::OutputArray _dst_dx, cv:
     return;
 }
 
+
 inline
 void compute_hog_channels(const cv::Mat &df_dx, const cv::Mat &df_dy,
                           const IntegralChannelsForPedestrians::input_image_view_t::point_t &input_size,
@@ -332,14 +390,18 @@ void compute_hog_channels(const cv::Mat &df_dx, const cv::Mat &df_dy,
 
     bool max_magnitude_too_large = false;
 
+    const cv::Mat_<int16_t>
+            &const_df_dx = df_dx,
+            &const_df_dy = df_dy;
+
 #pragma omp parallel for
     for(int y=0; y < input_size.y; y+=1)
     {
-        for(int x=0; x < input_size.x; x+=1)
+        for(int x = 0; x < input_size.x; x += 1)
         {
             const float
-                    dx = df_dx.at<int16_t>(y,x),
-                    dy = df_dy.at<int16_t>(y,x);
+                    dx = const_df_dx(y,x),
+                    dy = const_df_dy(y,x);
 
             float magnitude = sqrt(dx*dx+dy*dy) * magnitude_scaling;
 
@@ -389,7 +451,7 @@ void compute_hog_channels(const cv::Mat &df_dx, const cv::Mat &df_dy,
 
                 // FIXME implement softbinning using atan2
 
-                for(int angle_bin_index = 0; angle_bin_index < num_angle_bins; angle_bin_index+=1)
+                for(int angle_bin_index = 0; angle_bin_index < num_angle_bins; angle_bin_index += 1)
                 {
                     const float soft_value = angle_bin_computer.soft_binning(dy, dx, angle_bin_index);
                     // 0 <= soft_value <= abs(dx + dy)
@@ -457,8 +519,6 @@ void IntegralChannelsForPedestrians::compute_hog_channels_v0()
     compute_hog_channels(df_dx, df_dy, input_size, angle_bin_computer, magnitude_scaling, input_channels);
     return;
 }
-
-
 
 
 void IntegralChannelsForPedestrians::compute_hog_channels_v1()
@@ -563,11 +623,11 @@ void IntegralChannelsForPedestrians::resize_channel_v0(const input_channel_t inp
 
     // we must shift the data to compensate for the complementary loss during pyrDown
     int uint16_scaling_factor = 1;
-    if(resizing_factor == 2)
+    if(shrinking_factor == 2)
     {
         uint16_scaling_factor = 4; // 2**2
     }
-    else if(resizing_factor == 4)
+    else if(shrinking_factor == 4)
     {
         uint16_scaling_factor = 16; // 2**4
     }
@@ -599,12 +659,12 @@ void IntegralChannelsForPedestrians::resize_channel_v0(const input_channel_t inp
 
     cv::Mat one_half, one_fourth;
 
-    if(resizing_factor == 4)
+    if(shrinking_factor == 4)
     {
         cv::pyrDown(input_channel_mat, one_half);
         cv::pyrDown(one_half, one_fourth);
     }
-    else if (resizing_factor == 2)
+    else if (shrinking_factor == 2)
     {
         cv::pyrDown(input_channel_mat, one_half);
         one_fourth = one_half;
@@ -669,7 +729,7 @@ void set_test_integral_image(IntegralChannelsForPedestrians::channels_t &channel
 {
     // dummy test integral image, used for debugging only
 
-    for(size_t channel_index=0; channel_index<channels.size(); channel_index+=1)
+    for(size_t channel_index = 0; channel_index<channels.size(); channel_index += 1)
     {
         IntegralChannelsForPedestrians::channels_t::reference channel = channels[channel_index];
         for(size_t row=0; row < channel.shape()[0]; row+=1)
@@ -692,7 +752,7 @@ void IntegralChannelsForPedestrians::resize_channels_v0()
 
 #pragma omp parallel for
     // we compute all channels in parallel
-    for(size_t c=0; c < input_channels.shape()[0]; c+=1)
+    for(size_t c = 0; c < input_channels.shape()[0]; c += 1)
     { // for all orientation channels and the gradient magnitude
 
         const input_channel_t input_channel = input_channels[c];
@@ -769,7 +829,7 @@ void IntegralChannelsForPedestrians::resize_channels_v1()
 
 #pragma omp parallel for
     // we compute all channels in parallel
-    for(size_t c=0; c < input_channels.shape()[0]; c+=1)
+    for(size_t c = 0; c < input_channels.shape()[0]; c += 1)
     { // for all orientation channels and the gradient magnitude
 
         const input_channel_t input_channel = input_channels[c];
@@ -795,7 +855,7 @@ void IntegralChannelsForPedestrians::integrate_channels_v0()
 
     // compute and store the channel integrals
 #pragma omp parallel for
-    for(size_t channel_index=0; channel_index<channels.size(); channel_index+=1)
+    for(size_t channel_index = 0; channel_index<channels.size(); channel_index += 1)
     {
         // for some strange reason explicitly defining this reference is needed to get the code compiling
         integral_channels_t::reference integral_channel = integral_channels[channel_index];
@@ -841,14 +901,19 @@ void IntegralChannelsForPedestrians::compute_v1()
     // in OpenCv 2.2 pyrDown, cvtColor and integral/integrate are all non-parallel operations
     // when possible, we run each channel task in parallel
 
-    // smooth the input image
+    const gil::opencv::ipl_image_wrapper input_ipl = gil::opencv::create_ipl_image(input_image_view);
+    const cv::Mat input_mat(input_ipl.get());
+
+    if(use_presmoothing)
     {
-        const gil::opencv::ipl_image_wrapper input_ipl = gil::opencv::create_ipl_image(input_image_view);
-        const cv::Mat input_mat(input_ipl.get());
         smoothed_input_mat.create(input_mat.size(), input_mat.type());
 
         // smoothing the input
         pre_smoothing_filter_p->apply(input_mat, smoothed_input_mat);
+    }
+    else
+    {
+        input_mat.copyTo(smoothed_input_mat);
     }
 
     compute_hog_channels_v1();
@@ -902,7 +967,7 @@ void get_channel_matrix(const IntegralChannelsForPedestrians::integral_channels_
 
     for(size_t y=0; y < channel_size_y; y+=1)
     {
-        for(size_t x=0; x < channel_size_x; x+=1)
+        for(size_t x = 0; x < channel_size_x; x += 1)
         {
             const uint32_t
                     a = integral_channel[y][x],
@@ -927,7 +992,7 @@ void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integr
     gil::rgb8_view_t channels_image_view = gil::view(channels_image);
     Eigen::MatrixXf channel_matrix;
 
-    for(size_t i=0; i < num_channels; i += 1 )
+    for(size_t i = 0; i < num_channels; i += 1 )
     {
         gil::rgb8_view_t channel_view =
                 gil::subimage_view(channels_image_view,
@@ -950,15 +1015,21 @@ void save_integral_channels_to_file(const IntegralChannelsForPedestrians::integr
 int IntegralChannelsForPedestrians::get_feature_vector_length() const
 {
     // FIXME hardcoded INRIAPerson window size
-    return 64*128*10/(resizing_factor*resizing_factor);
+    return 64 * 128 * 10 / (shrinking_factor * shrinking_factor);
 }
 
 
 int IntegralChannelsForPedestrians::get_shrinking_factor()
 {
-    return 4;  // 4 is the value that we use for most of our experiments
-    //return 2;
-    //return 1;
+#if defined(SHRINKING_FACTOR_4)
+    return 4;
+#elif defined(SHRINKING_FACTOR_2)
+    return 2;
+#elif defined(SHRINKING_FACTOR_1)
+    return 1;
+#else
+    return 4; // default: 4 is the value that we use for most of our experiments
+#endif
 }
 
 
@@ -1029,8 +1100,8 @@ void IntegralChannelsForPedestrians::get_channels_values(const rectangle_t &inpu
     const rectangle_t channel_size_rectangle( point_t(0,0), point_t(channel_size.x, channel_size.y));
     //point_t rectangle_size = r.max_corner() - r.min_corner();
     rectangle_t channel_rectangle = input_rectangle;
-    geometry::divide_value(channel_rectangle.max_corner(), resizing_factor);
-    geometry::divide_value(channel_rectangle.min_corner(), resizing_factor);
+    geometry::divide_value(channel_rectangle.max_corner(), shrinking_factor);
+    geometry::divide_value(channel_rectangle.min_corner(), shrinking_factor);
 
     //geometry::strategy::within::franklin<point_t> strategy;
     //if(geometry::within(channel_rectangle, channel_size_rectangle, strategy) == false)
@@ -1051,12 +1122,12 @@ void IntegralChannelsForPedestrians::get_channels_values(const rectangle_t &inpu
 
     int i = 0;
     // feature vector is composed of multiple channels
-    for(int c=0; c<num_channels; c+=1)
+    for(int c = 0; c<num_channels; c += 1)
     {
         const channel_t channel = channels[c];
         for(int y=channel_rectangle.min_corner().y(); y<channel_rectangle.max_corner().y(); y+=1)
         {
-            for(int x=channel_rectangle.min_corner().x(); x<channel_rectangle.max_corner().x(); x+=1)
+            for(int x=channel_rectangle.min_corner().x(); x<channel_rectangle.max_corner().x(); x += 1)
             {
                 assert(i < feature_vector.size());
                 feature_vector(i) = channel[y][x];
@@ -1071,7 +1142,14 @@ void IntegralChannelsForPedestrians::get_channels_values(const rectangle_t &inpu
 }
 #endif // if OBJECTS_DETECTION_LIB is not defined
 
+
 const IntegralChannelsForPedestrians::integral_channels_t &IntegralChannelsForPedestrians::get_integral_channels() const
+{
+    return integral_channels;
+}
+
+
+const IntegralChannelsForPedestrians::integral_channels_t &IntegralChannelsForPedestrians::get_integral_channels()
 {
     return integral_channels;
 }
@@ -1082,6 +1160,19 @@ const IntegralChannelsForPedestrians::channels_t &IntegralChannelsForPedestrians
     return channels;
 }
 
+
+const IntegralChannelsForPedestrians::input_channels_t &IntegralChannelsForPedestrians::get_input_channels_uint8()
+{
+    return input_channels;
+}
+
+
+const IntegralChannelsForPedestrians::channels_t &IntegralChannelsForPedestrians::get_input_channels_uint16()
+{
+    throw std::runtime_error("IntegralChannelsForPedestrians does not implement get_channels_uint16");
+    static IntegralChannelsForPedestrians::channels_t empty;
+    return empty;
+}
 
 
 } // end of namespace doppia

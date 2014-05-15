@@ -279,17 +279,16 @@ void ModelIO::init_write(const std::string dataset_name,
 
 void ModelIO::set_decision_tree_node(doppia_protobuf::IntegralChannelBinaryDecisionTreeNode *node, const DecisionTreeNode dec_node)
 {
-    doppia_protobuf::IntegralChannelDecisionStump *stump = new doppia_protobuf::IntegralChannelDecisionStump();
-    set_decision_stump(stump, dec_node);
+    doppia_protobuf::IntegralChannelDecisionStump *stump_p = node->mutable_decision_stump();
+    set_decision_stump(stump_p, dec_node);
 
     if(dec_node._id==1)
     {
-        stump->set_larger_than_threshold(false);
+        stump_p->set_larger_than_threshold(false);
     }
 
-    node->set_allocated_decision_stump(stump);
     node->set_id(dec_node._id);
-    node->set_parent_id(dec_node._id==1 ? 1 : dec_node._id/2);
+    node->set_parent_id((dec_node._id == 1) ? 1 : (dec_node._id / 2));
     node->set_parent_value(dec_node.is_left());
 
     return;

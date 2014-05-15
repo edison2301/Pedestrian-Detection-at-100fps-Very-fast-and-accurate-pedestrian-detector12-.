@@ -1,7 +1,7 @@
 #include "AbstractObjectsDetector.hpp"
 
 #include "helpers/get_option_value.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 
 #include <boost/foreach.hpp>
 
@@ -9,33 +9,9 @@
 #include <cmath>
 
 
-namespace
-{
-
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "AbstractObjectsDetector");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "AbstractObjectsDetector");
-}
-
-std::ostream & log_warning()
-{
-    return  logging::log(logging::WarningMessage, "AbstractObjectsDetector");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "AbstractObjectsDetector");
-}
-
-} // end of anonymous namespace
-
-
 namespace doppia {
+
+MODULE_LOG_MACRO("AbstractObjectsDetector")
 
 using namespace std;
 using namespace boost;
@@ -112,7 +88,7 @@ AbstractObjectsDetector::AbstractObjectsDetector(const variables_map &options)
 
     if((num_scales*num_ratios) > 500)
     {
-        log_warning() << "objects_detector.num_scales*objects_detector.num_ratios is larger than 500, "
+        log.warning() << "objects_detector.num_scales*objects_detector.num_ratios is larger than 500, "
                          "please be very, very patient" << std::endl;
         //throw std::runtime_error("objects_detector.num_scales larger than 100? I refuse to waste CPU/GPU.");
     }
@@ -178,7 +154,7 @@ void AbstractObjectsDetector::compute_search_ranges_meta_data(detector_search_ra
     float scale_logarithmic_step = 0;
     if(num_scales > 1)
     {
-        scale_logarithmic_step = (log(max_detection_window_scale) - log(min_detection_window_scale)) / (num_scales -1);
+        scale_logarithmic_step = (std::log(max_detection_window_scale) - std::log(min_detection_window_scale)) / (num_scales -1);
     }
 
     // ratio step is linear
@@ -186,10 +162,10 @@ void AbstractObjectsDetector::compute_search_ranges_meta_data(detector_search_ra
 
     float scale = min_detection_window_scale;
     assert(scale > 0);
-    for(int scale_index=0; scale_index < num_scales; scale_index+=1)
+    for(int scale_index = 0; scale_index < num_scales; scale_index += 1)
     {
         float ratio = min_detection_window_ratio;
-        for(int ratios_index=0; ratios_index < num_ratios; ratios_index+=1)
+        for(int ratios_index = 0; ratios_index < num_ratios; ratios_index += 1)
         {
             DetectorSearchRangeMetaData range_data;
 
@@ -208,8 +184,7 @@ void AbstractObjectsDetector::compute_search_ranges_meta_data(detector_search_ra
             ratio += ratio_step;
         } // end of "for each ratio"
 
-	scale = std::min(max_detection_window_scale, exp(log(scale) + scale_logarithmic_step));
-
+        scale = std::min(max_detection_window_scale, exp(std::log(scale) + scale_logarithmic_step));
     } // end of "for each scale"
 
     return;

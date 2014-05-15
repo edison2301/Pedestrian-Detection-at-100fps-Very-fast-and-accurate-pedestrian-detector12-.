@@ -151,10 +151,10 @@ void get_integral_channels_subimage(
     out.resize(boost::extents[num_channels][h+1][w+1]);
     for(size_t ch=0; ch<num_channels; ch+=1)
     {
-        for(int y=box.min_corner().y(); y< box.max_corner().y()+1; y+=1)
+        for(int y=box.min_corner().y(); y< box.max_corner().y() + 1; y+=1)
         {
             //std::copy(&(integral_channels[ch][yy][x]), &(integral_channels[ch][yy][x+w+1]), out[ch][yy-y].begin());
-            for(int x=box.min_corner().x(); x < box.max_corner().x()+1; x+=1)
+            for(int x=box.min_corner().x(); x < box.max_corner().x() + 1; x += 1)
             {
                 const int
                         y_index = y - box.min_corner().y(),
@@ -341,7 +341,7 @@ void FalsePositivesDataCollector::compute()
     {
         // for each range search
         //BOOST_FOREACH(const DetectorSearchRange &search_range, this->search_ranges_data)
-        for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index +=1)
+        for(size_t scale_index = 0; scale_index < search_ranges_data.size(); scale_index += 1)
         {
             // we clear the detections at each range,
             // we store them anyway inside detections_with_search_range
@@ -372,7 +372,7 @@ void FalsePositivesDataCollector::compute()
                 throw std::runtime_error("Something went terribly wrong with the non_rescaled_detections collection");
             }
 
-            for(size_t index=0; index < detections.size(); index +=1)
+            for(size_t index = 0; index < detections.size(); index += 1)
             {
                 const detection_t
                         &detection = detections[index],

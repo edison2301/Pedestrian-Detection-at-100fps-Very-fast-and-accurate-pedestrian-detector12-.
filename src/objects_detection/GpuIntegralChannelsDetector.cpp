@@ -3,7 +3,7 @@
 #include "gpu/integral_channels_detector.cu.hpp"
 
 #include "helpers/get_option_value.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 #include "helpers/gpu/select_gpu_device.hpp"
 
 #include <cudatemplates/hostmemoryheap.hpp>
@@ -18,34 +18,10 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
-namespace
-{
-
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "GpuIntegralChannelsDetector");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "GpuIntegralChannelsDetector");
-}
-
-std::ostream & log_warning()
-{
-    return  logging::log(logging::WarningMessage, "GpuIntegralChannelsDetector");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "GpuIntegralChannelsDetector");
-}
-
-} // end of anonymous namespace
-
 
 namespace doppia {
 
+MODULE_LOG_MACRO("GpuIntegralChannelsDetector")
 
 using namespace std;
 using namespace boost;
@@ -62,6 +38,8 @@ typedef IntegralChannelsDetector::stages_left_in_the_row_t stages_left_in_the_ro
 
 typedef IntegralChannelsForPedestrians::integral_channels_t integral_channels_t;
 */
+
+
 
 options_description
 GpuIntegralChannelsDetector::get_args_options()
@@ -111,7 +89,7 @@ GpuIntegralChannelsDetector::GpuIntegralChannelsDetector(
 
     if(true)
     {
-        log_info() << "cv::gpu::CudaMem::canMapHostMemory() == " << cv::gpu::CudaMem::canMapHostMemory() << std::endl;
+        log.info() << "cv::gpu::CudaMem::canMapHostMemory() == " << cv::gpu::CudaMem::canMapHostMemory() << std::endl;
     }
     return;
 }
@@ -125,7 +103,8 @@ GpuIntegralChannelsDetector::~GpuIntegralChannelsDetector()
 }
 
 
-void GpuIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view)
+void GpuIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view,
+                                            const std::string &image_file_path)
 {
     const bool input_dimensions_changed =
             ((input_gpu_mat.cols != input_view.width())
@@ -178,7 +157,7 @@ void GpuIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &inpu
     // set default search range --
     if(input_dimensions_changed or search_ranges_data.empty())
     {
-        log_debug() << boost::str(boost::format("::set_image resizing the search_ranges using input size (%i,%i)")
+        log.debug() << boost::str(boost::format("::set_image resizing the search_ranges using input size (%i,%i)")
                                   % input_view.width() % input_view.height()) << std::endl;
 
         compute_search_ranges_meta_data(search_ranges_data);
@@ -271,7 +250,7 @@ void set_gpu_scale_detection_cascades_visitor::operator()(const CpuCascadeType &
 
     Cuda::HostMemoryHeap2D<cascade_stage_t> host_cascade_per_scale(cascades_length, num_cascades);
 
-    for(size_t cascade_index=0; cascade_index < num_cascades; cascade_index+=1)
+    for(size_t cascade_index = 0; cascade_index < num_cascades; cascade_index += 1)
     {
         const CpuCascadeType &t_cpu_cascade = boost::get<CpuCascadeType>(cpu_variant_cascade_per_scale[cascade_index]);
 
@@ -356,7 +335,6 @@ size_t GpuIntegralChannelsDetector::get_input_height() const
 
 void GpuIntegralChannelsDetector::compute()
 {
-
     detections.clear();
     num_gpu_detections = 0; // no need to clean the buffer
 
@@ -373,7 +351,7 @@ void GpuIntegralChannelsDetector::compute()
     if(use_v1)
     {
         // for each range search
-        for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index +=1)
+        for(size_t search_range_index = 0; search_range_index < search_ranges_data.size(); search_range_index +=1)
         {
             compute_detections_at_specific_scale_v1(search_range_index, first_call);
         } // end of "for each search range"
@@ -387,7 +365,7 @@ void GpuIntegralChannelsDetector::compute()
         //const bool save_score_image = true;
 
         // for each range search
-        for(size_t search_range_index=0; search_range_index < search_ranges_data.size(); search_range_index +=1)
+        for(size_t search_range_index = 0; search_range_index < search_ranges_data.size(); search_range_index +=1)
         {
             compute_detections_at_specific_scale_v0(search_range_index, save_score_image, first_call);
         } // end of "for each search range"
@@ -400,7 +378,7 @@ void GpuIntegralChannelsDetector::compute()
         }
     }
 
-    log_info() << "number of raw (before non maximal suppression) detections on this frame == "
+    log.info() << "number of raw (before non maximal suppression) detections on this frame == "
                << detections.size() << std::endl;
 
     // windows size adjustment should be done before non-maximal suppression
@@ -434,7 +412,7 @@ void collect_the_detections(
     using boost::math::iround;
 
     assert(search_range.range_scaling > 0);
-    //log_debug() << "search_range.range_scaling == " << search_range.range_scaling << std::endl;
+    //log.debug() << "search_range.range_scaling == " << search_range.range_scaling << std::endl;
 
     // printf("original_col == col*%.3f\n", 1/search_range.range_scaling); // just for debugging
 
@@ -476,7 +454,7 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
         const size_t search_range_index, const bool first_call)
 {
 
-    GpuIntegralChannelsForPedestrians &integral_channels_computer = *integral_channels_computer_p;
+    AbstractGpuIntegralChannelsComputer &integral_channels_computer = *integral_channels_computer_p;
 
     // resize the image --
     size_t input_gpu_matrix_index = search_range_index;
@@ -498,17 +476,14 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
         if((scaled_input_image_size.x() == 0) or (scaled_input_image_size.y() == 0))
         {
             // empty image to process, nothing to do here
-            // return;
             throw std::invalid_argument("Input scale and ratio ranges (and channel shrinking factor), "
                                         "generates rescaled images with zero pixels. This is not good.");
         }
-        //else if(false and first_call)
         else if(true and first_call)
-        //else if(true or first_call)
         {
-            log_info()
-                    << "scaled_x == " << scaled_input_image_size.x()
-                    << ", scaled_y == " << scaled_input_image_size.y() << std::endl;
+            log.info()
+                    << "scaled_x == " << scaled_input_image_size.x() << ", "
+                    << "scaled_y == " << scaled_input_image_size.y() << std::endl;
         }
         else if(scaled_input_image_size.x() < 5)
         {
@@ -523,7 +498,7 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
 
 
         if(search_range_index > 0)
-        { // if not on the first DetectorSearchRange
+        {   // if not on the first DetectorSearchRange
             // (when search_range_index ==0 we assume a new picture is being treated)
 
             const cv::gpu::GpuMat &previous_resized_gpu_mat = \
@@ -534,7 +509,7 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
             {
                 if(first_call)
                 {
-                    log_debug() << "Skipped integral channels computation for search range index "
+                    log.debug() << "Skipped integral channels computation for search range index "
                                 << search_range_index
                                 << " (since redundant with previous computed one)"<< std::endl;
                 }
@@ -551,7 +526,7 @@ GpuIntegralChannelsDetector::resize_input_and_compute_integral_channels(
 
     // compute integral channels --
     {
-        integral_channels_computer.set_image(resized_input_gpu_mat);
+        integral_channels_computer.set_gpu_image(resized_input_gpu_mat);
         integral_channels_computer.compute();
     }
 
@@ -600,7 +575,6 @@ protected:
     void compute(T &gpu_detection_cascade_per_scale) const;
 
 }; // end of visitor class invoke_v0_integral_channels_detector
-
 
 
 template<typename T>
@@ -694,8 +668,8 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
     // CUDA @ VISICS seems not happy with page_locked or zero_copy allocations,
     // with sizes not power of 2. We thus increase the size to match a power of 2.
     cv::gpu::CudaMem detection_scores_cuda_memory(
-                max<uint16_t>(128, pow(2, ceil(log(scale_data.scaled_search_range.max_y)/log(2)))),
-                max<uint16_t>(128, pow(2, ceil(log(scale_data.scaled_search_range.max_x)/log(2)))),
+                max<uint16_t>(128, pow(2, ceil(std::log(scale_data.scaled_search_range.max_y) / std::log(2)))),
+                max<uint16_t>(128, pow(2, ceil(std::log(scale_data.scaled_search_range.max_x) / std::log(2)))),
                 cv::DataType<float>::type, alloc_type);
     cv::Mat detection_scores_mat;
 
@@ -767,8 +741,8 @@ void GpuIntegralChannelsDetector::compute_detections_at_specific_scale_v0(
         const float original_detection_window_scale = original_search_range_data.detection_window_scale;
         const string filename = str(format("gpu_scores_at_%.2f.png") % original_detection_window_scale);
         cv::imwrite(filename, normalized_scores);
-        log_info() << "Created debug file " << filename << std::endl;
-        log_info() << str(format("Scores in %s are in the range (min, max) == (%.3f, %.3f)")
+        log.info() << "Created debug file " << filename << std::endl;
+        log.info() << str(format("Scores in %s are in the range (min, max) == (%.3f, %.3f)")
                           % filename % min_score % max_score) << std::endl;
 
         if(false and min_score > 0)
@@ -971,7 +945,7 @@ void GpuIntegralChannelsDetector::collect_the_gpu_detections()
     // transfering the detections from gpu to cpu --
     if(num_gpu_detections > gpu_detections.getSize())
     {
-        log_warning() << boost::str(
+        log.warning() << boost::str(
                              boost::format("num_gpu_detections == %i, but max_num_gpu_detections == %i.\n"
                                            "There are more detections than the allocated memory buffer.")
                              % num_gpu_detections %  gpu_detections.getSize()) << std::endl;

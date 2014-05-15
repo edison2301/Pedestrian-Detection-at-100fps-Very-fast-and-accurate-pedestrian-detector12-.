@@ -13,7 +13,7 @@
 
 cmake_minimum_required (VERSION 2.6)
 
-set(doppia_root "../../..")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
@@ -28,8 +28,9 @@ project (BoostedLearning)
 
 # ----------------------------------------------------------------------
 # Setup dependency to another doppia cmake project
-add_subdirectory(../bootstrapping_lib ../bootstrapping_lib EXCLUDE_FROM_ALL) # include only what we need
-add_subdirectory(${doppia_root}/libs/liblinear-1.8 ${doppia_root}/libs/liblinear-1.8 EXCLUDE_FROM_ALL) # include only what we need
+# EXCLUDE_FROM_ALL includes only what we need
+add_subdirectory(../bootstrapping_lib ../bootstrapping_lib EXCLUDE_FROM_ALL) 
+add_subdirectory(${doppia_root}/libs/liblinear-1.8 ${doppia_root}/libs/liblinear-1.8 EXCLUDE_FROM_ALL)
 
 
 # FIXME for some strange reason this setup only works at the second call.
@@ -107,10 +108,24 @@ file(GLOB SrcCpp
 
   #"${doppia_src}/*.cpp"
   "${doppia_src}/boosted_learning/WeakClassifier.cpp"
-  "${doppia_src}/objects_detection/*.pb.c*"
+
   "${doppia_src}/boosted_learning/*.cpp"
   "${doppia_src}/boosted_learning/Node.hpp"
    #"${doppia_src}/applications/*.cpp"
+
+  "${doppia_src}/objects_detection/*.pb.c*"
+  "${doppia_src}/objects_detection/integral_channels/Hog*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Geodesic*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/*Color*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Concatenated*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Integral*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Acf*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Red*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Intensity*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/Abstract[^(Gpu)]*ChannelsComputer.cpp"
+  "${doppia_src}/objects_detection/integral_channels/*ChannelsComputerFactory.cpp"
+  "${doppia_src}/objects_detection/integral_channels/piotr_dollar_toolbox/*.cpp"
+
 )
 
 file(GLOB HelpersCpp
@@ -123,6 +138,7 @@ file(GLOB HelpersCpp
   "${doppia_src}/helpers/replace_environment_variables.cpp"
   "${doppia_src}/helpers/progress_display_*.cpp"
 )
+
 
 
 # ----------------------------------------------------------------------
