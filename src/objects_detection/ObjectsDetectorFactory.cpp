@@ -267,15 +267,27 @@ new_single_scale_detector_instance(const variables_map &options,
                                    boost::shared_ptr<doppia_protobuf::DetectorModel> detector_model_data_p,
                                    boost::shared_ptr<AbstractNonMaximalSuppression> non_maximal_suppression_p)
 {
-//asdf
     //mutable_stages
     const int max_num_stages = get_option_value<int>(options, "objects_detector.max_num_stages");
     doppia_protobuf::SoftCascadeOverIntegralChannelsModel &model = *(detector_model_data_p->mutable_soft_cascade_model());
 
-    if ((max_num_stages != -1) and (max_num_stages< model.stages_size())){
-        printf ("numstages: %d\n", model.stages_size());
-        model.mutable_stages()->DeleteSubrange(max_num_stages, model.stages_size()-max_num_stages);
-        printf ("numstages after cropping: %d\n", model.stages_size());
+    if ((max_num_stages > 0) and (max_num_stages< model.stages_size()))
+    {
+        log_info() << "Model num stages: " << model.stages_size() << std::endl;
+
+        google::protobuf::RepeatedPtrField< doppia_protobuf::SoftCascadeOverIntegralChannelsStage > all_stages;
+        all_stages.CopyFrom(model.stages());
+
+#if GOOGLE_PROTOBUF_VERSION >= 2005000
+        model.mutable_stages()->DeleteSubrange(max_num_stages, model.stages_size() - max_num_stages);
+#else
+        for(int c  = 0; c < max_num_stages; c+= 1)
+        {
+            doppia_protobuf::SoftCascadeOverIntegralChannelsStage *stage_p = model.mutable_stages()->Add();
+            stage_p->CopyFrom(all_stages.Get(c));
+        }
+#endif
+        log_info() << "Model num stages after cropping: " << model.stages_size() << std::endl;
     }
 
     if((detector_model_data_p.get() != NULL) and (detector_model_data_p->has_soft_cascade_model()))

@@ -101,6 +101,8 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/Greedy*.c*"
   "${doppia_src}/objects_detection/cascade_stages/*.c*"
   "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
+  "${doppia_src}/objects_detection/integral_channels/Abstract[^(Gpu)]*.cpp"
+
 
 
   "${doppia_src}/applications/Abstract*.cpp"
@@ -118,6 +120,7 @@ file(GLOB HelpersCpp
   #"${doppia_src}/helpers/data/*.c*"
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/Log.cpp"
+ "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/replace_environment_variables.cpp"
   #"${doppia_src}/helpers/AlignedImage.cpp"
@@ -129,7 +132,9 @@ file(GLOB HelpersCpp
 
 
 file(GLOB SrcGpuCpp
+  "${doppia_src}/objects_detection/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/Gpu*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/integral_channels/Gpu*.cpp"
   "${doppia_src}/helpers/gpu/*.cpp"
 

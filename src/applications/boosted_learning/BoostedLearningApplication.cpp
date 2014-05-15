@@ -3,15 +3,14 @@
 #include "boosted_learning/ModelIO.hpp"
 
 #include "applications/EmptyGui.hpp"
-#include "objects_detection/integral_channels/IntegralChannelsForPedestrians.hpp"
-//#include "objects_detection/integral_channels/AbstractIntegralChannelsComputer.hpp"
-//#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
+#include "objects_detection/integral_channels/AbstractIntegralChannelsComputer.hpp"
+#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
 #include "video_input/ImagesFromDirectory.hpp"
 
 #include "helpers/get_option_value.hpp"
 #include "helpers/ModuleLog.hpp"
 #include "helpers/progress_display_with_eta.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 //#include "helpers/geometry.hpp"
 
 #include <boost/gil/extension/io/png_io.hpp>
@@ -43,7 +42,8 @@ MODULE_LOG_MACRO("BoostedLearningApplication")
 
 std::string BoostedLearningApplication::get_application_title()
 {
-    return  "Trains a classifier with bootstrapping (M. Mathias, R. Benenson, M. Omran) @ MPI-Inf. 2013.";
+    return  "Trains a classifier with bootstrapping "
+            "(M. Mathias, R. Benenson, M. Omran) @ MPI-Inf. 2013.";
 }
 
 
@@ -718,7 +718,7 @@ program_options::options_description BoostedLearningApplication::get_args_option
 void BoostedLearningApplication::get_options_description(program_options::options_description &desc)
 {
     desc.add(BoostedLearningApplication::get_args_options());
-    desc.add(IntegralChannelsComputerFactory::get_args_options());
+    desc.add(IntegralChannelsComputerFactory::get_options_description());
 
     return;
 }
@@ -753,7 +753,7 @@ void BoostedLearningApplication::setup_logging(std::ofstream &log_file,
 }
 
 
-
+/*
 int getNumChannels(TrainingData::integral_channels_computer_shared_ptr_t &integral_channels_computer_p,
                    const std::string &training_example_path)
 {
@@ -782,7 +782,7 @@ int getNumChannels(TrainingData::integral_channels_computer_shared_ptr_t &integr
     }
 
     return numChannels;
-}
+}*/
 
 
 
@@ -872,8 +872,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
 
     else if(task == "train")
     {
-        int start_preparation_of_training;
-        start_preparation_of_training = (int)round(omp_get_wtime());        //std::vector<int> classifiersPerStage, maxNumSamplesPerImage;
+        const double start_preparation_of_training = omp_get_wtime();        //std::vector<int> classifiersPerStage, maxNumSamplesPerImage;
 
         bool doBootstrap = true; //TODO: MAKE PARAMETER!!!
         // changed if-else to if-block with same outcome
@@ -949,31 +948,11 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
         fill (valid_features.begin(), valid_features.begin()+featuresPoolSize, true);
 
         trainingData.reset(new TrainingData(featuresConfigurations, valid_features, maxNumExamples,
-                                     modelWindowSize, objectWindow,
-                                     integral_channels_computer_p));
+                                     modelWindowSize, objectWindow));
         trainingData->addPositiveSamples(filenamesPositives, modelWindowSize, trainDataOffset);
 
         //std::cout << (int)round(t.elapsed());
 
-        if(dynamic_pointer_cast<IntegralChannelsFromFiles>(integral_channels_computer_p))
-        { // will use IntegralChannelsFromFiles,
-
-            if (static_cast<size_t>(trainNumNegativeSamples) < filenamesBackground.size())
-            {
-                printf("Using only %i of the available %zi negative training examples\n",
-                       trainNumNegativeSamples, filenamesBackground.size());
-                std::vector<std::string> shortList;
-                shortList.resize(trainNumNegativeSamples);
-                std::copy(filenamesBackground.begin(), filenamesBackground.begin() + trainNumNegativeSamples,
-                          shortList.begin());
-                filenamesBackground = shortList;
-            }
-
-            // we expect the negative folders to contain cropped negative instances
-            // we use addHardNegativeSamples to read these cropped instances
-            trainingData->addHardNegativeSamples(filenamesBackground, modelWindowSize, trainDataOffset);
-        }
-        else
         { // normal channel features
             trainingData->addNegativeSamples(filenamesBackground, modelWindowSize, trainDataOffset, trainNumNegativeSamples);
             trainingData->addHardNegativeSamples(filenamesHardNegatives, modelWindowSize, trainDataOffset);
@@ -1011,7 +990,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
             size_t maxTestingNumExamples = filenamesPositives.size() + testingNumNegativeSamples;;
 
             TrainingData::shared_ptr_t testingData(new TrainingData(featuresConfigurations, valid_features, maxTestingNumExamples,
-                                                                    modelWindowSize, objectWindow, integral_channels_computer_p));
+                                                                    modelWindowSize, objectWindow));
             testingData->addPositiveSamples(filenamesPositives, modelWindowSize, testingDataOffset);
             testingData->addNegativeSamples(filenamesBackground, modelWindowSize, testingDataOffset, testingNumNegativeSamples);
 
@@ -1033,16 +1012,16 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
             }
 
             validationData.reset(new TrainingData(featuresConfigurations, valid_features, maxValidationNumExamples,
-                                                  modelWindowSize, objectWindow, integral_channels_computer_p));
+                                                  modelWindowSize, objectWindow));
             validationData->addPositiveSamples(filenamesPositives, modelWindowSize, testingDataOffset);
             validationData->addNegativeSamples(filenamesBackgroundValidation, modelWindowSize, testingDataOffset, testingNumNegativeSamples);
 
             BoostedLearner->set_validation_data(validationData);
         }
 
-        int tmp_time = (int)round(omp_get_wtime()) - start_preparation_of_training;
-        printf("Time elapsed while setting up data: %02d:%02d:%02d\n",
-               tmp_time/3600, (tmp_time%3600)/60, tmp_time%60);
+	 boost::posix_time::seconds delta_time(omp_get_wtime() - start_preparation_of_training);
+	    printf("Time elapsed while setting up data: %s\n",
+           boost::posix_time::to_simple_string(delta_time).c_str());
     }
 
     return;
@@ -1240,9 +1219,8 @@ void BoostedLearningApplication::test(const bool silent_mode)
 
 void BoostedLearningApplication::train(const bool silent_mode, const bool doBootstrap = true)
 {
-    int start_training_time, start_bootstrapping_time, start_total_training_time, tmp_time;
-    start_total_training_time = (int)round(omp_get_wtime());
-
+    boost::posix_time::seconds delta_time(0);
+    const double start_total_training_time = omp_get_wtime();
 
     const std::string baseOuputModelFilename = BoostedLearner->get_output_model_filename();
     std::cout << BoostedLearner->get_output_model_filename() << " - model name" << std::endl;
@@ -1256,10 +1234,10 @@ void BoostedLearningApplication::train(const bool silent_mode, const bool doBoot
     {
 
 
-        // bootstrap new negatives
+        // if not first round, bootstrap new negatives
         if (k != 0)
         {
-            start_bootstrapping_time = (int)round(omp_get_wtime());
+            const double start_bootstrapping_time = omp_get_wtime();
             const std::string bootstrapFile =
                     boost::str(boost::format("%s.bootstrap%i") % baseOuputModelFilename % (k - 1));
             std::cout << bootstrapFile << " - bootstrap file" << std::endl;
@@ -1285,14 +1263,14 @@ void BoostedLearningApplication::train(const bool silent_mode, const bool doBoot
                                                         options);
             }
 
-            tmp_time = (int)omp_get_wtime() - start_bootstrapping_time;
-            printf("Time elapsed in seconds: %d\n", tmp_time);
-            printf("Time elapsed while mining hard negatives for training round %d: %02d:%02d:%02d\n",
-                   (int)k, tmp_time/3600, (tmp_time%3600)/60, tmp_time%60);
+            delta_time = boost::posix_time::seconds(omp_get_wtime() - start_bootstrapping_time);
+            printf("Time elapsed in seconds: %d\n", delta_time.total_seconds());
+            printf("Time elapsed while mining hard negatives for training round %zu: %s\n",
+                   k, boost::posix_time::to_simple_string(delta_time).c_str());
 
         }
 
-        start_training_time = (int)round(omp_get_wtime());
+        const double start_training_time = omp_get_wtime();
 
         BoostedLearner->set_num_training_rounds(classifiersPerStage[k]);
         BoostedLearner->set_output_model_filename(boost::str(boost::format("%s.bootstrap%i") % baseOuputModelFilename % (k)));
@@ -1310,11 +1288,11 @@ void BoostedLearningApplication::train(const bool silent_mode, const bool doBoot
             BoostedLearner->train(decisionTreeDepth, datasetName, DECISION_TREE);
         }
 
-        tmp_time = (int)omp_get_wtime() - start_training_time;
-        printf("Time elapsed in seconds: %d\n", tmp_time);
-        printf("Time elapsed while producing strong classifier for training round %d: %02d:%02d:%02d\n",
-               (int)k, tmp_time/3600, (tmp_time%3600)/60, tmp_time%60);
-    } // end of "for each stage"
+        delta_time = boost::posix_time::seconds(omp_get_wtime() - start_training_time);
+        printf("Time elapsed in seconds: %d\n", delta_time.total_seconds());
+        printf("Time elapsed while producing strong classifier for training round %zu: %s\n",
+               k, boost::posix_time::to_simple_string(delta_time).c_str());
+    } // end of "for each training round"
 
     boost::filesystem::copy_file(BoostedLearner->get_output_model_filename(), baseOuputModelFilename);
 
@@ -1333,10 +1311,11 @@ void BoostedLearningApplication::train(const bool silent_mode, const bool doBoot
         toSoftCascade(silent_mode, options, baseOuputModelFilename, getSoftCascadeFileName(options, baseOuputModelFilename));
     }
 
-    tmp_time = (int)omp_get_wtime() - start_total_training_time;
-    printf("Time elapsed in seconds: %d\n", tmp_time);
-    printf("Time elapsed for all training and boostrapping rounds: %02d:%02d:%02d\n",
-           tmp_time/3600, (tmp_time%3600)/60, tmp_time%60);
+    delta_time = boost::posix_time::seconds(omp_get_wtime() - start_total_training_time);
+    printf("Time elapsed in seconds: %d\n", delta_time.total_seconds());
+    printf("Time elapsed for all training and boostrapping rounds: %s\n",
+           boost::posix_time::to_simple_string(delta_time).c_str());
+
     return;
 } // end of bootstrapTrain
 

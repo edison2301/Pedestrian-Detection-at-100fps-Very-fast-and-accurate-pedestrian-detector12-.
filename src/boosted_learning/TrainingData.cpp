@@ -2,7 +2,7 @@
 
 #include "applications/bootstrapping_lib/bootstrapping_lib.hpp"
 
-#include "objects_detection/integral_channels/IntegralChannelsFromFiles.hpp"
+//#include "objects_detection/integral_channels/IntegralChannelsFromFiles.hpp"
 #include "objects_detection/integral_channels/IntegralChannelsForPedestrians.hpp"
 
 #include "video_input/ImagesFromDirectory.hpp" // for the open_image helper method
@@ -229,7 +229,7 @@ void TrainingData::addPositiveSamples(const std::vector<std::string> &filenamesP
         const std::string filename = file_path.filename();
 #else
         const std::string filename = file_path.filename().string();
-#endif        
+#endif
 tmp_time = (int)round(omp_get_wtime());
         _integralChannelsComputer->set_image(image_view, filename);
 image_loading_time += (int)round(omp_get_wtime()) - tmp_time;

@@ -53,7 +53,8 @@ public:
             const int additional_border);
     ~IntegralChannelsDetector();
 
-    void set_image(const boost::gil::rgb8c_view_t &input_image);
+    void set_image(const boost::gil::rgb8c_view_t &input_image,
+                   const std::string &image_file_path = std::string());
     void compute();
 
 protected:

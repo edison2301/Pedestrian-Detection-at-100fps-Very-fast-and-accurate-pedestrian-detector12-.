@@ -99,7 +99,7 @@ IntegralChannelsLinearSvmSlidingWindow::~IntegralChannelsLinearSvmSlidingWindow(
 
 
 
-void IntegralChannelsLinearSvmSlidingWindow::set_image(const boost::gil::rgb8c_view_t &input_view_)
+void IntegralChannelsLinearSvmSlidingWindow::set_image(const boost::gil::rgb8c_view_t &input_view_, const string &image_file_path)
 {
     input_image.recreate(input_view_.dimensions());
     input_view = gil::const_view(input_image);

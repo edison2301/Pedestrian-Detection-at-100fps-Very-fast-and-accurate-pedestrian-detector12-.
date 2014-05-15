@@ -102,7 +102,7 @@ IntegralChannelsDetector::~IntegralChannelsDetector()
 }
 
 
-void IntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view_)
+void IntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view_, const string &image_file_path)
 {
     const bool input_dimensions_changed = (input_image.dimensions() != input_view_.dimensions());
     input_image.recreate(input_view_.dimensions());
