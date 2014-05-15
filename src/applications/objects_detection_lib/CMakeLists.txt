@@ -29,7 +29,15 @@ project (ObjectsDetectionLib)
 include(${doppia_root}/common_settings.cmake)
 
 pkg_check_modules(libpng REQUIRED libpng)
-pkg_check_modules(opencv REQUIRED opencv>=2.3)
+#pkg_check_modules(opencv REQUIRED opencv>=2.3)
+
+set(opencv_LIBRARIES
+    opencv_core opencv_imgproc opencv_highgui opencv_ml
+    opencv_video opencv_features2d
+    opencv_calib3d
+    #opencv_objdetect opencv_contrib
+    opencv_legacy opencv_flann
+   ) # quick hack for opencv2.4 support
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -41,8 +49,8 @@ endif(USE_GPU)
 # ----------------------------------------------------------------------
 # Setup link and include directories
 
-set(local_INCLUDE_DIRS 
-    "${doppia_root}/libs" 
+set(local_INCLUDE_DIRS
+    "${doppia_root}/libs"
     "${doppia_root}/src"
     "${doppia_root}/src/applications/boosted_learning"
     #"/usr/include/eigen2"
@@ -52,7 +60,7 @@ set(local_INCLUDE_DIRS
     "${doppia_root}/src/objects_detection" # to avoid doppia specific paths in the library header
     "/usr/local/cuda/include"
     )
-    
+
 include_directories(
  ${local_INCLUDE_DIRS}
  "${doppia_root}/libs/cudatemplates/include"
@@ -67,7 +75,7 @@ endif(USE_GPU)
 set(local_LIBRARY_DIRS
   /usr/lib64
   /usr/local/lib
-  /users/visics/rbenenso/no_backup/usr/local/lib
+  /users/visics/mmathias/no_backup/usr/local/lib
   /usr/lib64/atlas
   /usr/lib/sse2/atlas
   /usr/lib/llvm-2.8/lib
@@ -91,23 +99,12 @@ set(doppia_stereo "${doppia_root}/src/stereo_matching")
 
 file(GLOB SrcCpp
   "objects_detection_lib.cpp"
-  "ObjectsDetectionLibGui.cpp" # uses macros to include the fake or real code
   "${doppia_src}/*.cpp"
-
-  "${doppia_src}/applications/*Application.cpp"
-  "${doppia_src}/applications/AbstractGui.cpp"
-  "${doppia_src}/applications/EmptyGui.cpp"
-  "${doppia_src}/applications/BaseSdlGui.cpp"
+  "${doppia_src}/applications/*.cpp"
 
   "${doppia_src}/image_processing/*.cpp"
   "${doppia_src}/drawing/gil/draw_matrix.cpp"
-  "${doppia_src}/applications/stixel_world/*Gui.cpp"
-  "${doppia_src}/drawing/gil/*.cpp"
-  "${doppia_src}/applications/objects_detection/ObjectsDetectionGui.cpp"
-  "${doppia_src}/applications/objects_detection/ObjectsDetectionApplication.cpp"
-  "${doppia_src}/applications/*.cpp"
-  "${doppia_src}/applications/stixel_world/*Gui.cpp"
-  "${doppia_src}/applications/objects_tracking/*Application.cpp"
+
   "${doppia_src}/visual_odometry/Abstract*.cpp"
   "${doppia_src}/objects_tracking/*.cpp"
   "${doppia_src}/objects_tracking/motion_models/*.cpp"
@@ -127,15 +124,23 @@ file(GLOB MonocularSrcCpp
   "${doppia_src}/objects_detection/*Model.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
   "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
-  "${doppia_src}/objects_detection/integral_channels/Integral*.cpp"
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
   "${doppia_src}/objects_detection/DetectorSearchRange.c*"
   "${doppia_src}/objects_detection/*.pb.c*"
+  "${doppia_src}/objects_detection/cascade_stages/*.c*"
   "${doppia_src}/objects_detection/non_maximal_suppression/*.c*"
+  "${doppia_src}/objects_detection/integral_channels/Integral*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractIntegral*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractChannels*.cpp"
+
+  "${doppia_stereo}/ground_plane/Abstract*.cpp"
+  "${doppia_stereo}/stixels/Abstract*.cpp"
 
   "${doppia_src}/video_input/Abstract*.cpp"
   "${doppia_src}/video_input/Metric*.cpp"
+  "${doppia_src}/video_input/VideoFromCam.cpp"
   "${doppia_src}/video_input/calibration/*.c*"
   "${doppia_src}/video_input/preprocessing/AddBorderFunctor.cpp"
 )
@@ -162,6 +167,8 @@ file(GLOB StereoSrcCpp
 
   "${doppia_stereo}/ground_plane/*.cpp"
   "${doppia_stereo}/stixels/*.cpp"
+  #"${doppia_stereo}/stixels/draw_stixel_world.cpp"
+  #"${doppia_stereo}/objects_detection/draw_the_detections.cpp"
    #"${doppia_stereo}/stixels/*.cc"
   "${doppia_src}/video_input/*.cpp"
   "${doppia_src}/video_input/calibration/*.c*"
@@ -172,9 +179,8 @@ file(GLOB StereoSrcCpp
 
 file(GLOB MonocularGuiSrcCpp
   "ObjectsDetectionLibGui.cpp"
-  "${doppia_src}/applications/objects_detection/draw*.cpp"
-  #"${doppia_src}/applications/stixel_world/draw*.cpp"
-  "${doppia_src}/drawing/gil/*.cpp"
+  "${doppia_src}/drawing/gil/draw_the_detections.cpp"
+  "${doppia_src}/drawing/gil/colors.cpp"
 )
 
 
@@ -186,22 +192,25 @@ file(GLOB StereoGuiSrcCpp
 )
 
 file(GLOB HelpersCpp
-
+  "FakeObjectsDetectionLibGui.cpp"
   #"${doppia_src}/helpers/*.cpp"
   "${doppia_src}/helpers/data/*.c*"
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
   "${doppia_src}/helpers/Log.cpp"
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/loggers.cpp"
   "${doppia_src}/helpers/AlignedImage.cpp"
   "${doppia_src}/helpers/replace_environment_variables.cpp"
   "${doppia_src}/helpers/objects_detection/*.cpp"
+  "${doppia_src}/helpers/Timers.cpp"
 )
 
 
 file(GLOB SrcGpuCpp
 
   "${doppia_src}/objects_detection/Gpu*.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/integral_channels/Gpu*.cpp"
   "${doppia_src}/helpers/gpu/*.cpp"
 
@@ -228,7 +237,7 @@ if(USE_GPU)
 list(APPEND SrcCpp ${SrcGpuCpp})
 
 # add GPU related libraries
-list(APPEND opencv_LIBRARIES opencv_gpu)
+list(APPEND opencv_LIBRARIES opencv_imgproc opencv_gpu)
 
 # ----------------------------------------------------------------------
 # Compile CUDA stuff
@@ -247,8 +256,8 @@ endif(USE_GPU)
 # Create the library
 #set(CMAKE_CXX_COMPILER g++-4.4) # compiling with GCC4.4 is required for the EUROPA project needs
 
-add_library(objects_detection SHARED 
-  ${SrcCpp} ${MonocularSrcCpp} ${StereoSrcCpp} ${HelpersCpp} 
+add_library(objects_detection SHARED
+  ${SrcCpp} ${MonocularSrcCpp} ${StereoSrcCpp} ${HelpersCpp}
 )
 
 target_link_libraries(objects_detection
@@ -328,10 +337,10 @@ set_property(
 )
 
 target_link_libraries(monocular_objects_detection_with_ui
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
-   protobuf
+   boost_unit_test_framework
+   boost_program_options boost_filesystem boost_system
+   boost_thread pthread gomp
+   protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -354,10 +363,14 @@ target_link_libraries(test_objects_detection_lib objects_detection)
 target_link_libraries(test_objects_detection_lib
    boost_program_options boost_filesystem
    gomp SDL
-   ${opencv_LIBRARIES} opencv_legacy # required since opencv2.4
+   ${opencv_LIBRARIES}
 # SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
 )
+
+if(USE_GPU)
+target_link_libraries(test_objects_detection_lib)
+endif(USE_GPU)
 
 # ----------------------------------------------------------------------
 # Create the test executable with UI
@@ -371,10 +384,15 @@ target_link_libraries(test_objects_detection_with_ui_lib objects_detection_with_
 target_link_libraries(test_objects_detection_with_ui_lib
    boost_program_options boost_filesystem
    gomp SDL
-   ${opencv_LIBRARIES} opencv_legacy # required since opencv2.4
+   ${opencv_LIBRARIES}
    SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
 )
+
+
+if(USE_GPU)
+target_link_libraries(test_objects_detection_with_ui_lib)
+endif(USE_GPU)
 
 
 # ----------------------------------------------------------------------
@@ -401,7 +419,7 @@ target_link_libraries(test_monocular_objects_detection_lib
 )
 
 
-# ----------------------------------------------------------------------
+## ----------------------------------------------------------------------
 # Create the monocular test executable with UI
 add_executable(test_monocular_objects_detection_with_ui_lib
   "test_objects_detection_lib.cpp"

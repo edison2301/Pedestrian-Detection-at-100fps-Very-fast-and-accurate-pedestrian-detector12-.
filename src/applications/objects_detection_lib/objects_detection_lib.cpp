@@ -6,15 +6,11 @@
 #include "objects_detection/ObjectsDetectorFactory.hpp"
 
 #if defined(MONOCULAR_OBJECTS_DETECTION_LIB)
-
 #include "video_input/AbstractVideoInput.hpp"
-#include "video_input/MetricCamera.hpp"
 
 #else // not defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
 #include "video_input/VideoInputFactory.hpp"
-#include "video_input/MetricStereoCamera.hpp"
-#include "video_input/MetricCamera.hpp"
 #include "video_input/calibration/StereoCameraCalibration.hpp"
 #include "stereo_matching/stixels/AbstractStixelWorldEstimator.hpp"
 #include "stereo_matching/stixels/StixelWorldEstimatorFactory.hpp"
@@ -22,10 +18,33 @@
 
 #endif // defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
+#include "video_input/MetricCamera.hpp"
+#include "video_input/MetricStereoCamera.hpp"
+
+
 #include "stereo_matching/ground_plane/AbstractGroundPlaneEstimator.hpp"
 #include "stereo_matching/stixels/AbstractStixelWorldEstimator.hpp"
 
+
+#if defined(OBJECTS_DETECTION_WITH_UI_LIB)
+
 #include "ObjectsDetectionLibGui.hpp"
+
+#else
+#include "FakeObjectsDetectionLibGui.hpp"
+
+namespace objects_detection {
+// we cannot use a typedef since it would be incompatible with forward declarations,
+// we use a child class instead.
+//typedef FakeObjectsDetectionLibGui ObjectsDetectionLibGui;
+class ObjectsDetectionLibGui: public FakeObjectsDetectionLibGui
+{
+public:
+};
+
+} // end of namespace objects_detection
+#endif
+
 
 #include "helpers/get_option_value.hpp"
 #include "helpers/data/DataSequence.hpp"
@@ -79,7 +98,6 @@ shared_ptr<MetricCamera> metric_camera_p;
 #else  // not monocular
 shared_ptr<StereoCameraCalibration> stereo_calibration_p;
 shared_ptr<MetricStereoCamera> stereo_camera_p;
-
 boost::gil::rgb8_image_t left_image, right_image;
 #endif // defined(MONOCULAR_OBJECTS_DETECTION_LIB)
 
@@ -345,8 +363,7 @@ void init_objects_detection(const boost::program_options::variables_map input_op
 
         if(not calibration_p)
         {
-            throw std::invalid_argument("When using ground plane, "
-                                        "init_objects_detection expects to receive a non-empty calibration shared pointer");
+            throw std::invalid_argument("When using ground plane, init_objects_detection expects to receive a non-empty calibration shared pointer");
         }
 
 
@@ -364,7 +381,7 @@ void init_objects_detection(const boost::program_options::variables_map input_op
             printf("Camera height == %.4f\n", ground_plane_prior_height);
             printf("Camera pitch == %.4f\n", ground_plane_prior_pitch);
 
-             printf("camera focal x,y == (%.3f, %.3f)\n",
+            printf("camera focal x,y == (%.3f, %.3f)\n",
                    metric_camera_p->get_calibration().get_focal_length_x(),
                    metric_camera_p->get_calibration().get_focal_length_y() );
         }
@@ -586,10 +603,10 @@ void set_pseudo_distance_given_v(const int num_rows,
     return;
 } // end of set_disparity_given_v(...)
 
-
+/*
 AbstractGroundPlaneEstimator::line_t ground_plane_to_v_pseudo_distance_line(
         const GroundPlane &ground_plane,
-        const float camera_v0, const float camera_focal_length) const
+        const float camera_v0, const float camera_focal_length)
 {
     const float theta = -ground_plane.get_pitch();
     const float heigth = ground_plane.get_height();
@@ -752,14 +769,6 @@ const int get_object_top_v_from_object_bottom_v(const int bottom_v, const float 
 /// @param pitch should be in radians (usually small negative value)
 void set_ground_plane_estimate(const float ground_plane_height, const float ground_plane_pitch)
 {
-
-    return;
-}
-
-/// @param height should be in meters
-/// @param pitch should be in radians (usually small negative value)
-void set_ground_plane_estimate(const float ground_plane_height, const float ground_plane_pitch)
-{
     GroundPlane ground_plane;
     const float roll = 0;
     ground_plane.set_from_metric_units(ground_plane_pitch, roll, ground_plane_height);
@@ -811,7 +820,7 @@ void set_ground_plane_estimate(const GroundPlane &ground_plane)
     objects_detector_p->set_ground_plane_corridor(ground_plane_corridor);
     return;
 }
-
+*/
 
 /// blocking call to compute the detections
 void compute()

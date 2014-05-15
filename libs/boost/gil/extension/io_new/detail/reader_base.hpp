@@ -126,6 +126,7 @@ private:
     }
 
 protected:
+
     ConversionPolicy _cc_policy;
 
     image_read_settings< FormatTag > _settings;
