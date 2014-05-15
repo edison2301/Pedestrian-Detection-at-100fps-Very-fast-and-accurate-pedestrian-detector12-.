@@ -624,7 +624,7 @@ void DetectorsComparisonTestApplication::update_channels_statistics(
                 }
 
                 // explore the corresponding pixels in the large image
-                for(int t_y=large_y-search_radius; t_y < (large_y+search_radius); t_y+=1)
+                for(int t_y=large_y-search_radius; t_y < static_cast<int>(large_y+search_radius); t_y+=1)
                 {
                     if((t_y < 0) or (t_y >= static_cast<int>(large_image_p->shape()[0])))
                     {
