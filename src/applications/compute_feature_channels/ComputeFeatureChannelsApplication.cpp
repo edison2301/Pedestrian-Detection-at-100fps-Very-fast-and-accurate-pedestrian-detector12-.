@@ -2,7 +2,12 @@
 
 #include "applications/EmptyGui.hpp"
 #include "objects_detection/integral_channels/AbstractChannelsComputer.hpp"
-#include "objects_detection/integral_channels/ChannelsComputerFactory.hpp"
+//#include "objects_detection/integral_channels/ChannelsComputerFactory.hpp"
+
+#include "objects_detection/integral_channels/AbstractGpuIntegralChannelsComputer.hpp"
+#include "objects_detection/integral_channels/IntegralChannelsComputerFactory.hpp"
+
+
 #include "video_input/ImagesFromDirectory.hpp"
 
 #include "helpers/get_option_value.hpp"
@@ -26,7 +31,7 @@ MODULE_LOG_MACRO("ComputeFeatureChannelsApplication")
 
 std::string ComputeFeatureChannelsApplication::get_application_title()
 {
-    return  "Compute geodesic channels. Rodrigo Benenson @ MPI-Inf. 2013.";
+    return  "Compute feature channels. Rodrigo Benenson @ MPI-Inf. 2013-2014.";
 }
 
 
@@ -49,7 +54,7 @@ program_options::options_description ComputeFeatureChannelsApplication::get_args
 {
     program_options::options_description desc("ComputeFeatureChannelsApplication options");
 
-    const std::string application_name = "compute_geodesic_channels";
+    const std::string application_name = "compute_feature_channels";
     BaseApplication::add_args_options(desc, application_name);
 
     desc.add_options()
@@ -72,7 +77,8 @@ void ComputeFeatureChannelsApplication::get_options_description(program_options:
 {
     desc.add(ComputeFeatureChannelsApplication::get_args_options());
     //desc.add(ImagesFromDirectory::get_args_options());
-    desc.add(ChannelsComputerFactory::get_args_options());
+    //desc.add(ChannelsComputerFactory::get_args_options());
+    desc.add(IntegralChannelsComputerFactory::get_options_description());
 
     return;
 }
@@ -80,7 +86,7 @@ void ComputeFeatureChannelsApplication::get_options_description(program_options:
 
 /// helper method called by setup_problem
 void ComputeFeatureChannelsApplication::setup_logging(std::ofstream &log_file,
-                                                       const program_options::variables_map &options)
+                                                      const program_options::variables_map &options)
 {
     if(log_file.is_open())
     {
@@ -120,7 +126,9 @@ void ComputeFeatureChannelsApplication::setup_problem(const program_options::var
     num_files_to_process = std::distance(filesystem::directory_iterator(folder_to_process),
                                          filesystem::directory_iterator());
 
-    channels_computer_p.reset(ChannelsComputerFactory::new_instance(options));
+    //channels_computer_p.reset(ChannelsComputerFactory::new_instance(options));
+    channels_computer_p.reset(
+                static_cast<AbstractChannelsComputer *>(IntegralChannelsComputerFactory::new_instance(options)));
 
 
     BOOST_STATIC_ASSERT((boost::is_same<ImagesFromDirectory::input_image_view_t,
@@ -141,7 +149,7 @@ AbstractGui* ComputeFeatureChannelsApplication::create_gui(const program_options
         use_empty_gui = get_option_value<bool>(options, "gui.disabled");
     }
 
-    AbstractGui *gui_p=NULL;
+    AbstractGui *gui_p = NULL;
     if(use_empty_gui)
     {
         gui_p = new EmptyGui(options);
@@ -240,8 +248,8 @@ void allocate_shrunk_channels(const AbstractChannelsComputer::channels_t &channe
     // +shrinking_factor/2 to round-up
     if(shrinking_factor == 4)
     {
-        shrunk_size_x = (( (channel_size_x+1)/2) + 1)/2;
-        shrunk_size_y = (( (channel_size_y+1)/2) + 1)/2;
+        shrunk_size_x = (( (channel_size_x+1) / 2) + 1) / 2;
+        shrunk_size_y = (( (channel_size_y+1) / 2) + 1) / 2;
     }
     else if(shrinking_factor == 2)
     {
@@ -416,7 +424,8 @@ void ComputeFeatureChannelsApplication::main_loop()
         channels_computer_p->set_image(input_view);
         channels_computer_p->compute();
 
-        const AbstractChannelsComputer::channels_t &computed_channels = channels_computer_p->get_channels_uint16();
+        const AbstractChannelsComputer::channels_t &computed_channels = \
+                channels_computer_p->get_input_channels_uint16();
 
         assert(channels.shape()[0] == computed_channels.shape()[0]);
         assert(channels.shape()[1] == computed_channels.shape()[1]);
