@@ -116,7 +116,8 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/[^(Gpu)]*Integral*.c*"
   "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
-  "${doppia_src}/objects_detection/integral_channels/Abstract[^(Gpu)]*ChannelsComputer.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractChannelsComputer.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractIntegralChannelsComputer.cpp"
   "${doppia_src}/objects_detection/integral_channels/[^(Gpu)|(AbstractGpu)]*.cpp"
 
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
