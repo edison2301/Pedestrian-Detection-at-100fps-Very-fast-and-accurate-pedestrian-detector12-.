@@ -8,7 +8,13 @@
 
 # to compile the local code you can use: cmake ./ && make -j2
 
+# ----------------------------------------------------------------------
+# Base CMake setup
+
 cmake_minimum_required (VERSION 2.6)
+
+# ----------------------------------------------------------------------
+# Setup the project
 
 include(FindPkgConfig)
 project(ComputeFeatureChannels)
@@ -74,7 +80,10 @@ file(GLOB SrcCpp
   "${doppia_src}/objects_detection/integral_channels/Concatenated*.cpp"
   "${doppia_src}/objects_detection/integral_channels/IntegralChannelsForPedestrians.cpp"
   "${doppia_src}/objects_detection/integral_channels/AbstractChannelsComputer.cpp"
-  "${doppia_src}/objects_detection/integral_channels/ChannelsComputerFactory.cpp"
+  "${doppia_src}/objects_detection/integral_channels/AbstractIntegralChannelsComputer.cpp"
+  "${doppia_src}/objects_detection/integral_channels/*ChannelsComputerFactory.cpp"
+
+
 
   "${doppia_src}/image_processing/GeodesicTransform.cpp"
   "${doppia_src}/image_processing/fast_rgb_to_luv.cpp"
@@ -91,6 +100,7 @@ file(GLOB SrcCpp
 )
 
 file(GLOB SrcGpuCpp
+  "${doppia_src}/objects_detection/integral_channels/AbstractGpu*.cpp"
   "${doppia_src}/objects_detection/integral_channels/Gpu*.cpp"
   "${doppia_src}/helpers/gpu/*.cpp"
 )
