@@ -184,6 +184,10 @@ Step 4: (optional) compile objects_detection_lib
 
 Same as steps 2 and 3 (if more details needed, fill a bug report; see FAQ below).
 
+This compilation might take longer than others, since multiple versions are compiled.
+
+
+
 
 Step 5: (optional) compile training time code
 ----------------------------------------------

@@ -101,7 +101,7 @@ ObjectsDetectionLibGui::ObjectsDetectionLibGui(const int input_width, const int 
 
     if(stixel_world_estimator_p)
     {
-        current_view = views_map[SDLK_4]; // draw stixels world
+        current_view = views_map[SDLK_3]; // draw stixels world
     }
 
 #endif
