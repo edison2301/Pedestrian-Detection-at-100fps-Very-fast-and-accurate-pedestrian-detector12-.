@@ -26,7 +26,7 @@ The doppia repository contains the open source release of the following research
   R. Benenson, M. Mathias, R. Timofte, L. Van Gool; presented at ECCV 2012, CVVT workshop.
 
 * Seeking the strongest rigid detector
-  R. Benenson, M. Mathias, T. Tuytelaars, L. Van Gool; presented at CVPR 2012.
+  R. Benenson, M. Mathias, T. Tuytelaars, L. Van Gool; presented at CVPR 2013.
 
 the code is released with a _research only_ license (see license.text),  
 the license is _not_ [OSI compatible](http://opensource.org/docs/osd) (due, at least, to term 6 since we do discriminate against "fields of endeavor").
@@ -176,7 +176,7 @@ and
 
 for more fun. Consult section "How to use the code ?" for more information.
 
-If you want to use our objects detector as part of a larger system, you may be interested in also consulting "What is `objects_detection_lib` ?".
+If you want to use our objects detector as part of a larger system, you may be interested in the section "What is `objects_detection_lib` ?".
 
 
 Step 4: (optional) compile objects_detection_lib
@@ -347,6 +347,23 @@ and the gcc-4.4 folder contains
 using this, `nvcc` knows it should use gcc-4.4 to compile (instead of the
 system default, more up to date gcc, with which cuda 4 is not compatible). 
 I think cuda 5 fixes this issue (but not sure).
+
+
+In your CVPR 2013 paper, how did you implement the "Automatic Color Equalization" ?
+------------------------------------------------------------------------------
+
+At the very end of our [paper](http://rodrigob.github.io/documents/2013_cvpr_roerei_with_supplementary_material.pdf) we briefly mention that we use the code from Shunsuke Aihara,
+availabe at the following urls
+
+https://pypi.python.org/pypi/colorcorrect
+
+https://bitbucket.org/aihara/colorcorrect
+
+We use the default parameters of his `colorcorrect.algorithm.automatic_color_equalization` implementation.
+As mentioned in the paper the much faster `gray world` equalization also provides good results.
+
+
+
 
 
 
