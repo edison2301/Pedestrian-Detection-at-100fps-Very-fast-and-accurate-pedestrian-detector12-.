@@ -1650,15 +1650,15 @@ void SoftCascadeOverIntegralChannelsModel::sanity_check() const
                                  "received an unhandled occlusion type");
     }
 
-    const bool should_touch_borders = (occlusion_level <= 0); // if no occlusion, then should do also borders check
+    const bool must_check_borders = false; // FIXME a better version would use true
+    const bool should_touch_borders = must_check_borders and (occlusion_level <= 0); // if no occlusion, then should do also borders check
     check_stages_and_range_visitor visitor(
                 -1,
                 dummy_search_range,
                 shrunk_width, shrunk_height,
                 should_touch_borders);
     bool everything_is_fine = boost::apply_visitor(visitor, stages);
-    // FIXME, terrible HACK !
-    //everything_is_fine = true;
+
     if(not everything_is_fine)
     {
         throw std::runtime_error("SoftCascadeOverIntegralChannelsModel::sanity_check failed");

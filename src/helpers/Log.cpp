@@ -18,8 +18,8 @@
 typedef struct stat struct_stat;
 
 
-inline std::string
-        current_posix_time_string()
+std::string
+       logging::current_posix_time_string()
 {
     char time_string[2048];
     time_t t = time(0);
@@ -31,8 +31,10 @@ inline std::string
 // ---------------------------------------------------
 // Create a single instance of the SystemLog
 // ---------------------------------------------------
+namespace logging {
+logging::null_ostream g_null_ostream;
+}
 namespace {
-    static logging::null_ostream g_null_ostream;
     static boost::once_flag call_once_flag = BOOST_ONCE_INIT;
     boost::shared_ptr<logging::Log> system_log_ptr;
     void init_system_log() {
@@ -73,7 +75,7 @@ m_prepend_infostamp(prepend_infostamp) {
     return;
 }
 
-std::ostream& logging::LogInstance::operator() (int log_level, std::string log_namespace) {
+std::ostream& logging::LogInstance::operator() (const int log_level, const std::string log_namespace) {
     if (m_rule_set(log_level, log_namespace)) {
         if (m_prepend_infostamp)
         {

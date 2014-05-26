@@ -436,11 +436,14 @@ namespace logging {
   // -------------------------------------------------------
   //
   class LogInstance {
+
+  protected:
     PerThreadBufferedStream<char> m_log_stream;
     std::ostream *m_log_ostream_ptr;
     bool m_prepend_infostamp;
     LogRuleSet m_rule_set;
 
+  private:
     // Ensure non-copyable semantics
     LogInstance( LogInstance const& );
     LogInstance& operator=( LogInstance const& );
@@ -465,7 +468,7 @@ namespace logging {
     /// This method return an ostream that you can write a log message
     /// to if the rule_set matches the log level and namespace
     /// provided.  Otherwise, a null ostream is returned.
-    std::ostream& operator() (int log_level, std::string log_namespace="console");
+    virtual std::ostream& operator() (const int log_level, const std::string log_namespace="console");
 
     /// Access the rule set for this log object.
     LogRuleSet& rule_set() { return m_rule_set; }
@@ -557,6 +560,12 @@ namespace logging {
       return *m_console_log;
     }
 
+    void set_console_log(boost::shared_ptr<LogInstance> &log_p)
+    {
+        m_console_log = log_p;
+        return;
+    }
+
     /// Set the output stream and LogRuleSet for the console log
     /// instance.  This can be used to redirect the console output to
     /// a file, for example.
@@ -583,6 +592,12 @@ namespace logging {
   std::ostream& log( int log_level = logging::InfoMessage,
                         std::string log_namespace = "console" );
 
+
+  /// Helpers used for extension classes
+  /// {
+  std::string current_posix_time_string();
+  extern logging::null_ostream g_null_ostream;
+  /// }
 
 } // end of namespace logging
 
