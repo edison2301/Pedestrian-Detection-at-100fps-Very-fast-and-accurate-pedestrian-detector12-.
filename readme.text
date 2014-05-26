@@ -161,7 +161,7 @@ Step 3: compile test time code
 In step 2 all compiled code was only C++, now we will include CUDA code. Having properly done step 1 is critical.
 
 1. `cd doppia/src/applications/objects_detection`
-2. `cmake . && make -j2`
+2. `cmake . -D CMAKE_BUILD_TYPE=RelWithDebInfo && make -j2`
 3. `cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c very_fast_over_bahnhof_cvpr2012.config.ini --gui.disable false`   
     When starting ./objects_detection may spend a few seconds (~10 seconds) precomputing before launching.
 
