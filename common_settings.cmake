@@ -20,7 +20,7 @@ site_name(HOSTNAME)
 set(OPT_CXX_FLAGS "-fopenmp -ffast-math -funroll-loops -march=native")
 #set(OPT_CXX_FLAGS "-fopenmp -ffast-math -funroll-loops -march=native -freciprocal-math -funsafe-math-optimizations -fassociative-math -ffinite-math-only -fcx-limited-range")  # cheap -Ofast copy
 #set(OPT_CXX_FLAGS "-ffast-math -funroll-loops -march=native") # disabled OpenMp, just for testing
-#set(OPT_CXX_FLAGS "-fopenmp -ffast-math -funroll-loops") # disable native compilation, so we can profile with valgrind/callgrind
+#set(OPT_CXX_FLAGS "-fopenmp -ffast-math -funroll-loops") # disable native compilation, so we can profile with older versions of valgrind/callgrind
 
 # enable link time optimization
 # http://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
@@ -334,9 +334,15 @@ elseif(HOSTED_AT_D2_NO_GPU GREATER -1)
   set(liblinear_INCLUDE_DIRS "/home/rodrigob/code/references/liblinear-1.8")
   set(liblinear_LIBRARY_DIRS "/home/rodrigob/code/references/liblinear-1.8")
 
+elseif(${HOSTNAME} STREQUAL  "the_name_of_your_machine")
+  # change the_name_of_your_machine to what /bin/hostname returns
+
+  message(STATUS "Using the_name_of_your_machine compilation options")
+  # start with an empty section, and see what fails as you go through the readme.text instructions
 
 else ()
   message(FATAL_ERROR, "Unknown machine, please add your configuration inside doppia/common_settings.cmake")
+  # see the elseif section above
 
 endif ()
 

@@ -1,7 +1,7 @@
 
 Warning
 =======
-Work in progress branch, code will _not compile_
+Work in progress branch, code may _not work_
 
 
 
@@ -80,7 +80,7 @@ Models created with v1 are still usable with v2, however the quality will be sli
 It is advised to re-train v1 models for v2. We provide some pre-trained models for v2.
 
 Regarding point 2, if you created some training configuration scripts for v1, they will need to be updated for v2. 
-The changes are simple name changes that should be straighforward. 
+The changes are simple name changes that should be straightforward. 
 Feel free to contact us if you have doubts about this.
 
 Please note that if you want to reproduce exactly our 2011 or 2012 results we recommend using v1.
@@ -124,7 +124,7 @@ please fill a bug report (see "FAQ" section).
 Step 1: where is what ?
 ------------------------
 
-Before trying to compile anything you must edit the file `common_settings.cmake` to add the configuration specfic to your own machine.
+Before trying to compile anything you must edit the file `common_settings.cmake` to add the configuration specfic to your own machine (check line 338).
 
 You should also execute (once) `generate_protocol_buffer_files.sh` to make sure the protocol buffer files match the version installed in your system.
 
@@ -151,8 +151,8 @@ This is the simplest program and should make sure that your cmake + C++ pipeline
 If `ground_estimation` compiled fine, then you should be able to use the same steps to compile `stixel_world`.
 
     cd doppia/src/applications/stixel_world
-    cmake . && make && cmake . && make -j2 && OMP_NUM_THREADS=4 ./stixel_world -c fast.config.ini --gui.disable false
-    cmake . && make && cmake . && make -j2 && OMP_NUM_THREADS=4 ./stixel_world -c fast_uv.config.ini --gui.disable false
+    cmake . && make -j2 && OMP_NUM_THREADS=4 ./stixel_world -c fast.config.ini --gui.disable false
+    cmake . && make -j2 && OMP_NUM_THREADS=4 ./stixel_world -c fast_uv.config.ini --gui.disable false
 
 
 Step 3: compile test time code
@@ -208,6 +208,8 @@ All executables inside doppia have the following behaviour:
   This feature is very useful for experimentation, where you can have a "base configuration" and then test different options on top.  
   A typical example of this is `--gui.disable true` / `--gui.disable false` to disable or enable the user interface.
 
+* When using the graphic interface, notice the "user interface keyboards inputs" printed in the console when the application launches (which allows to pause, switch view types, and save screenshots). There is also the option `--gui.save_all_screenshots true` which can be handy.
+
 
 `stixel_world`
 --------------
@@ -249,7 +251,7 @@ When using the detector(s) on new datasets the properly setting `objects_detecto
 For more details of the content of the trained models please consult `doppia/src/objects_detection/detector_model.proto`, notice that not all the options considered on the files and currently handled.
 
 When `gui.disable = false`, the user interface will present images such as the one above. 
-The more colorful a window is, the higher the confidence on the detection; inversely, the darker the window the lower the detection score (the closer to `objects_detector.score_threshold`).
+The more colourful a window is, the higher the confidence on the detection; inversely, the darker the window the lower the detection score (the closer to `objects_detector.score_threshold`).
 
 `boosted_learning`
 --------------------
