@@ -260,10 +260,51 @@ bool BaseApplication::parse_arguments(int argc, char *argv[], program_options::v
 } // end of BaseApplication::parse_arguments
 
 
+/// Specialized LogInstance for stdout and similar,
+/// will add color to warning and error messages
+class ColorLogInstance : public logging::LogInstance {
+
+public:
+    // Initialize a log using an already open stream.  Warning: The
+    // log stores the stream by reference, so you MUST delete the log
+    // object _before_ closing and de-allocating the stream.
+    ColorLogInstance(std::ostream& log_ostream, bool prepend_infostamp = true);
+
+    std::ostream& operator() (int log_level, std::string log_namespace);
+};
+
+
+ColorLogInstance::ColorLogInstance(std::ostream& log_ostream, bool prepend_infostamp)
+    : logging::LogInstance(log_ostream, prepend_infostamp)
+{
+    return;
+}
+
+std::ostream& ColorLogInstance::operator() (const int log_level, const std::string log_namespace) {
+
+    using namespace logging;
+
+    if (m_rule_set(log_level, log_namespace)) {
+        if (m_prepend_infostamp)
+        {
+            m_log_stream << current_posix_time_string() << " {" << boost::this_thread::get_id() << "} [ " << log_namespace << " ] : ";
+        }
+        switch (log_level) {
+        // colours listed at http://stackoverflow.com/questions/5947742
+        case ErrorMessage:   m_log_stream << "\033[1;31mError:\033[0m ";   break;
+        case WarningMessage: m_log_stream << "\033[1;35mWarning:\033[0m "; break;
+        default: break;
+        }
+        return m_log_stream;
+    } else {
+        return g_null_ostream;
+    }
+}
+
+
 /// helper method called by setup_problem
 void BaseApplication::setup_logging(std::ofstream &log_file, const program_options::variables_map &options)
 {
-
 
     if(log_file.is_open())
     {
@@ -279,7 +320,10 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
     rules_for_stdout.add_rule(logging::InfoMessage, "SceneSettings");
     rules_for_stdout.add_rule(logging::InfoMessage, "graphics");
     rules_for_stdout.add_rule(logging::InfoMessage, "detector");
-    logging::get_log().set_console_stream(std::cout, rules_for_stdout);
+    //logging::get_log().set_console_stream(std::cout, rules_for_stdout);
+    boost::shared_ptr<logging::LogInstance> console_log_p(new ColorLogInstance(std::cout));
+    console_log_p->rule_set() = rules_for_stdout;
+    logging::get_log().set_console_log(console_log_p);
 
 
     const string log_option_value = get_option_value<string>(options, "log");
@@ -293,7 +337,10 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
 
         if(log_option_value == "stdout")
         {
-            logging::get_log().add(std::cout, logging_rules);
+            boost::shared_ptr<logging::LogInstance> stdout_log_p(new ColorLogInstance(std::cout));
+            console_log_p->rule_set() = logging_rules;
+            logging::get_log().set_console_log(stdout_log_p);
+            //logging::get_log().add(std::cout, logging_rules);
         }
         else
         {

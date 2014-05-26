@@ -33,7 +33,7 @@ public:
             const ptrdiff_t scale_index,
             const DetectorSearchRange &search_range,
             const int shrunk_width, const int shrunk_height,
-            bool should_touch_borders=true);
+            const bool should_touch_borders = false);
 
     template<typename StageType>
     bool operator()(const std::vector<StageType> &stages);
@@ -102,15 +102,11 @@ bool check_stages_and_range_visitor::operator()(const std::vector<StageType> &st
             touches_left_side and touches_top_side
             and touches_right_side and touches_bottom_side;
 
-    if(should_touch_borders)
+    if(should_touch_borders and (not touches_the_borders))
     {
-
-        if(not touches_the_borders)
-        {
-            everything_is_fine = false;
-        }
+        log_error() << "Failed safety check because features do not touch the borders (but they should)" << std::endl;
+        everything_is_fine = false;
     }
-
 
     const bool print_debug_information = true;
     if(print_debug_information)
@@ -130,7 +126,8 @@ bool check_stages_and_range_visitor::operator()(const std::vector<StageType> &st
         }
         else
         {
-            touches += (should_touch_borders and (not touches_the_borders))? "only touches " : "touches ";
+            //touches += (should_touch_borders and (not touches_the_borders))? "only touches " : "touches ";
+            touches += "only touches ";
             touches += (touches_left_side)? "left, ": "";
             touches += (touches_top_side)? "top, ": "";
             touches += (touches_right_side)? "right, ": "";
@@ -138,16 +135,44 @@ bool check_stages_and_range_visitor::operator()(const std::vector<StageType> &st
             touches += "border(s)";
         }
 
-        log_debug() << boost::str(
-                           boost::format(
-                               "Scale %i is %sfine, min (x, y) == (%i, %i), max (x,y) == (%i, %i), "
-                               "width, height == (%i, %i), (%s)\n")
-                           % scale_index
-                           % ((everything_is_fine)? "": "not ")
-                           % min_observed_x % min_observed_y
-                           % max_observed_x % max_observed_y
-                           % shrunk_width % shrunk_height
-                           % touches );
+        std::string fine;
+        if(not everything_is_fine)
+        {
+            fine = "not ";
+        }
+        else if(everything_is_fine and (not touches_the_borders))
+        {
+            fine = "almost ";
+        }
+        else
+        {
+            fine = "";
+        }
+
+        std::ostream *out_stream_p = &log_debug();
+        if((not everything_is_fine) or (not touches_the_borders))
+        {
+            out_stream_p = &log_warning();
+        }
+
+        (*out_stream_p) << boost::str(
+                               boost::format(
+                                   "Scale %i is %sfine, min (x, y) == (%i, %i), max (x,y) == (%i, %i), "
+                                   "width, height == (%i, %i), (%s)\n")
+                               % scale_index
+                               % fine
+                               % min_observed_x % min_observed_y
+                               % max_observed_x % max_observed_y
+                               % shrunk_width % shrunk_height
+                               % touches );
+
+        static bool first_not_touches_the_border = true;
+        if(first_not_touches_the_border and (not touches_the_borders))
+        {
+            log_warning() << "Not touching the borders indicates that the model is suboptimal regarding detection quality "
+                             "(was trained with doppia v1, instead of v2)" << std::endl;
+            first_not_touches_the_border = false;
+        }
 
     } // end of "if print debug information"
 
