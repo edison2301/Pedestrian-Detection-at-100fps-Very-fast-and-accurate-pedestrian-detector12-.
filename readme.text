@@ -1,4 +1,3 @@
-
 Warning
 =======
 Work in progress branch, code may _not work_
@@ -194,11 +193,12 @@ Step 5: (optional) compile training time code
 
 1. `cd doppia/src/applications/boosted_learning`
 2. Execute the script `run_speedy_training.sh`.
-      If something goes wrong, inspect the script and go step by step.
-      `run_speedy_training.sh` should 
-      a. Compile boosted_learning
-      b. Download and extract the training data
-      c. Launch the training of a model in a "fast configuration", that gives a good balance between training speed and quality.
+    If something goes wrong, inspect the script and go step by step.
+    
+    `run_speedy_training.sh` should 
+      * Compile boosted_learning
+      * Download and extract the training data
+      * Launch the training of a model in a "fast configuration", that gives a good balance between training speed and quality.
 3. You can inspect the learned model (ending in `.bootstrap<number>`), using the python script `tools/objects_detection/models/plot_detector_model.py`.
 
 
