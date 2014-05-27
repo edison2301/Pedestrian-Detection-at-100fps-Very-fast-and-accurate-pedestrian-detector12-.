@@ -44,7 +44,7 @@ MODULE_LOG_MACRO("BoostedLearningApplication")
 std::string BoostedLearningApplication::get_application_title()
 {
     return  "Trains a classifier with bootstrapping "
-            "(M. Mathias, R. Benenson, M. Omran) @ MPI-Inf. 2013.";
+            "(M. Mathias, R. Benenson, M. Omran) @ KULeuven & MPI-Inf. 2011-2014.";
 }
 
 
@@ -931,7 +931,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
         fill (valid_features.begin(), valid_features.begin()+featuresPoolSize, true);
 
         trainingData.reset(new TrainingData(featuresConfigurations, valid_features, maxNumExamples,
-                                            modelWindowSize, objectWindow));
+                                            modelWindowSize, objectWindow, integral_channels_computer_p));
         trainingData->addPositiveSamples(filenamesPositives, modelWindowSize, trainDataOffset);
 
         //std::cout << (int)round(t.elapsed());
@@ -973,7 +973,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
             size_t maxTestingNumExamples = filenamesPositives.size() + testingNumNegativeSamples;;
 
             TrainingData::shared_ptr_t testingData(new TrainingData(featuresConfigurations, valid_features, maxTestingNumExamples,
-                                                                    modelWindowSize, objectWindow));
+                                                                    modelWindowSize, objectWindow, integral_channels_computer_p));
             testingData->addPositiveSamples(filenamesPositives, modelWindowSize, testingDataOffset);
             testingData->addNegativeSamples(filenamesBackground, modelWindowSize, testingDataOffset, testingNumNegativeSamples);
 
@@ -995,7 +995,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
             }
 
             validationData.reset(new TrainingData(featuresConfigurations, valid_features, maxValidationNumExamples,
-                                                  modelWindowSize, objectWindow));
+                                                  modelWindowSize, objectWindow, integral_channels_computer_p));
             validationData->addPositiveSamples(filenamesPositives, modelWindowSize, testingDataOffset);
             validationData->addNegativeSamples(filenamesBackgroundValidation, modelWindowSize, testingDataOffset, testingNumNegativeSamples);
 

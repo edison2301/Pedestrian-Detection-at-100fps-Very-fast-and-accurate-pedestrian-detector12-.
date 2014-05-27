@@ -340,6 +340,8 @@ void ModelIO::set_decision_tree(doppia_protobuf::IntegralChannelBinaryDecisionTr
 
     return;
 }
+
+
 void ModelIO::add_classifier_stage(const boost::shared_ptr<WeakClassifier> wc)
 {
     SoftCascadeOverIntegralChannelsModel *model_p =  _model.mutable_soft_cascade_model();
@@ -364,7 +366,7 @@ void ModelIO::add_classifier_stage(const boost::shared_ptr<WeakClassifier> wc)
 
     stage->set_cascade_threshold(wc->_cascade_threshold);
 
-    if (!_silent_mode) // verbosity_level = 2
+    if (false and (not _silent_mode)) // verbosity_level = 2
     {
         stage->PrintDebugString();
     }
