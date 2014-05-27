@@ -317,9 +317,7 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
     logging::LogRuleSet rules_for_stdout;
     rules_for_stdout.add_rule(logging::EveryMessage, "console");
     rules_for_stdout.add_rule(logging::InfoMessage, "BaseApplication");
-    rules_for_stdout.add_rule(logging::InfoMessage, "SceneSettings");
-    rules_for_stdout.add_rule(logging::InfoMessage, "graphics");
-    rules_for_stdout.add_rule(logging::InfoMessage, "detector");
+
     //logging::get_log().set_console_stream(std::cout, rules_for_stdout);
     boost::shared_ptr<logging::LogInstance> console_log_p(new ColorLogInstance(std::cout));
     console_log_p->rule_set() = rules_for_stdout;
@@ -328,7 +326,6 @@ void BaseApplication::setup_logging(std::ofstream &log_file, const program_optio
 
     const string log_option_value = get_option_value<string>(options, "log");
     // should we also have a log_level option ?
-
 
     if(log_option_value != "none")
     {
