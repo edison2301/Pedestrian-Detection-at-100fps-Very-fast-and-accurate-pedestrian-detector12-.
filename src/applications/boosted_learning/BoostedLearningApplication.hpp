@@ -30,26 +30,26 @@ class BoostedLearningApplication : public doppia::BaseApplication
 
 public:
 
-    static boost::program_options::options_description get_args_options(); //ADDED
+    static boost::program_options::options_description get_args_options();
 
-    std::string get_application_title(); //DONE
+    std::string get_application_title();
 
-    BoostedLearningApplication(); //DONE
-    virtual ~BoostedLearningApplication(); //DONE
+    BoostedLearningApplication();
+    virtual ~BoostedLearningApplication();
 
 protected:
 
-    void get_options_description(boost::program_options::options_description &desc); //ADDED
+    void get_options_description(boost::program_options::options_description &desc);
 
-    void setup_logging(std::ofstream &log_file, const boost::program_options::variables_map &options); //DONE
+    void setup_logging(std::ofstream &log_file, const boost::program_options::variables_map &options);
     void setup_problem(const boost::program_options::variables_map &options);
 
     /// @returns a newly created gui object (can be NULL)
-    AbstractGui* create_gui(const boost::program_options::variables_map &options); //DONE
+    AbstractGui* create_gui(const boost::program_options::variables_map &options);
 
-    int get_current_frame_number() const; //DONE, necessary though?
+    int get_current_frame_number() const;
 
-    void main_loop(); // ADDED
+    void main_loop();
 
     void train(const bool silent_mode, const bool doBootstrap);
     void test(const bool silent_mode);
