@@ -85,7 +85,7 @@ typedef AbstractStixelWorldEstimator::ground_plane_corridor_t ground_plane_corri
 
 std::string ObjectsDetectionApplication::get_application_title()
 {
-    return "Stereo objects detection on a flat world. Rodrigo Benenson @ KULeuven. 2011-2012.";
+    return "Stereo objects detection on a flat world. Rodrigo Benenson, Markus Mathias, Mohamed Omran @ KULeuven & MPI-Inf. 2011-2014.";
 }
 
 
