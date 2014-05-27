@@ -728,8 +728,13 @@ void BoostedLearningApplication::setup_logging(std::ofstream &log_file,
 #if defined(DEBUG)
         rules_for_stdout.add_rule(logging::DebugMessage, "*"); // we are debugging this application
 #else
-        rules_for_stdout.add_rule(logging::InfoMessage, "*"); // "production mode"
+        // "production mode"
+        rules_for_stdout.add_rule(logging::InfoMessage, "BoostedLearningApplication");
+        rules_for_stdout.add_rule(logging::InfoMessage, "*Factory");
+        rules_for_stdout.add_rule(logging::InfoMessage, "WeakLearner");
+        rules_for_stdout.add_rule(logging::InfoMessage, "SoftCascadeOverIntegralChannelsModel");
 #endif
+
     }
 
     return;

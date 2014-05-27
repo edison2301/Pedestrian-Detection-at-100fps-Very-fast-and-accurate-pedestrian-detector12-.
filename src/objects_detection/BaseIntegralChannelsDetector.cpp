@@ -9,7 +9,7 @@
 #include "cascade_stages/check_stages_and_range_visitor.hpp"
 
 #include "helpers/get_option_value.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 
 #include <boost/foreach.hpp>
 #include <boost/variant/apply_visitor.hpp>
@@ -19,33 +19,10 @@
 #include <algorithm> // for std::max
 #include <cstdio>
 
-namespace
+namespace doppia
 {
 
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "BaseIntegralChannelsDetector");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "BaseIntegralChannelsDetector");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "BaseIntegralChannelsDetector");
-}
-
-std::ostream & log_warning()
-{
-    return  logging::log(logging::WarningMessage, "BaseIntegralChannelsDetector");
-}
-
-} // end of anonymous namespace
-
-
-namespace doppia {
+MODULE_LOG_MACRO("BaseIntegralChannelsDetector")
 
 typedef AbstractObjectsDetector::detection_window_size_t detection_window_size_t;
 typedef AbstractObjectsDetector::detections_t detections_t;
@@ -75,6 +52,7 @@ BaseIntegralChannelsDetector ::get_args_options()
 
     return desc;
 }
+
 
 BaseIntegralChannelsDetector::BaseIntegralChannelsDetector(
         const boost::program_options::variables_map &options,
@@ -123,11 +101,11 @@ BaseIntegralChannelsDetector::BaseIntegralChannelsDetector(
 
             if(use_the_detector_model_cascade)
             {
-                log_info() << "Will use the model soft cascade at run time" << std::endl;
+                log.info() << "Will use the model soft cascade at run time" << std::endl;
             }
             else
             {
-                log_info() << "Will not use a soft cascade at run time" << std::endl;
+                log.info() << "Will not use a soft cascade at run time" << std::endl;
             }
 
         }
@@ -183,7 +161,7 @@ void update_search_range(const AbstractObjectsDetector::ground_plane_corridor_t 
             pixels_count_original = 0,
             pixels_count_updated = 0;
 
-    for(size_t scale_index=0; scale_index < extra_data_per_scale.size(); scale_index +=1)
+    for(size_t scale_index = 0; scale_index < extra_data_per_scale.size(); scale_index += 1)
     {
         ScaleData &scale_data = extra_data_per_scale[scale_index];
         DetectorSearchRange &search_range = scale_data.scaled_search_range;
@@ -284,7 +262,7 @@ void update_search_range(const AbstractObjectsDetector::ground_plane_corridor_t 
 
             if(first_call)
             {
-                log_warning() << "At scale index " << scale_index
+                log.warning() << "At scale index " << scale_index
                               << " the detection window size is larger than the biggest ground plane corridor. "
                               << "Setting the detection search to a single line."
                               << std::endl;
@@ -411,7 +389,6 @@ void BaseIntegralChannelsDetector::compute_scaled_detection_cascades()
     assert(cascade_model_p);
 
     detection_cascade_per_scale.clear();
-
     detector_cascade_relative_scale_per_scale.clear();
     detection_window_size_per_scale.clear();
     original_detection_window_scales.clear();
@@ -419,13 +396,12 @@ void BaseIntegralChannelsDetector::compute_scaled_detection_cascades()
     const size_t num_scales = search_ranges_data.size();
 
     detection_cascade_per_scale.reserve(num_scales);
-
     detector_cascade_relative_scale_per_scale.reserve(num_scales);
     detection_window_size_per_scale.reserve(num_scales);
     original_detection_window_scales.reserve(num_scales);
 
 
-    for(size_t scale_index=0; scale_index < num_scales; scale_index+=1)
+    for(size_t scale_index = 0; scale_index < num_scales; scale_index += 1)
     {
         DetectorSearchRangeMetaData &search_range_data = search_ranges_data[scale_index];
         original_detection_window_scales.push_back(search_range_data.detection_window_scale);
@@ -454,10 +430,9 @@ void BaseIntegralChannelsDetector::compute_extra_data_per_scale(
     // IntegralChannelsForPedestrians::get_shrinking_factor() == GpuIntegralChannelsForPedestrians::get_shrinking_factor()
     const float channels_resizing_factor = 1.0f/IntegralChannelsForPedestrians::get_shrinking_factor();
 
-
     max_search_range_width = 0;
     max_search_range_height = 0;
-    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index+=1)
+    for(size_t scale_index = 0; scale_index < search_ranges_data.size(); scale_index += 1)
     {
         const DetectorSearchRangeMetaData &original_search_range_data = search_ranges_data[scale_index];
 
@@ -493,7 +468,7 @@ void BaseIntegralChannelsDetector::compute_extra_data_per_scale(
                                     std::max<stride_t::coordinate_t>(1, iround(y_stride*stride_scaling)));
             if(first_call)
             {
-                log_debug()
+                log.debug()
                         << boost::str(
                                boost::format(
                                    "Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n")
@@ -572,7 +547,7 @@ void BaseIntegralChannelsDetector::check_extra_data_per_scale()
     const int shrinking_factor = IntegralChannelsForPedestrians::get_shrinking_factor();
     const float channels_resizing_factor = 1.0f/shrinking_factor;
 
-    for(size_t scale_index=0; scale_index < search_ranges_data.size(); scale_index+=1)
+    for(size_t scale_index = 0; scale_index < search_ranges_data.size(); scale_index += 1)
     {
 
         const ScaleData &extra_data = extra_data_per_scale[scale_index];
@@ -635,7 +610,7 @@ void BaseIntegralChannelsDetector::check_extra_data_per_scale()
                     }
                     else if(false or (num_warnings < max_num_warnings))
                     {
-                        log_warning() << "The y-margin between search_range + detection_window_size "
+                        log.warning() << "The y-margin between search_range + detection_window_size "
                                          "and the image border is suspiciously large (" << delta_y << " pixels)" << std::endl;
 
                         num_warnings += 1;
@@ -680,9 +655,8 @@ void BaseIntegralChannelsDetector::check_extra_data_per_scale()
                     shrunk_height = extra_data.scaled_input_image_size.y() / shrinking_factor;
 
             check_stages_and_range_visitor visitor(scale_index, scaled_search_range, shrunk_width, shrunk_height);
-            bool everything_is_fine = boost::apply_visitor(visitor, cascade);
-            //hack
-            everything_is_fine = true;
+            const bool everything_is_fine = boost::apply_visitor(visitor, cascade);
+
             if(not everything_is_fine)
             {
                 printf("Model with occlusion '%s' (occlusion level %.3f) at scale %zi failed the safety checks\n",
@@ -803,8 +777,8 @@ DetectorSearchRange BaseIntegralChannelsDetector::compute_scaled_search_range(co
     {
         scaled_range.min_x = 0;
         scaled_range.min_y = 0;
-        scaled_range.max_x = std::max<int>(0, shrunk_input_width -detection_window_width);
-        scaled_range.max_y = std::max<int>(0, shrunk_input_height -detection_window_height);
+        scaled_range.max_x = std::max<int>(0, shrunk_input_width - detection_window_width);
+        scaled_range.max_y = std::max<int>(0, shrunk_input_height - detection_window_height);
     }
     else
     {
@@ -923,7 +897,7 @@ DetectorSearchRange BaseIntegralChannelsDetector::compute_scaled_search_range(co
 
     if((scaled_range.max_x == 0) or (scaled_range.max_y == 0))
     {
-        log_info()
+        log.info()
                 << boost::str(
                        boost::format(
                            "Scale %i (scale %.3f, occlusion %.3f '%s') has an empty search range\n")
