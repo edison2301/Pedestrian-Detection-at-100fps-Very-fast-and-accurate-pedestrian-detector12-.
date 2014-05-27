@@ -46,7 +46,7 @@ TrainingData::TrainingData(
 
     if(_integralChannelsComputer.get() == NULL)
     {
-        throw std::runtime_error("TrainingData should receive as input an AbstractIntegralChannelsComputer instance");
+       throw std::runtime_error("TrainingData should receive as input an AbstractIntegralChannelsComputer instance");
     }
 
     return;

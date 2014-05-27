@@ -8,8 +8,8 @@ make -j5
 
 if [ ! -d "InriaPerson_octave_0_train" ]; then
 
-  #DATA_URL="http:// "
-  DATA_URL="file:///home/rodrigob/data/INRIAPerson_multiscales_crisp/InriaPerson_octave_0_train.tar"
+  DATA_URL="http://transfer.d2.mpi-inf.mpg.de/benenson/InriaPerson_octave_0_train.tar"
+  #DATA_URL="file:///home/rodrigob/data/INRIAPerson_multiscales_crisp/InriaPerson_octave_0_train.tar"
 
   echo "Downloading the training data ..."
   curl -o InriaPerson_octave_0_train.tar ${DATA_URL} 
