@@ -11,11 +11,12 @@ but here we plot the model, not the specific activation for a single image
 
 from __future__ import print_function
 
-import sys
-sys.path.append("..")
-
-import detector_model_pb2
 import os.path
+import sys
+filedir = os.path.join(os.path.dirname(__file__))
+sys.path.append(os.path.join(filedir, ".."))
+sys.path.append(os.path.join(filedir, "..", "..", "helpers"))
+import detector_model_pb2
 from optparse import OptionParser
 
 import numpy as np
@@ -24,10 +25,10 @@ from matplotlib.ticker import MultipleLocator
 import scipy.stats
 
 from mirror_occluded_model import get_occlusion_level_and_type
+#from hinton_diagram import hinton
 
 #print_the_features = True
 print_the_features = False
-
 
 channels = None
 min_box_xy = None
@@ -198,10 +199,15 @@ def plot_cascade(cascade, model):
         #print("stage %i weight:" % i , weights[i])
         pass
 
-    if thresholds[0] < -1E5:
-        print("The provided model seems not have a soft cascade, "
-              "skipping plot_cascade")
-        return
+    if False:
+        if thresholds[0] < -1E5:
+            print("The provided model seems not have a soft cascade, "
+                   "skipping plot_cascade")
+            return
+    else:
+         if thresholds[0] < -1E5:
+            print("The provided model seems not have a soft cascade")
+    
 
     create_new_figure()
 
@@ -209,9 +215,15 @@ def plot_cascade(cascade, model):
 
     # draw the figure
     max_scores = pylab.cumsum(pylab.absolute(weights))
+    pylab.subplot(2, 1, 1)
     pylab.plot(max_scores, label="maximum possible score")
-    pylab.plot(thresholds, label="cascade threshold")
+    pylab.legend(loc="upper left", fancybox=True)
+    pylab.xlabel("Cascade stage")
+    pylab.ylabel("Detection score")
 
+    pylab.subplot(2, 1, 2)
+    pylab.plot(weights, label="weak classifier weights")
+    pylab.plot(thresholds, label="cascade threshold")
     pylab.legend(loc="upper left", fancybox=True)
     pylab.xlabel("Cascade stage")
     pylab.ylabel("Detection score")
@@ -220,9 +232,10 @@ def plot_cascade(cascade, model):
     if model:
         title = "Soft cascade for model '%s' over '%s' dataset" \
                 % (model.detector_name, model.training_dataset_name)
-    pylab.title(title)
-    pylab.draw()
+    pylab.suptitle(title)
+    #pylab.draw()
 
+    pylab.tight_layout()
     return
 
 
@@ -253,10 +266,10 @@ def read_model(model_filename):
 
     if (type(model) is detector_model_pb2.DetectorModel) \
        and model.soft_cascade_model:
-        #print("Model shrinking factor ==",
-        #      model.soft_cascade_model.shrinking_factor)
-        print("Model channels description ==",
-              model.soft_cascade_model.channels_description)
+        print("Model shrinking factor ==",
+              model.soft_cascade_model.shrinking_factor)
+        #print("Model channels description ==",
+        #      model.soft_cascade_model.channels_description)
 
     try:
         occlusion_level, occlusion_type = \
@@ -284,7 +297,8 @@ def plot_channels(channels, model=None,
         channel = channels[c, :, :].copy()
         if normalize_per_channel:
             channel -= channel.min()
-            channel /= channel.max()
+            if channel.max() != 0:
+                channel /= channel.max()
 
         channels_2d[:, (width * c):(width * (c + 1))] = channel
 
@@ -312,6 +326,23 @@ def plot_channels(channels, model=None,
                          cmap=colormap, interpolation="nearest")
 
     channels_axes.set_xticks(range(0, width*num_channels+1, width))
+
+    if num_channels == 10:
+        ticks = pylab.arange((width / 2), width*num_channels+1, width)
+        ticks_labels = ("$90^{\\circ}$", "$60^{\\circ}$", "$30^{\\circ}$",
+                        "$0^{\\circ}$", "$-30^{\\circ}$", "$-60^{\\circ}$",
+                        #"$\\left\\Vert \\cdot \\right\\Vert$",
+                        "$||\\cdot||$",
+                        "L", "U", "V")
+
+        #channels_axes.set_xticks(ticks, ticks_labels)
+        #pylab.xticks(ticks, ticks_labels)
+        channels_axes.set_xticks(range(0, width*num_channels+1, width))
+        channels_axes.set_xticklabels(ticks_labels)
+    else:
+        channels_axes.set_xticks(range(0, width*num_channels+1, width))
+
+
     channels_axes.set_yticks(range(0, height+1, width))
     channels_axes.xaxis.set_minor_locator(MultipleLocator(min(8, width/4)))
     channels_axes.yaxis.set_minor_locator(MultipleLocator(8))
@@ -340,10 +371,13 @@ def plot_channels(channels, model=None,
 
     model_scale = 2**model_octave
 
+    #pylab.xlabel("$x$ axis in pixels")
+    #pylab.ylabel("$y$ axis in pixels")
+
     if not input_channels_figure:
         pylab.gca().yaxis.set_label_position("right")
         pylab.ylabel("Scale %.0f" % model_scale,
-                     fontsize=20, labelpad=10, rotation=-90)
+                     fontsize=20, labelpad=20, rotation=-90)
 
         pylab.title(title)
         pylab.gcf().canvas.set_window_title(
@@ -373,16 +407,27 @@ def plot_channels(channels, model=None,
         model_axes.xaxis.grid(False)
         model_axes.set_aspect("equal")
 
-        model_axes.yaxis.set_label_position("right")
+        pylab.xlabel("$x$ axis in pixels")
+        pylab.ylabel("$y$ axis in pixels")
 
+        #model_axes.yaxis.set_label_position("right")
+        #twin_x = model_axes.twinx()
+        #twin_x.yaxis.set_ticklabels([])
+        #twin_x.set_aspect("equal")
         if not input_model_figure:
             model_axes.set_ylabel("Scale %.0f" % model_scale,
-                  fontsize=45, labelpad=20, rotation=-90)
+                  fontsize=45,
+                  labelpad=20,
+                  #rotation=-90
+                )
             pylab.title(title)
             pylab.gcf().canvas.set_window_title("Octave %.1f" % model_octave)
         else:
             model_axes.set_ylabel("Scale %.0f" % model_scale,
-                  fontsize=25, labelpad=20, rotation=-90)
+                  fontsize=25,
+                  labelpad=20,
+                  #rotation=-90
+                )
     # end of "plot all in one"
 
     pylab.draw()
@@ -420,6 +465,174 @@ def increase_model_num_channels(new_num_channels):
                                 channels.shape[1], channels.shape[2])
     channels = np.append(channels,
                          np.zeros(new_empty_channels_shape), axis=0)
+    return
+
+
+def plot_channels_cooccurrence(cascade):
+
+    model_num_channels = 0
+    # square matrix matrix that counts the co-occurrences
+    channels_cooccurrence = np.zeros((model_num_channels, model_num_channels))
+
+    for i, stage in enumerate(cascade.stages):
+        if stage.feature_type != stage.Level2DecisionTree:
+            raise Exception("plot_channels_cooccurrence "
+                            "only accepts level-2 trees")
+        # stage.feature_type == stage.Level2DecisionTree
+
+        tree = stage.level2_decision_tree
+        root_channel = 0
+        children_channels = []
+        max_channel = 0
+        for node in tree.nodes:
+            channel = node.decision_stump.feature.channel_index
+            max_channel = max(max_channel, channel)
+            if node.id == node.parent_id:
+                root_channel = channel
+            else:
+                children_channels.append(channel)
+        # end  of "for all three nodes"
+
+        if max_channel >= channels_cooccurrence.shape[0]:
+            old_max_channel = channels_cooccurrence.shape[0]
+            new_cooccurence = np.zeros((max_channel + 1, max_channel + 1))
+            new_cooccurence[:old_max_channel, :old_max_channel] = \
+                channels_cooccurrence  # copy current counts
+            channels_cooccurrence = new_cooccurence  # replace
+
+
+        for c in children_channels:
+            channels_cooccurrence[root_channel, c] += 1
+            channels_cooccurrence[c, root_channel] += 1
+
+    # end of "for all cascade stages"
+
+    if channels_cooccurrence.shape[0] == 43:
+        # Special case for semantic context extension of base model
+        channels_cooccurrence[10:16, 10:16] = channels_cooccurrence[-6:, -6:]
+        channels_cooccurrence[10:16, :] = channels_cooccurrence[-6:, :]
+        channels_cooccurrence[:, 10:16] = channels_cooccurrence[:, -6:]
+        channels_cooccurrence = channels_cooccurrence[:16, :16]
+
+        #channels_cooccurrence = pylab.log(channels_cooccurrence)
+        channels_cooccurrence = pylab.sqrt(channels_cooccurrence)
+        print("Showing sqrt of co-occurrences")
+
+
+    create_new_figure()
+    #hinton(channels_cooccurrence)
+
+    pylab.pcolor(channels_cooccurrence, vmin=0)
+    #pylab.imshow(channels_cooccurrence, vmin=0, origin="upper",
+    #                interpolation="nearest")
+    pylab.gca().invert_yaxis()
+
+    ticks_labels = None
+    if channels_cooccurrence.shape[0] == 10:
+        ticks_labels = (u"|", u"╱", u"/", u"-", u"\\", u"╲", u"M",
+                        u"L", u"U", u"V")
+        ticks_labels = ("$90^{\\circ}$", "$60^{\\circ}$", "$30^{\\circ}$",
+                        "$0^{\\circ}$", "$-30^{\\circ}$", "$-60^{\\circ}$",
+                        #"$\\left\\Vert \\cdot \\right\\Vert$",
+                        "$||\\cdot||$",
+                        "L", "U", "V")
+    elif channels_cooccurrence.shape[0] == 16:
+        ticks_labels = ("$90^{\\circ}$", "$60^{\\circ}$", "$30^{\\circ}$",
+                        "$0^{\\circ}$", "$-30^{\\circ}$", "$-60^{\\circ}$",
+                        #"$\\left\\Vert \\cdot \\right\\Vert$",
+                        "$||\\cdot||$",
+                        "L", "U", "V",
+                        "Ver.", "Hor.", "Veg.", "Sky", "Car", "Per.")
+    else:
+        pass
+
+    if ticks_labels:
+        ticks = pylab.arange(channels_cooccurrence.shape[0]) + 0.5
+        pylab.xticks(ticks, ticks_labels)
+        pylab.yticks(ticks, ticks_labels)
+
+    #pylab.imshow(channels_cooccurrence)
+    pylab.colorbar()
+    pylab.title("Channels co-occurrence")
+    pylab.gcf().canvas.set_window_title("Channels co-occurrence")
+    pylab.tight_layout()
+
+    return
+
+
+
+def plot_pairwise_offsets(cascade):
+
+    # for each pair of features, stores the offset between the features center
+    pairwise_offsets = []
+
+    for i, stage in enumerate(cascade.stages):
+        if stage.feature_type != stage.Level2DecisionTree:
+            raise Exception("plot_pairwise_offsets only accepts level-2 trees")
+        # stage.feature_type == stage.Level2DecisionTree
+
+        tree = stage.level2_decision_tree
+        root_center = (0, 0)
+        children_centers = []
+        for node in tree.nodes:
+            center = box_center(node.decision_stump.feature.box)
+            if node.id == node.parent_id:
+                root_center = center
+            else:
+                children_centers.append(center)
+        # end  of "for all three nodes"
+
+        for center in children_centers:
+            pairwise_offsets.append((root_center, center))
+    # end of "for all cascade stages"
+
+    create_new_figure()
+
+    pylab.subplot(1, 2, 1)
+    for pair in pairwise_offsets:
+        a_xy, b_xy = pair
+        pylab.plot((a_xy[0], b_xy[0]), (a_xy[1], b_xy[1]),
+                   color="black", alpha=0.05)
+
+
+    pylab.gca().invert_yaxis()
+    pylab.xlabel("Pixel $x$ coordinate")
+    pylab.ylabel("Pixel $y$ coordinate")
+    pylab.title("Feature pairs, start and end")
+
+
+    pylab.subplot(1, 2, 2)
+
+    #count_size = 41
+    #count_size = (36 * 2) + 1
+    count_size = (36 * 2 * 1.5) + 1
+    count_size_half = count_size / 2
+    count = np.zeros((count_size, count_size))
+    delta_x, delta_y = [], []
+    for pair in pairwise_offsets:
+        a_xy, b_xy = pair
+        d_x, d_y = a_xy[0] - b_xy[0], a_xy[1] - b_xy[1]
+        delta_x.append(d_x)
+        delta_y.append(-d_y)
+        count[d_y + count_size_half, d_x + count_size_half] += 1
+
+    if False:
+        pylab.plot(delta_x, delta_y, "ko", markersize=5, alpha=0.05)
+    else:
+        pylab.pcolor(count, vmin=0)
+        pylab.axis([0, count_size, 0, count_size])
+        ticks = pylab.arange(5, count_size, 10)
+        pylab.xticks(ticks, ticks - count_size_half)
+        pylab.yticks(ticks, ticks - count_size_half)
+        pylab.colorbar()
+
+    pylab.xlabel("$\Delta x$ offset in pixels")
+    pylab.ylabel("$\Delta y$ offset in pixels")
+    pylab.title("Feature pairs offset")
+
+    pylab.suptitle("Feature pairs")
+    pylab.gcf().canvas.set_window_title("Feature pairs")
+    pylab.tight_layout()
     return
 
 
@@ -481,6 +694,14 @@ def plot_detector_model(model, model_index=0, num_models=1):
                 model.occlusion_level))
 
     print("Model min/max box xy == %s/%s" % (min_box_xy, max_box_xy))
+
+    plot_cooccurrence = False
+    if plot_cooccurrence:
+        plot_channels_cooccurrence(cascade)
+
+    plot_the_pairwise_offsets = False
+    if plot_the_pairwise_offsets:
+        plot_pairwise_offsets(cascade)
 
     force_separate_plots = False
     if num_models <= 1 or force_separate_plots:
@@ -551,7 +772,14 @@ def compute_stumps_statistics(model):
                         abs(bb_ys[1] - bb_ys[2]),
                         abs(bb_ys[0] - bb_ys[2]),
                         max_intra_tree_height_diff)
-
+            elif stage.feature_type == stage.Stumps:
+                bb = stage.decision_stump.feature.box
+                stump_is_ok = (bb.max_corner.y <= half_height)
+                if stump_is_ok:
+                    stumps_counter += 1
+                    weak_learners_counter += 1
+                bb_ys = [stage.decision_stump.feature.box.max_corner.y]
+                max_intra_tree_height_diff = 0
             else:
                 raise Exception("Received an unhandled stage.feature_type")
         # end of "for each stage"
@@ -723,7 +951,6 @@ def plot_features_statistics():
     num_channels = len(channels_count)
     _, model_height, model_width = channels.shape
 
-
     tango_sky_blue_1 = (114 / 255.0, 159 / 255.0, 207 / 255.0, 1)
     tango_sky_blue_2 = (52 / 255.0, 101 / 255.0, 164 / 255.0, 1)
 
@@ -750,22 +977,52 @@ def plot_features_statistics():
         #pylab.hist(channel_indices, bins=num_channels,
                    #normed=True,
         #pylab.bar(range(num_channels), hist,
-        pylab.bar(np.array(range(num_channels)) - ((1 - d) / 2), hist,
+        pylab.bar(np.arange(num_channels) - ((1 - d) / 2), hist,
                   width=1 - d,
                   color=tango_sky_blue_1, edgecolor=tango_sky_blue_2)
         pylab.gca().set_xticks(range(num_channels))
-        pylab.gca().set_xticklabels(range(num_channels))
         pylab.xlim(-0.5 - d, num_channels - 0.5 + d)
+
+        if num_channels == 10:
+            ticks_labels = ("$90^{\\circ}$", "$60^{\\circ}$", "$30^{\\circ}$",
+                            "$0^{\\circ}$", "$-30^{\\circ}$", "$-60^{\\circ}$",
+                            #"$\\left\\Vert \\cdot \\right\\Vert$",
+                            "$||\\cdot||$",
+                            "L", "U", "V")
+            pylab.gca().set_xticklabels(ticks_labels)
+        elif num_channels == 43:
+            ticks_labels = ["$90^{\\circ}$", "$60^{\\circ}$", "$30^{\\circ}$",
+                            "$0^{\\circ}$", "$-30^{\\circ}$", "$-60^{\\circ}$",
+                            #"$\\left\\Vert \\cdot \\right\\Vert$",
+                            "$||\\cdot||$",
+                            "L", "U", "V"]
+            ticks_labels.extend(range(10, 37))
+            ticks_labels.extend(["vert.", #vertical structure,
+                                 "horiz.", #horizontal surface,
+                                 "veg.",
+                                 "sky",
+                                 "car",  #"vehicle",
+                                 "person"])
+            assert len(ticks_labels) == num_channels, \
+                "num_labels %i is not equal to num_channels %i" \
+                % (len(ticks_labels), num_channels)
+            pylab.gca().set_xticklabels(ticks_labels)
+        else:
+            pylab.gca().set_xticklabels(range(num_channels))
+
         pylab.xlabel("Channel index")
         pylab.ylabel("Fraction of features")
         pylab.title("Fraction of features per channel")
         pylab.gcf().canvas.set_window_title("Features per channel")
+
+    pylab.tight_layout()
 
     if False:
         # -=-=-=-=-=-=-=-=-=-=-=-=-
         create_new_figure()
         pylab.bar(range(num_channels), channels_weighted_count)
         pylab.title("Channels weighted count")
+        pylab.tight_layout()
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-
     create_new_figure()
@@ -794,20 +1051,28 @@ def plot_features_statistics():
     else:
         areas = np.array(features_area)
         min_max_area = areas.min(), areas.max()
-        num_bins = min_max_area[1]
-        hist, bins = pylab.histogram(features_area, num_bins, normed=True)
+        num_bins = min_max_area[1] 
+        hist, bins = pylab.histogram(features_area, num_bins, [1, num_bins], normed=1)
         cumsum = pylab.cumsum(hist)
         #bins_x_value = [((bins[i] + bins[i + 1]) / 2) for i in range(len(bins) - 1)]
         bins_x_value = [bins[i] for i in range(len(bins) - 1)]
         pylab.plot(bins_x_value, cumsum, color=tango_plum_2, linewidth=4)
 
-        xticks_step = (min_max_area[1] - min_max_area[0]) / 10.0
+        if (min_max_area[1] - min_max_area[0]) == 0:
+            xticks_step = min_max_area[1] / 10.0
+        else:
+            xticks_step = (min_max_area[1] - min_max_area[0]) / 10.0
+
         xticks_step = int(pylab.ceil(xticks_step / 10.0) * 10)
         xticks = [ min_max_area[0] ] \
-                 + range(0, min_max_area[1], xticks_step) + [min_max_area[1]]
+                + range(0, min_max_area[1], xticks_step) + [min_max_area[1]]
+
         pylab.gca().set_xticks(xticks)
         #pylab.gca().set_xticklabels(range(num_channels))
-        pylab.xlim(min_max_area)
+        if (min_max_area[1] - min_max_area[0]) == 0:
+            pylab.xlim(0, min_max_area[1])
+        else:
+            pylab.xlim(min_max_area)
         pylab.ylim(0, 1.1)
         pylab.xlabel("Feature area in pixels$^2$")
         pylab.ylabel("Fraction of features")
@@ -816,6 +1081,7 @@ def plot_features_statistics():
 
     # end of if, elif, else chain
 
+    pylab.tight_layout()
     # -=-=-=-=-=-=-=-=-=-=-=-=-
     create_new_figure()
 
@@ -916,6 +1182,7 @@ def plot_features_statistics():
         pylab.gcf().canvas.set_window_title("Feature per ratio")
 
     # end of if, elif, else chain
+    pylab.tight_layout()
 
     # -=-=-=-=-=-=-=-=-=-=-=-=-
     create_new_figure()
@@ -958,7 +1225,17 @@ def plot_features_statistics():
         pylab.title("Features centres")
         pylab.gcf().canvas.set_window_title("Features centres")
 
+    pylab.tight_layout()
     # -=-=-=-=-=-=-=-=-=-=-=-=-
+
+    plot_top_features_by_weight()
+
+    # -=-=-=-=-=-=-=-=-=-=-=-=-
+    plot_boxes_by_area_and_ratio()
+
+    return
+
+def plot_top_features_by_weight():
     create_new_figure()
 
     sorted_features_box_and_weight = list(features_box_and_weight)
@@ -977,7 +1254,7 @@ def plot_features_statistics():
 
     #num_top_features = 18
     #num_top_features = 6
-    num_top_features = 12
+    num_top_features = 16
     top_features_boxes = [x[0]
         for x in sorted_features_box_and_weight[:num_top_features]]
     top_features_weights = [x[1]
@@ -1042,12 +1319,9 @@ def plot_features_statistics():
                          % num_top_features)
     pylab.gcf().canvas.set_window_title("Top features")
 
-
-    # -=-=-=-=-=-=-=-=-=-=-=-=-
-    plot_boxes_by_area_and_ratio()
+    pylab.tight_layout()
 
     return
-
 
 def add_boxes_to_image(image, boxes_and_weights):
 
@@ -1206,6 +1480,7 @@ def plot_boxes_by_area_and_ratio():
                          (float_eps, cut_a), (cut_a, cut_b)]
 
     print("Ratio ranges", ratio_ranges)
+    pylab.tight_layout()
 
     figure = create_new_figure()
 
@@ -1297,6 +1572,7 @@ def plot_boxes_by_area_and_ratio():
                     fontsize="large")
     pylab.gcf().canvas.set_window_title("Features areas and ratios")
 
+    #pylab.tight_layout()  # not good for this plot
     return
 
 
@@ -1329,10 +1605,13 @@ def main():
                                 model_index=i,
                                 num_models=len(model.detectors))
             #compute_stumps_statistics(detector_model)
+            if True:
+                 plot_features_statistics()
 
     else:  # assume single scale model
         plot_detector_model(model)
-        #compute_stumps_statistics(model)
+		if True:
+	        compute_stumps_statistics(model)
         if True:
             plot_weak_classifiers_versus_height(model)
             plot_weak_classifiers_versus_width(model)
