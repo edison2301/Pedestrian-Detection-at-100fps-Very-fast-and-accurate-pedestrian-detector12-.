@@ -196,9 +196,11 @@ Step 5: (optional) compile training time code
     If something goes wrong, inspect the script and go step by step.
     
     `run_speedy_training.sh` should 
+    
       * Compile boosted_learning
       * Download and extract the training data
       * Launch the training of a model in a "fast configuration", that gives a good balance between training speed and quality.
+      
 3. You can inspect the learned model (ending in `.bootstrap<number>`), using the python script `tools/objects_detection/models/plot_detector_model.py`.
 
 
