@@ -6,7 +6,7 @@
 
 #include "BaseApplication.hpp"
 
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 #include "helpers/get_option_value.hpp"
 #include "helpers/any_to_string.hpp"
 
@@ -27,31 +27,11 @@
 #include <cstdlib>
 
 
-namespace
-{
-
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "BaseApplication");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "BaseApplication");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "BaseApplication");
-}
-
-} // end of anonymous namespace
-
-
 namespace doppia
 {
 
-using logging::log;
+MODULE_LOG_MACRO("BaseApplication")
+
 using namespace std;
 
 //  ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-
@@ -104,7 +84,7 @@ int BaseApplication::main(int argc, char *argv[])
         setup_problem(options_values);
         init_gui(options_values);
 
-        log_debug() << "Entering into main_loop" << std::endl;
+        log.debug() << "Entering into main_loop" << std::endl;
         // wait until the window is close
         main_loop();
     }
@@ -142,6 +122,7 @@ program_options::options_description BaseApplication::get_args_options(const std
     return desc;
 }
 
+
 void BaseApplication::add_args_options(program_options::options_description &desc, const std::string application_name)
 {
 
@@ -169,7 +150,7 @@ bool BaseApplication::parse_arguments(int argc, char *argv[], program_options::v
     const bool print_argv = false;
     if (print_argv)
     {
-        for (int i=0; i<argc; i+=1)
+        for (int i = 0; i<argc; i += 1)
         {
             printf("argv[%i] == %s\n",i, argv[i]);
         }
@@ -195,7 +176,7 @@ bool BaseApplication::parse_arguments(int argc, char *argv[], program_options::v
         //program_options::store(program_options::parse_command_line(argc, argv, desc), options);
         program_options::notify(options);
     }
-    catch (std::exception & e)
+    catch (const std::exception & e)
     {
         cout << "\033[1;31mError parsing the command line options:\033[0m " << e.what () << endl << endl;
         cout << desc << endl;
@@ -412,7 +393,7 @@ void  BaseApplication::create_recordings_path()
     {
         // create the directory
         create_directory(recordings_path);
-        log_info() << boost::str(boost::format("Created recordings directory %s")
+        log.info() << boost::str(boost::format("Created recordings directory %s")
                                  % recordings_path.string()) << std::endl;
         record_program_options();
     }
@@ -441,7 +422,7 @@ void BaseApplication::record_program_options() const
         fout << std::endl;
     }
 
-    printf("Created %s\n", fout_filename.c_str());
+    log.info() << "Created " << fout_filename << std::endl;
 
     return;
 }

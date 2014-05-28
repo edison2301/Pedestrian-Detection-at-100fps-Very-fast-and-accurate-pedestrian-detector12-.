@@ -37,7 +37,8 @@ public:
 
     /// This function is identical to GpuIntegralChannelsDetector::set_image except it loads
     /// additional per-scale information into the GPU
-    void set_image(const boost::gil::rgb8c_view_t &input_view);
+    void set_image(const boost::gil::rgb8c_view_t &input_view,
+                   const std::string &image_file_path = std::string());
 
     void set_ground_plane_corridor(const ground_plane_corridor_t &corridor);
     void set_stixels(const stixels_t &stixels);

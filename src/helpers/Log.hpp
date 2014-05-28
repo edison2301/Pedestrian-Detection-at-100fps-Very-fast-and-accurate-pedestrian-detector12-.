@@ -171,7 +171,7 @@ namespace logging {
   // Some handy typedefs
   //
   // These are made to be lower case names to jive with the C++ std
-  // library naming convertion for streams (i.e. std::cin, std::cout,
+  // library naming conversion for streams (i.e. std::cin, std::cout,
   // etc.)
   typedef NullOutputStream<char> null_ostream;
   typedef MultiOutputStream<char> multi_ostream;
