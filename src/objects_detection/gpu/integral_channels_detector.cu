@@ -535,7 +535,7 @@ void integral_channels_detector_kernel(
         const gpu_integral_channels_t::KernelConstData integral_channels,
         const size_t scale_index,
         const typename Cuda::DeviceMemory<DetectionCascadeStageType, 2>::KernelConstData detection_cascade_per_scale,
-        PtrElemStepf detection_scores)
+        dev_mem_ptr_step_float_t detection_scores)
 {
     const int
             x = blockIdx.x * blockDim.x + threadIdx.x,
@@ -557,7 +557,7 @@ void integral_channels_detector_kernel(
             cascade_length = detection_cascade_per_scale.size[0],
             scale_offset = scale_index * detection_cascade_per_scale.stride[0];
 
-    for(size_t stage_index=0; stage_index < cascade_length; stage_index+=1)
+    for(size_t stage_index = 0; stage_index < cascade_length; stage_index += 1)
     {
         const size_t index = scale_offset + stage_index;
 
@@ -728,7 +728,7 @@ void integral_channels_detector_kernel(
             cascade_length = detection_cascade_per_scale.size[0],
             scale_offset = scale_index * detection_cascade_per_scale.stride[0];
 
-    for(size_t stage_index=0; stage_index < cascade_length; stage_index+=1)
+    for(size_t stage_index = 0; stage_index < cascade_length; stage_index += 1)
     {
         const size_t index = scale_offset + stage_index;
 
@@ -927,7 +927,7 @@ void integral_channels_detector_impl(
         const doppia::DetectorSearchRange &search_range,
         GpuDetectionCascadePerScaleType &detection_cascade_per_scale,
         const bool use_the_model_cascade,
-        cv::gpu::DevMem2Df& detection_scores)
+        dev_mem_2d_float_t& detection_scores)
 {
 
     if((search_range.min_x != 0) or (search_range.min_y != 0))
@@ -975,7 +975,6 @@ void integral_channels_detector_impl(
 
     if(use_the_model_cascade)
     {
-
         integral_channels_detector_kernel
                 <true, CascadeStageType>
                 <<<grid_dimensions, block_dimensions>>>
@@ -1011,7 +1010,7 @@ void integral_channels_detector(
         const doppia::DetectorSearchRange &search_range,
         gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
         const bool use_the_model_cascade,
-        cv::gpu::DevMem2Df& detection_scores)
+        dev_mem_2d_float_t& detection_scores)
 {
     integral_channels_detector_impl(integral_channels,
                                     search_range_index,
@@ -1029,7 +1028,7 @@ void integral_channels_detector(
         const doppia::DetectorSearchRange &search_range,
         gpu_detection_stump_cascade_per_scale_t &detection_cascade_per_scale,
         const bool use_the_model_cascade,
-        cv::gpu::DevMem2Df& detection_scores)
+        dev_mem_2d_float_t& detection_scores)
 {
     integral_channels_detector_impl(integral_channels,
                                     search_range_index,
@@ -1047,7 +1046,7 @@ void integral_channels_detector(
         const doppia::DetectorSearchRange &search_range,
         gpu_detection_three_stumps_cascade_per_scale_t &detection_cascade_per_scale,
         const bool use_the_model_cascade,
-        cv::gpu::DevMem2Df& detection_scores)
+        dev_mem_2d_float_t& detection_scores)
 {
     integral_channels_detector_impl(integral_channels,
                                     search_range_index,
@@ -1273,7 +1272,7 @@ void integral_channels_detector_over_all_scales_kernel_v0(
             cascade_length = detection_cascade_per_scale.size[0],
             num_scales = scales_data.size[0];
 
-    for(int scale_index=0; scale_index < num_scales; scale_index +=1)
+    for(int scale_index = 0; scale_index < num_scales; scale_index += 1)
     {
         // when using softcascades, __syncthread here is a significant slow down, so not using it
 
@@ -1300,7 +1299,7 @@ void integral_channels_detector_over_all_scales_kernel_v0(
 
         const int scale_offset = scale_index * detection_cascade_per_scale.stride[0];
 
-        for(int stage_index=0; stage_index < cascade_length; stage_index+=1)
+        for(int stage_index = 0; stage_index < cascade_length; stage_index += 1)
         {
             const int index = scale_offset + stage_index;
 
@@ -1492,7 +1491,7 @@ void integral_channels_detector_over_all_scales_kernel_v1(
     const int
             cascade_length = detection_cascade_per_scale.size[0],
             num_scales = scales_data.size[0];
-    for(int scale_index=0; scale_index < num_scales; scale_index +=1)
+    for(int scale_index = 0; scale_index < num_scales; scale_index += 1)
     {
         // FIXME _sync, will not work as it is when skipping the scales
         // should create next_scale_to_evaluate variable; if (scale_index < next_scale_to_evaluate) continue;
@@ -1525,7 +1524,7 @@ void integral_channels_detector_over_all_scales_kernel_v1(
 
         int max_loaded_stage = 0, stage_index_modulo = 0;
 
-        for(int stage_index=0; stage_index < cascade_length; stage_index+=1, stage_index_modulo+=1)
+        for(int stage_index = 0; stage_index < cascade_length; stage_index += 1, stage_index_modulo += 1)
         {
 
             if(stage_index >= max_loaded_stage)
@@ -1664,7 +1663,7 @@ void integral_channels_detector_over_all_scales_kernel_v2(
             cascade_length = detection_cascade_per_scale.size[0],
             num_scales = scales_data.size[0];
 
-    for(int scale_index=0; scale_index < num_scales; scale_index +=1)
+    for(int scale_index = 0; scale_index < num_scales; scale_index +=1)
     {
         // when using softcascades, __syncthreads here is a significant slow down, so not using it
 
@@ -1691,7 +1690,7 @@ void integral_channels_detector_over_all_scales_kernel_v2(
 
             const int scale_offset = scale_index * detection_cascade_per_scale.stride[0];
 
-            for(int stage_index=0; stage_index < cascade_length; stage_index+=1)
+            for(int stage_index = 0; stage_index < cascade_length; stage_index += 1)
             {
                 const int index = scale_offset + stage_index;
 
@@ -1760,8 +1759,8 @@ void compute_specific_detection(
     // (we use int instead of size_t, as indicated by Cuda Best Programming Practices, section 6.3)
     // (using int of size_t moved from 1.48 Hz to 1.53 Hz)
 
-    int stage_index=0;
-    for(; stage_index < cascade_length; stage_index+=1)
+    int stage_index = 0;
+    for(; stage_index < cascade_length; stage_index += 1)
     {
         const int index = scale_offset + stage_index;
 
@@ -2158,6 +2157,23 @@ void integral_channels_detector_over_all_scales_impl_v2_xy_stride(
                          div_up(max_search_range_height, block_dimensions.y),
                          div_up(num_scales, block_z));
 
+    if(false)
+    {
+        printf("integral_channels_detector_over_all_scales_impl_v2_xy_stride block dimensions "
+               "x, y, z == %i, %i, %i\n",
+               block_dimensions.x, block_dimensions.y, block_dimensions.z);
+
+        printf("integral_channels_detector_over_all_scales_impl_v2_xy_stride grid dimensions "
+               "x, y, z == %i, %i, %i\n",
+               grid_dimensions.x, grid_dimensions.y, grid_dimensions.z);
+    }
+
+    if((max_search_range_width <= 0) or (max_search_range_height <= 0))
+    { // nothing to be done
+        // num_detections is left unchanged
+        return;
+    }
+
     // prepare variables for kernel call --
     bind_integral_channels_texture(integral_channels);
     move_num_detections_from_cpu_to_gpu(num_detections);
@@ -2345,7 +2361,7 @@ void compute_specific_detection(
     // (using int of size_t moved from 1.48 Hz to 1.53 Hz)
 
     int stage_index = 0;
-    for(; stage_index < cascade_length; stage_index+=1)
+    for(; stage_index < cascade_length; stage_index += 1)
     {
         const int index = scale_offset + stage_index;
 
@@ -2527,7 +2543,7 @@ void integral_channels_detector_over_all_scales_impl_v4_two_pixels_per_thread(
 
     // each pixel will process two pixels in the vertical dimension
     dim3 grid_dimensions(div_up(max_search_range_width, block_dimensions.x),
-                         div_up(max_search_range_height, block_dimensions.y)/2,
+                         div_up(max_search_range_height, block_dimensions.y) / 2,
                          div_up(num_scales, block_z));
 
     // prepare variables for kernel call --
@@ -2653,7 +2669,7 @@ void integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition(
 
         const int supremum_checkpoint_stage_index = 32 + 1;
 
-        for(int stage_index=0; stage_index < supremum_checkpoint_stage_index; stage_index+=1)
+        for(int stage_index = 0; stage_index < supremum_checkpoint_stage_index; stage_index += 1)
         {
             const int index = scale_offset + stage_index;
 
@@ -2757,7 +2773,7 @@ void integral_channels_detector_over_all_scales_kernel_v7_scales_inhibition(
         } // end of "for each stage where we may check for inhibition across scales"
 
 
-        for(int stage_index=supremum_checkpoint_stage_index; stage_index < cascade_length; stage_index+=1)
+        for(int stage_index=supremum_checkpoint_stage_index; stage_index < cascade_length; stage_index += 1)
         {
             const int index = scale_offset + stage_index;
 
@@ -2865,7 +2881,7 @@ void integral_channels_detector_over_all_scales_kernel_v8_coalesced_scales_inhib
         // (we use int instead of size_t, as indicated by Cuda Best Programming Practices, section 6.3)
         // (using int of size_t moved from 1.48 Hz to 1.53 Hz)
 
-        for(int stage_index=0; stage_index < cascade_length; stage_index+=1)
+        for(int stage_index = 0; stage_index < cascade_length; stage_index += 1)
         {
             const int index = scale_offset + stage_index;
 

@@ -23,8 +23,8 @@ void cuda_error(const char *error_string, const char *file, const int line, cons
     else
     {
         std::string error_message =
-                boost::str(boost::format("Cuda error when calling function '%s' in file %s, line %i")
-                           % func % file % line);
+                boost::str(boost::format("Cuda error (\"%s\") when calling function '%s' in file %s, line %i")
+                           % error_string % func % file % line);
 
        throw std::runtime_error(error_message.c_str());
     }

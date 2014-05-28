@@ -3,7 +3,7 @@
 #include "MultiScalesIntegralChannelsModel.hpp"
 
 #include "helpers/get_option_value.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 
 #include "cudatemplates/hostmemoryheap.hpp"
 #include "cudatemplates/copy.hpp"
@@ -16,34 +16,10 @@
 
 #include <omp.h>
 
-namespace
-{
-
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "GpuVeryFastIntegralChannelsDetector");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "GpuVeryFastIntegralChannelsDetector");
-}
-
-std::ostream & log_warning()
-{
-    return  logging::log(logging::WarningMessage, "GpuVeryFastIntegralChannelsDetector");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "GpuVeryFastIntegralChannelsDetector");
-}
-
-} // end of anonymous namespace
-
 
 namespace doppia {
 
+MODULE_LOG_MACRO("GpuVeryFastIntegralChannelsDetector")
 
 GpuVeryFastIntegralChannelsDetector::GpuVeryFastIntegralChannelsDetector(
         const boost::program_options::variables_map &options,
@@ -65,20 +41,20 @@ GpuVeryFastIntegralChannelsDetector::GpuVeryFastIntegralChannelsDetector(
 
     if(use_the_detector_model_cascade)
     {
-        log_info() << "Will use the model soft cascade at run time" << std::endl;
+        log.info() << "Will use the model soft cascade at run time" << std::endl;
     }
     else
     {
-        log_info() << "Will not use a soft cascade at run time" << std::endl;
+        log.info() << "Will not use a soft cascade at run time" << std::endl;
     }
 
     { // set the helper variables
 
         scale_logarithmic_step = 0;
-        log_min_detection_window_scale = log(min_detection_window_scale);
+        log_min_detection_window_scale = std::log(min_detection_window_scale);
         if(num_scales > 1)
         {
-            scale_logarithmic_step = (log(max_detection_window_scale) - log_min_detection_window_scale) / (num_scales -1);
+            scale_logarithmic_step = (std::log(max_detection_window_scale) - log_min_detection_window_scale) / (num_scales -1);
         }
 
         typedef MultiScalesIntegralChannelsModel::detector_t detector_t;
@@ -138,12 +114,19 @@ void GpuVeryFastIntegralChannelsDetector::compute()
 
 /// This function is identical to GpuIntegralChannelsDetector::set_image except it loads
 /// additional per-scale information into the GPU
-void GpuVeryFastIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view)
+void GpuVeryFastIntegralChannelsDetector::set_image(const boost::gil::rgb8c_view_t &input_view,
+                                                    const std::string &image_file_path)
 {
     const bool input_dimensions_changed =
             ((input_gpu_mat.cols != input_view.width()) or (input_gpu_mat.rows != input_view.height()));
 
     GpuIntegralChannelsDetector::set_image(input_view);
+
+    if(false)
+    {
+        printf("GpuVeryFastIntegralChannelsDetector::set_image received an image of dimensions (%li, %li)\n",
+               input_view.width(), input_view.height());
+    }
 
     if(input_dimensions_changed)
     {
@@ -235,10 +218,20 @@ void GpuVeryFastIntegralChannelsDetector::set_gpu_scales_data()
         datum.stride.x( scale_data.stride.x() );
         datum.stride.y( scale_data.stride.y() );
 
-        //printf("CPU scale index %zi, search_range.max_corner().y() == %i\n",
-        //       scale_index, datum.search_range.max_corner().y());
+        if(false)
+        {
+            printf("Scale index %zi, search_range.max_corner().y() == %i\n",
+                   scale_index, datum.search_range.max_corner().y());
+        }
 
     } // end of "for each scale index"
+
+    if(false)
+    {
+        printf("GpuVeryFastIntegralChannelsDetector::set_gpu_scales_data max_search_range_width/height == %i, %i\n",
+               max_search_range_width, max_search_range_height);
+    }
+
 
     // move data to GPU
     if(gpu_scales_data.getNumElements() != num_scales)
@@ -285,7 +278,7 @@ void GpuVeryFastIntegralChannelsDetector::set_gpu_stixels()
             const size_t stixel_index = u*shrinking_factor;
             aggregated_stixel = estimated_stixels[stixel_index + 0];
             bool all_occluded = (aggregated_stixel.type == Stixel::Occluded);
-            for(int i=1; i < shrinking_factor; i+=1)
+            for(int i = 1; i < shrinking_factor; i += 1)
             {
                 const Stixel &t_stixel = estimated_stixels[stixel_index + i];
                 all_occluded &= (t_stixel.type == Stixel::Occluded);
@@ -402,7 +395,7 @@ size_t GpuVeryFastIntegralChannelsDetector::get_scale_index_from_height(const fl
         return 0;
     }
     const float scale = height / scale_one_detection_window_size.y();
-    const int scale_index = (log(scale) - log_min_detection_window_scale) / scale_logarithmic_step;
+    const int scale_index = (std::log(scale) - log_min_detection_window_scale) / scale_logarithmic_step;
 
     const size_t max_scale_index = search_ranges_data.size() - 1;
     return std::min<size_t>(std::max<int>(0, scale_index), max_scale_index);
@@ -462,7 +455,7 @@ void print_gpu_scales_data(GpuVeryFastIntegralChannelsDetector::gpu_scales_data_
 
     Cuda::copy(cpu_scales_data, gpu_scales_data);
 
-    for(size_t scale_index=0; scale_index < num_scales; scale_index +=1)
+    for(size_t scale_index = 0; scale_index < num_scales; scale_index += 1)
     {
         const gpu_scale_datum_t &datum = cpu_scales_data[scale_index];
 
@@ -772,7 +765,7 @@ void GpuVeryFastIntegralChannelsDetector::compute_v2()
     const bool print_num_detections = false;
     if(print_num_detections)
     {
-        log_info() << "number of raw (before non maximal suppression) detections on this frame == "
+        log.info() << "number of raw (before non maximal suppression) detections on this frame == "
                    << detections.size() << std::endl;
     }
 

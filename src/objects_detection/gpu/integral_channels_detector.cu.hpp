@@ -22,6 +22,16 @@
 namespace doppia {
 namespace objects_detection {
 
+#if CV_MINOR_VERSION < 3
+typedef cv::gpu::DevMem2Df dev_mem_2d_float_t;
+typedef cv::gpu::PtrElemStepf dev_mem_ptr_step_float_t;
+#else
+// we avoid the deprecation warnings
+typedef cv::gpu::PtrStepSz<float> dev_mem_2d_float_t;
+typedef cv::gpu::PtrStep<float> dev_mem_ptr_step_float_t;
+#endif
+
+
 typedef SoftCascadeOverIntegralChannelsModel::fast_stage_t cascade_stage_t;
 typedef SoftCascadeOverIntegralChannelsModel::stump_stage_t stump_cascade_stage_t;
 typedef SoftCascadeOverIntegralChannelsModel::fast_fractional_stage_t fractional_cascade_stage_t;
@@ -102,7 +112,7 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const doppia::DetectorSearchRange &search_range,
                                 gpu_detection_cascade_per_scale_t &detection_cascade_per_scale,
                                 const bool use_the_model_cascade,
-                                cv::gpu::DevMem2Df& detection_scores);
+                                objects_detection::dev_mem_2d_float_t &detection_scores);
 
 /// Stump version of integral_channels_detector
 void integral_channels_detector(gpu_integral_channels_t &integral_channels,
@@ -110,7 +120,7 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const doppia::DetectorSearchRange &search_range,
                                 gpu_detection_stump_cascade_per_scale_t &detection_cascade_per_scale,
                                 const bool use_the_model_cascade,
-                                cv::gpu::DevMem2Df& detection_scores);
+                                dev_mem_2d_float_t& detection_scores);
 
 /// StumpSet version of integral_channels_detector
 void integral_channels_detector(gpu_integral_channels_t &integral_channels,
@@ -118,7 +128,7 @@ void integral_channels_detector(gpu_integral_channels_t &integral_channels,
                                 const doppia::DetectorSearchRange &search_range,
                                 gpu_detection_three_stumps_cascade_per_scale_t &detection_cascade_per_scale,
                                 const bool use_the_model_cascade,
-                                cv::gpu::DevMem2Df& detection_scores);
+                                dev_mem_2d_float_t& detection_scores);
 
 
 // ~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-
