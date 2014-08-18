@@ -44,12 +44,12 @@ public:
     typedef std::map<std::string, std::string> attributes_t;
 
     /// defaults to read mode
-    DataSequence(std::string filename);
-    DataSequence(std::string filename, std::ios::openmode mode);
+    DataSequence(const std::string filename);
+    DataSequence(const std::string filename, std::ios::openmode mode);
 
     /// defaults to write mode
-    DataSequence(std::string filename, const attributes_t &attributes);
-    DataSequence(std::string filename, std::ios::openmode mode, const attributes_t &attributes);
+    DataSequence(const std::string filename, const attributes_t &attributes);
+    DataSequence(const std::string filename, std::ios::openmode mode, const attributes_t &attributes);
 
     ~DataSequence();
 
@@ -72,7 +72,7 @@ public:
 
 protected:
 
-    void init(std::string filename, std::ios::openmode mode, const attributes_t &attributes);
+    void init(const std::string filename, std::ios::openmode mode, const attributes_t &attributes);
 
     void read_header();
     void write_header();
@@ -90,7 +90,7 @@ protected:
 
 
 template<typename DataType>
-DataSequence<DataType>::DataSequence(std::string filename)
+DataSequence<DataType>::DataSequence(const std::string filename)
 {
     const attributes_t empty_attributes;
     init(filename, std::ios::in, empty_attributes);
@@ -99,7 +99,7 @@ DataSequence<DataType>::DataSequence(std::string filename)
 
 
 template<typename DataType>
-DataSequence<DataType>::DataSequence(std::string filename, std::ios::openmode mode)
+DataSequence<DataType>::DataSequence(const std::string filename, std::ios::openmode mode)
 {
     const attributes_t empty_attributes;
     init(filename, mode, empty_attributes);
@@ -108,14 +108,16 @@ DataSequence<DataType>::DataSequence(std::string filename, std::ios::openmode mo
 
 
 template<typename DataType>
-DataSequence<DataType>::DataSequence(std::string filename, const attributes_t &attributes)
+DataSequence<DataType>::DataSequence(const std::string filename, const attributes_t &attributes)
 {
     init(filename, std::ios::out, attributes);
     return;
 }
 
+
 template<typename DataType>
-DataSequence<DataType>::DataSequence(std::string filename, std::ios::openmode mode, const attributes_t &attributes)
+DataSequence<DataType>::DataSequence(const std::string filename, std::ios::openmode mode,
+                                     const attributes_t &attributes)
 {
     init(filename, mode, attributes);
     return;
@@ -123,7 +125,7 @@ DataSequence<DataType>::DataSequence(std::string filename, std::ios::openmode mo
 
 
 template<typename DataType>
-void DataSequence<DataType>::init(std::string filename, std::ios::openmode mode, const attributes_t &the_attributes)
+void DataSequence<DataType>::init(const std::string filename, std::ios::openmode mode, const attributes_t &the_attributes)
 {
     using std::ios;
 
@@ -209,7 +211,7 @@ void DataSequence<DataType>::read_header()
     }
 
     // set the attributes map --
-    for(int i =0; i < header.attributes_size(); i+=1)
+    for(int i =0; i < header.attributes_size(); i += 1)
     {
         using doppia_protobuf::DataSequenceAttribute;
         const DataSequenceAttribute &attribute = header.attributes(i);
