@@ -2,8 +2,10 @@
 # Do not use this script unless you know what you are doing,
 # start by reading readme.text to know which are the first step to do get this code base to compile.
 
+set -x  # will print excecuted commands
+
 # change num threads depending on available RAM and Cpu cores.
-NUM_THREADS=15
+NUM_THREADS=6
 
 build_all()
 {
