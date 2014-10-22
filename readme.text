@@ -1,4 +1,4 @@
-Warning
+./oWarning
 =======
 Work in progress branch, code may _not work_
 
@@ -27,14 +27,21 @@ The doppia repository contains the open source release of the following research
 * Seeking the strongest rigid detector
   R. Benenson, M. Mathias, T. Tuytelaars, L. Van Gool; presented at CVPR 2013.
 
+* Ten years of pedestrian detection, what have we learned?
+  R. Benenson, M. Omran, J. Hosang, B. Schiele; presented at ECCV 2014, CVRSUAD workshop.
+
+* [Face detection without bells and whistles](http://markusmathias.bitbucket.org/2014_eccv_face_detection/)
+  M. Mathias, R. Benenson, M. Pedersoli, L. Van Gool; presented at ECCV 2014. 
+
+
 the code is released with a _research only_ license (see license.text),  
 the license is _not_ [OSI compatible](http://opensource.org/docs/osd) (due, at least, to term 6 since we do discriminate against "fields of endeavor").
 
 The main authors of this work are
 
-* [Rodrigo Benenson](http://rodrigob.github.com) (code architecture, test time code)
+* [Rodrigo Benenson](http://rodrigob.github.io) (code architecture, test time code)
 * [Markus Mathias](http://homes.esat.kuleuven.be/~mmathias) (training time code)
-* Mohamed Omran (training time code)
+* [Mohamed Omran](http://www.mpi-inf.mpg.de/departments/computer-vision-and-multimodal-computing/people/mohamed-omran) (training time code)
 * [Radu Timofte](http://www.vision.ee.ethz.ch/~timofter) (contributed to stixels estimation code)
 
 and the code is owned by the [KU Leuven university](https://securewww.esat.kuleuven.be/psi/visics) and the [MPI-Inf](https://www.mpi-inf.mpg.de).
@@ -161,18 +168,20 @@ In step 2 all compiled code was only C++, now we will include CUDA code. Having 
 
 1. `cd doppia/src/applications/objects_detection`
 2. `cmake . -D CMAKE_BUILD_TYPE=RelWithDebInfo && make -j2`
-3. `cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c very_fast_over_bahnhof_cvpr2012.config.ini --gui.disable false`   
+3. `cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c cvpr2012_very_fast_over_bahnhof.config.ini --gui.disable false`   
     When starting ./objects_detection may spend a few seconds (~10 seconds) precomputing before launching.
 
 If things go well you should see a (very brief) video of stixels being estimated and pedestrian being detected.
 You can also run
 
-    cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c inria_pedestrians_cvpr2012.config.ini --gui.disable false
-and
+    cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c cvpr2012_inria_pedestrians.config.ini --gui.disable false
+or
 
     cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c chnftrs_over_bahnhof.config.ini --gui.disable false
-    
+or
 
+    cmake . && make -j2 && ./objects_detection -c eccv2014_face_detection_pascal.config.ini --gui.disable false
+    
 for more fun. Consult section "How to use the code ?" for more information.
 
 If you want to use our objects detector as part of a larger system, you may be interested in the section "What is `objects_detection_lib` ?".
@@ -302,13 +311,43 @@ FAQ
 I am using this code for my new publication, how should I cite it ?
 -------------------------------------------------------------------
 
-Please cite our CVPR2012 paper
+The current release covers multiple papers now.
+Please cite the adequate one.
+
+If you use our VeryFast detector or stixels, please cite:
 
     @inproceedings{Benenson2012Cvpr,
       author = {R. Benenson and M. Mathias and R. Timofte and L. {Van Gool}},
       title = {Pedestrian detection at 100 frames per second},
       booktitle = {CVPR},
       year = {2012}
+    }
+
+If you use our Roerei detector, please cite:
+
+    @inproceedings{Benenson2013Cvpr,
+      author = {R. Benenson and M. Mathias and T. Tuytelaars and L. {Van Gool}},
+      title = {Seeking the strongest rigid detector},
+      booktitle = {CVPR},
+      year = {2013}
+    }
+
+If you use SquaresChnFtrs, please cite:
+
+    @inproceedings{Benenson2014Eccvw,
+      author = {R. Benenson and M. Omran and J. Hosang and and B. Schiele},
+      title = {Ten years of pedestrian detection, what have we learned?},
+      booktitle = {ECCV, CVRSUAD workshop},
+      year = {2014}
+    }
+
+If you use our HeadHunter face detector (or the DPM face detector model), please cite:
+
+    @inproceedings{Mathias2014Eccv,
+      author = {M. Mathias and R. Benenson and M. Pedersoli and L. {Van Gool}},
+      title = {Face detection without bells and whistles},
+      booktitle = {ECCV},
+      year = {2014}
     }
 
 
@@ -365,7 +404,7 @@ I think cuda 5 fixes this issue (but not sure).
 
 
 In your CVPR 2013 paper, how did you implement the "Automatic Color Equalization" ?
-------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 
 At the very end of our [paper](http://rodrigob.github.io/documents/2013_cvpr_roerei_with_supplementary_material.pdf) we briefly mention that we use the code from Shunsuke Aihara,
 availabe at the following urls
@@ -378,7 +417,20 @@ We use the default parameters of his `colorcorrect.algorithm.automatic_color_equ
 As mentioned in the paper the much faster `gray world` equalization also provides good results.
 
 
+How to detect faces ?
+----------------------
 
+You have three choices, you can either use our `HeadHunter` face detector model, our `HeadHunter_baseline` model, or our vanilla DPM model.
+
+For the `HeadHunter` model, follow the instructions above to compile `./objects_detection` and then simply run
+
+    cmake . && make -j2 && ./objects_detection -c eccv2014_face_detection_pascal.config.ini --gui.disable false
+
+modify `objects_detector.model` option in the configuration file (see commented line) to use the `HeadHunter_baseline` model.
+
+To use the DPM model, please follow the instructions in the readme file at `doppia/src/applications/dpm_face_detector`.
+This model is not related to the overall `doppia` code base, 
+but we include the instructions here for complemeteness regarding our [ECCV 2014](http://markusmathias.bitbucket.org/2014_eccv_face_detection/) paper.
 
 
 
