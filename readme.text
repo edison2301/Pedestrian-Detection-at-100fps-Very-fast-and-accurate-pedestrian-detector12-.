@@ -1,4 +1,4 @@
-./oWarning
+Warning
 =======
 Work in progress branch, code may _not work_
 
@@ -48,7 +48,9 @@ and the code is owned by the [KU Leuven university](https://securewww.esat.kuleu
 
 This C++ and CUDA code base provides means to compute stixels estimates from stereo images, detect pedestrians for single images, and train the detector for new classes.
 
-![Example result](http://rodrigob.github.com/figures/2012_eccv_cvvt_workshop_example_system_results_small.png "Example result")
+![Example pedestrian detection result](http://rodrigob.github.com/figures/2012_eccv_cvvt_workshop_example_system_results_small.png "Example pedestrian detection result")
+![Example face detection result](http://rodrigob.github.io/figures/2014_eccv_face_detection_example.png "Example face detection result")
+
 
 
 Introduction
@@ -278,10 +280,18 @@ The more colourful a window is, the higher the confidence on the detection; inve
 `boosted_learning`
 --------------------
 
-TO BE DONE.
+This application allows to train models via Adaboost.
+On its common usage it takes as input a set of cropped positive samples,
+and a list of negative images. `boosted_learning` will do multiple rounds training a model, 
+mining hard-negative examples, and re-training a new model from scratch.
+
+This is the program we have used to train all of our models.
+For models with multiple templates (e.g. VeryFast, Roerei, or HeadHunter) each template is trained separatelly, 
+they are merged a posteriori using `doppia/tools/objects_detection/models/create_models_bundle.py`.
+We provide some example configuration files for `boosted_learning` in `doppia/src/applications/boosted_learning`.
+You will need to download and setup the training data by yourself.
 
 For more details see also section "How train the detector for a new class ?".
-
 
 
 What is `objects_detection_lib` ?
@@ -299,10 +309,34 @@ For a deeper integration you will have to use the actual classes used to impleme
 How train the detector for a new class ? 
 =========================================
 
-TO BE DONE.
+1. Make sure you have run step 5 of the instructions above.
+
+2. Collect large dataset. The more the merrier. Think at least 1000~10000 positive examples, and same amount of negative images.
+
+3. You will need to crop your positive samples. 
+   Make sure to leave a generous margin around your objects. 
+   You can use the training files pointed in `run_speedy_training.sh` as an example.
+
+4. Copy one of the example configuration files for `boosted_learning` and edit. 
+   In particular you want to adjust the path to the training files, model_size, object_window, the number of weak classifiers,
+   the number of samples for each bootstrapping round, and the number of bootstrapping rounds. 
+   See comments in `inria_speedy_training.config.ini` and `boosted_learning --help` for examples and indications on how to use the different options. 
+
+   I strongly suggest you start with a lightweight setup (e.g. 1000 level 2 decision trees, 3 bootstrapping rounds, 5000 negative samples per round)
+   to validate your setup, and only after seeing initial results, start increasing the model size, amount of bootstrapping rounds and samples.
+
+5. Run `boosted_learning` and enjoy the progress bar motion. `plot_detector_model.py` is quite handy to inspect of the model is "learning at all".
+
+6. Evaluate your models using `objects_detection`.
+   
+7. Enjoy !
+
+Please note that our rigid templates are most effective for objects with little structural variance.
+It can handle well intra-class variance (people with different clothes), and mild deformations (different face expressions).
+Faces and pedestrians work great, cars with different aspect ratio work so~so.
+
 (If you have compiled everything, looked at the code, the configuration files, read the papers, and still have some questions;  
 please contact the authors, we will then update this readme).
-
 
 
 FAQ
