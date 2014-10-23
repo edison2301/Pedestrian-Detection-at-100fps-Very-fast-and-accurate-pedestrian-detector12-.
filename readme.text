@@ -49,7 +49,7 @@ and the code is owned by the [KU Leuven university](https://securewww.esat.kuleu
 This C++ and CUDA code base provides means to compute stixels estimates from stereo images, detect pedestrians for single images, and train the detector for new classes.
 
 ![Example pedestrian detection result](http://rodrigob.github.com/figures/2012_eccv_cvvt_workshop_example_system_results_small.png "Example pedestrian detection result")
-![Example face detection result](http://rodrigob.github.io/figures/2014_eccv_face_detection_example.png "Example face detection result")
+![Example face detection result](http://rodrigob.github.io/figures/2014_eccv_face_detection_example_small.png "Example face detection result")
 
 
 
@@ -261,7 +261,8 @@ Possibly the most relevant option is `objects_detector.method`. We provide CPU a
 
 * Benenson et al. 2012 Pedestrian detection at 100 frames per second   
 
-please notice that the CPU versions are **not** identical to the GPU versions.
+These techniques are then re-used in other papers.
+Please notice that the CPU versions are **not** identical to the GPU versions.
 The features computation provide slightly different results, which in turn create different performances.
 Currently, the GPU version is the only to have fine tunned features computation.  
 Also we use more the GPU versions than the CPU versions, so there is more chances than the CPU version are buggy.
