@@ -4,10 +4,12 @@ These files allow to reproduce the "DPM Baseline" results from
     M. Mathias, R. Benenson, M. Pedersoli, L. Van Gool; presented at ECCV 2014. 
     http://markusmathias.bitbucket.org/2014_eccv_face_detection
 
-please note that these Matlab files are disconnected from the rest of the code base.
+please note that these Matlab files are disconnected from the rest of the `doppia` code base.
 We include them for completeness, since the DPM baseline was compared 
-to our (doppia enabled) HeadHunter method. 
-See `doppia/readme.text` for how to use HeadHunter face detector.
+to our (`doppia` enabled) `HeadHunter` method. 
+
+
+See `doppia/readme.text` for how to use `HeadHunter` face detector.
 
 
 Usage instructions
@@ -19,9 +21,10 @@ Usage instructions
 
 2. Make sure the DPM demonstration runs properly.
 
-3. Copy the *_face*.m files into the root voc-dpm folder.
+3. Copy the `\*_face\*.m` files into the root voc-dpm folder.
 
 4. Edit the paths in `detect_faces.m` to match the ones in your machine.
+   The DPM model file is at `doppia/data/trained_models/face_detection`
 
 5. Run `detect_faces` from your Matlab command line.
 
