@@ -408,7 +408,7 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
                                      "BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades");
         }
 
-    
+
         // update the search range scale --
         {
                 original_detection_window_scales.push_back(detect_win_scale);
@@ -424,17 +424,20 @@ void BaseIntegralChannelsModelsBundleDetector::compute_scaled_detection_cascades
         }
             if(first_call)
             {
-                printf("Selected model scale %.3f (occlusion type %s,\tocclusion level %.3f) for detection window scale %.3f , semantic category = %s\n",
+                printf("Selected model scale %.3f (occlusion type %s,\tocclusion level %.3f) "
+                       "for detection window scale %.3f, semantic category = %s\n",
                        nearest_detector_scale_p->get_scale(),
                        get_occlusion_type_name(nearest_detector_scale_p->get_occlusion_type()).c_str(),
                        nearest_detector_scale_p->get_occlusion_level(),
                        search_range_data.detection_window_scale,
                        nearest_detector_scale_p->get_semantic_category().c_str());
             }
-            if (i>0){
-
+            if (i > 0)
+            {
                 additional_component_range_data.push_back(search_range_data);
-            }else{
+            }
+            else
+            {
                 search_ranges_data[search_range_index] = search_range_data;
             }
 

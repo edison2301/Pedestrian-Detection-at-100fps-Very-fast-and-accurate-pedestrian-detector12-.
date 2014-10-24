@@ -7,13 +7,13 @@
 namespace doppia {
 
 // forward declaration
-class AbstractGpuIntegralChannelsComputer;
+class AbstractIntegralChannelsComputer;
 
 class IntegralChannelsComputerFactory
 {
 public:
     static boost::program_options::options_description get_options_description();
-    static AbstractGpuIntegralChannelsComputer* new_instance(const boost::program_options::variables_map &options,
+    static AbstractIntegralChannelsComputer* new_instance(const boost::program_options::variables_map &options,
                                                           const std::string &method = "hog6_luv");
 };
 

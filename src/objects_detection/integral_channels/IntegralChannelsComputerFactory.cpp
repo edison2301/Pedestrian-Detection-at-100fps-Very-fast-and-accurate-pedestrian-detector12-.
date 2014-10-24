@@ -51,7 +51,7 @@ options_description IntegralChannelsComputerFactory::get_options_description()
 }
 
 
-AbstractGpuIntegralChannelsComputer *IntegralChannelsComputerFactory::new_instance(const variables_map &options,
+AbstractIntegralChannelsComputer *IntegralChannelsComputerFactory::new_instance(const variables_map &options,
                                                                                    const std::string &method)
 {
 #if defined(USE_GPU)
