@@ -1,4 +1,4 @@
-#include "GpuIntegralChannelsModelsBundleDetector.hpp"
+#include "IntegralChannelsModelsBundleDetector.hpp"
 
 #include "helpers/get_option_value.hpp"
 #include "helpers/ModuleLog.hpp"
@@ -9,9 +9,9 @@
 
 namespace doppia {
 
-MODULE_LOG_MACRO("GpuIntegralChannelsModelsBundleDetector")
+MODULE_LOG_MACRO("IntegralChannelsModelsBundleDetector")
 
-GpuIntegralChannelsModelsBundleDetector::GpuIntegralChannelsModelsBundleDetector(
+IntegralChannelsModelsBundleDetector::IntegralChannelsModelsBundleDetector(
         const boost::program_options::variables_map &options,
         boost::shared_ptr<IntegralChannelsDetectorModelsBundle> detector_model_p,
         boost::shared_ptr<AbstractNonMaximalSuppression> non_maximal_suppression_p,
@@ -19,7 +19,7 @@ GpuIntegralChannelsModelsBundleDetector::GpuIntegralChannelsModelsBundleDetector
     : BaseIntegralChannelsDetector(options,
                                    boost::shared_ptr<SoftCascadeOverIntegralChannelsModel>(),
                                    non_maximal_suppression_p, score_threshold, additional_border),
-      GpuIntegralChannelsDetector(
+      IntegralChannelsDetector(
           options,
           boost::shared_ptr<SoftCascadeOverIntegralChannelsModel>(),
           non_maximal_suppression_p,
@@ -44,7 +44,7 @@ GpuIntegralChannelsModelsBundleDetector::GpuIntegralChannelsModelsBundleDetector
 }
 
 
-GpuIntegralChannelsModelsBundleDetector::~GpuIntegralChannelsModelsBundleDetector()
+IntegralChannelsModelsBundleDetector::~IntegralChannelsModelsBundleDetector()
 {
     // nothing to do here
     return;
@@ -52,4 +52,3 @@ GpuIntegralChannelsModelsBundleDetector::~GpuIntegralChannelsModelsBundleDetecto
 
 
 } // end of namespace doppia
-
