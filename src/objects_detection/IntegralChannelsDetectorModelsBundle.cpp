@@ -174,6 +174,7 @@ void IntegralChannelsDetectorModelsBundle::sanity_check() const
                     detector.get_occlusion_type(),
                     detector.get_occlusion_level(),
                     detector.get_semantic_category());
+
         printf("Read model with scale %.3f, occlusion type '%s' and occlusion level %.3f\n",
                detector_scale_and_occlusion_and_semantic_category.get<0>(),
                get_occlusion_type_name(detector_scale_and_occlusion_and_semantic_category.get<1>()).c_str(),
