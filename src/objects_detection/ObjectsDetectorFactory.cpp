@@ -8,6 +8,7 @@
 #include "FastestPedestrianDetectorInTheWestV2.hpp"
 #include "MultiscalesIntegralChannelsDetector.hpp"
 #include "VeryFastIntegralChannelsDetector.hpp"
+#include "IntegralChannelsModelsBundleDetector.hpp"
 
 #if defined(USE_GPU)
 #include "GpuIntegralChannelsDetector.hpp"
@@ -697,8 +698,20 @@ new_detectors_bundle_instance(const variables_map &options,
     }
     else if((method.compare("cpu_channel") == 0) or
             (method.compare("cpu_channels") == 0) or
-            (method.compare("cpu_chnftrs") == 0) or
-            (method.compare("cpu_very_fast") == 0) or
+            (method.compare("cpu_chnftrs") == 0))
+    {
+        int additional_border = 0;
+        if(options.count("additional_border") > 0)
+        {
+            additional_border = get_option_value<int>(options, "additional_border");
+        }
+
+        objects_detector_p = new IntegralChannelsModelsBundleDetector(
+                    options,
+                    detector_model_p, non_maximal_suppression_p,
+                    score_threshold, additional_border);
+    }
+    else if((method.compare("cpu_very_fast") == 0) or
             (method.compare("cpu_fast") == 0) or
             (method.compare("cpu_cvpr2012") == 0) or
             (method.compare("gpu_very_fast") == 0) or
@@ -710,7 +723,7 @@ new_detectors_bundle_instance(const variables_map &options,
     {
         throw std::runtime_error(
                     boost::str( boost::format(
-                                    "method %s does not support (yet) a detector models bundle as input") % method));
+                                    "method %s does not support a detector models bundle as input") % method));
     }
     else if (method.compare("none") == 0)
     {
@@ -760,9 +773,9 @@ ObjectsDetectorFactory::new_instance(const variables_map &options)
     // because the messages are compatible. We use the "method" as a quick hack.
     bool should_use_bundle = false;
     const string method = get_option_value<string>(options, "objects_detector.method");
-    if((method.compare("gpu_channel") == 0) or
-            (method.compare("gpu_channels") == 0) or
-            (method.compare("gpu_chnftrs") == 0) )
+    if((method.compare("gpu_channel") == 0) or (method.compare("cpu_channel") == 0) or
+            (method.compare("gpu_channels") == 0) or (method.compare("cpu_channels") == 0) or
+            (method.compare("gpu_chnftrs") == 0) or (method.compare("cpu_chnftrs") == 0) )
     {
         should_use_bundle = true;
     }
