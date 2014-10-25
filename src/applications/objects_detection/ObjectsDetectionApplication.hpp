@@ -52,7 +52,7 @@ protected:
 public:
     typedef DataSequence<doppia_protobuf::Detections> DetectionsDataSequence;
 
-    static program_options::options_description get_args_options();
+    static program_options::options_description get_options_description();
 
     std::string get_application_title();
 
@@ -61,7 +61,7 @@ public:
 
 protected:
 
-    void get_options_description(program_options::options_description &desc);
+    void get_all_options_descriptions(program_options::options_description &desc);
 
     void setup_logging(std::ofstream &log_file, const program_options::variables_map &options);
     void setup_problem(const program_options::variables_map &options);

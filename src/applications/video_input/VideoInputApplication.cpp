@@ -66,7 +66,7 @@ VideoInputApplication::~VideoInputApplication()
 }
 
 
-program_options::options_description VideoInputApplication::get_args_options()
+program_options::options_description VideoInputApplication::get_options_description()
 {
     program_options::options_description desc("VideoInputApplication options");
 
@@ -82,10 +82,10 @@ program_options::options_description VideoInputApplication::get_args_options()
     return desc;
 }
 
-void VideoInputApplication::get_options_description(program_options::options_description &desc)
+void VideoInputApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
 
-    desc.add(VideoInputApplication::get_args_options());
+    desc.add(VideoInputApplication::get_options_description());
     desc.add(VideoInputGui::get_args_options());
     desc.add(VideoInputFactory::get_args_options());
 

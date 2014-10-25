@@ -50,7 +50,7 @@ ComputeFeatureChannelsApplication::~ComputeFeatureChannelsApplication()
 }
 
 
-program_options::options_description ComputeFeatureChannelsApplication::get_args_options()
+program_options::options_description ComputeFeatureChannelsApplication::get_options_description()
 {
     program_options::options_description desc("ComputeFeatureChannelsApplication options");
 
@@ -73,9 +73,9 @@ program_options::options_description ComputeFeatureChannelsApplication::get_args
 }
 
 
-void ComputeFeatureChannelsApplication::get_options_description(program_options::options_description &desc)
+void ComputeFeatureChannelsApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
-    desc.add(ComputeFeatureChannelsApplication::get_args_options());
+    desc.add(ComputeFeatureChannelsApplication::get_options_description());
     //desc.add(ImagesFromDirectory::get_args_options());
     //desc.add(ChannelsComputerFactory::get_args_options());
     desc.add(IntegralChannelsComputerFactory::get_options_description());

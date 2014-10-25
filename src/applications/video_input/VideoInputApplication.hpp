@@ -28,7 +28,7 @@ class VideoInputApplication : public BaseApplication
 
 public:
 
-    static boost::program_options::options_description get_args_options(void);
+    static boost::program_options::options_description get_options_description(void);
 
     std::string get_application_title();
 
@@ -37,7 +37,7 @@ public:
 
 protected:
 
-    void get_options_description(program_options::options_description &desc);
+    void get_all_options_descriptions(program_options::options_description &desc);
 
     void setup_logging(std::ofstream &log_file, const boost::program_options::variables_map &options);
     void setup_problem(const boost::program_options::variables_map &options);

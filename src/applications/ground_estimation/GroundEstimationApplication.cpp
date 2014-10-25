@@ -84,7 +84,7 @@ GroundEstimationApplication::~GroundEstimationApplication()
 }
 
 
-program_options::options_description GroundEstimationApplication::get_args_options()
+program_options::options_description GroundEstimationApplication::get_options_description()
 {
     program_options::options_description desc("GroundEstimationApplication options");
 
@@ -108,10 +108,10 @@ program_options::options_description GroundEstimationApplication::get_args_optio
     return desc;
 }
 
-void GroundEstimationApplication::get_options_description(program_options::options_description &desc)
+void GroundEstimationApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
 
-    desc.add(GroundEstimationApplication::get_args_options());
+    desc.add(GroundEstimationApplication::get_options_description());
     desc.add(GroundEstimationGui::get_args_options());
     desc.add(VideoInputFactory::get_args_options());
 

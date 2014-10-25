@@ -29,7 +29,7 @@ class BaseApplication: public AbstractApplication
 
 public:
 
-    static boost::program_options::options_description get_args_options(const std::string application_name);
+    static boost::program_options::options_description get_options_description(const std::string application_name);
     static void add_args_options(program_options::options_description &desc, const std::string application_name);
 
     /// human readable title used on the console and graphical user interface
@@ -49,7 +49,7 @@ public:
 
 protected:
 
-    virtual void get_options_description(program_options::options_description &desc) = 0;
+    virtual void get_all_options_descriptions(program_options::options_description &desc) = 0;
 
 
     /// @returns true if the arguments where correctly parsed

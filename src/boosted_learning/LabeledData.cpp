@@ -303,19 +303,19 @@ printf("Searching for hard negatives given the current model (%s), please wait..
 classifierName.c_str());
 
 const float
-min_scale = get_option_value<float>(options, "bootstrapTrain.min_scale"),
-max_scale = get_option_value<float>(options, "bootstrapTrain.max_scale");
+min_scale = get_option_value<float>(options, "bootstrap_train.min_scale"),
+max_scale = get_option_value<float>(options, "bootstrap_train.max_scale");
 
 const int
-num_scales = get_option_value<int>(options, "bootstrapTrain.num_scales");
+num_scales = get_option_value<int>(options, "bootstrap_train.num_scales");
 
 const float
-min_ratio = get_option_value<float>(options, "bootstrapTrain.min_ratio"),
-max_ratio = get_option_value<float>(options, "bootstrapTrain.max_ratio");
+min_ratio = get_option_value<float>(options, "bootstrap_train.min_ratio"),
+max_ratio = get_option_value<float>(options, "bootstrap_train.max_ratio");
 
-const int num_ratios = get_option_value<int>(options, "bootstrapTrain.num_ratios");
+const int num_ratios = get_option_value<int>(options, "bootstrap_train.num_ratios");
 
-const bool use_less_memory = get_option_value<bool>(options, "bootstrapTrain.frugalMemoryUsage");
+const bool use_less_memory = get_option_value<bool>(options, "bootstrap_train.frugal_memory_usage");
 
 
     // will append false positives to the _integralImages
@@ -550,7 +550,7 @@ void LabeledData::createIntegralImages(const std::vector<std::string> &filenames
 
     const int width  = modelWindow.x(), height = modelWindow.y();
 
-    const int trainNumNegativesSamples = get_option_value<int>(options, "train.numNegativeSamples");
+    const int trainNumNegativesSamples = get_option_value<int>(options, "train.num_negative_samples");
     int samplesPerImage = 1;
 
     if (not filenamesBackground.empty())
@@ -598,9 +598,9 @@ void LabeledData::createIntegralImages(const std::vector<std::string> &filenames
         std::cout << "Reading bootStrapLearnerFile: " << bootStrapLearnerFile << std::endl;
 
         const int numBootstrappingSamples =
-                get_option_value<int>(options, "bootstrapTrain.numBootstrappingSamples");
+                get_option_value<int>(options, "bootstrap_train.num_bootstrapping_samples");
         const std::vector<int> maxNumSamplesPerImage =
-                get_option_value<std::vector<int> >(options, "bootstrapTrain.maxNumSamplesPerImage");
+                get_option_value<std::vector<int> >(options, "bootstrap_train.max_num_samples_per_image");
 
         // we assume a name like 2011_10_09_61602_trained_model.proto.bin.bootstrap2 and no more than 9 stages
         const int boostrapping_stage = boost::lexical_cast<int>(*(bootStrapLearnerFile.end() - 1)) + 1;
@@ -610,7 +610,7 @@ void LabeledData::createIntegralImages(const std::vector<std::string> &filenames
         if((boostrapping_stage < 0) or (boostrapping_stage >= static_cast<int>(maxNumSamplesPerImage.size())) )
         {
             throw std::runtime_error("Could not deduce the maxNumSamplesPerImage given "
-                                     "bootStrapLearnerFile and bootstrapTrain.maxNumSamplesPerImage");
+                                     "bootStrapLearnerFile and bootstrapTrain.max_num_samples_per_image");
         }
 
         if(boostrapping_stage > 0)

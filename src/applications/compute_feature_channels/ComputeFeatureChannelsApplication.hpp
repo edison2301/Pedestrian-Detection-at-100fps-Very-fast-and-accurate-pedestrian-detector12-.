@@ -19,7 +19,7 @@ class ComputeFeatureChannelsApplication : public doppia::BaseApplication
 
 public:
 
-    static boost::program_options::options_description get_args_options();
+    static boost::program_options::options_description get_options_description();
 
     std::string get_application_title();
 
@@ -28,7 +28,7 @@ public:
 
 protected:
 
-    void get_options_description(boost::program_options::options_description &desc);
+    void get_all_options_descriptions(boost::program_options::options_description &desc);
 
     void setup_logging(std::ofstream &log_file, const boost::program_options::variables_map &options);
     void setup_problem(const boost::program_options::variables_map &options);

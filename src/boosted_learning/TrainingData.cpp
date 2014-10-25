@@ -558,16 +558,16 @@ void TrainingData::addBootstrappingSamples(
     //doppia::progress_display_with_eta progress_indicator(numNegativeSamplesToAdd);
 
     const int
-            numScales = get_option_value<int>(options, "bootstrapTrain.num_scales"),
-            numRatios = get_option_value<int>(options, "bootstrapTrain.num_ratios");
+            numScales = get_option_value<int>(options, "bootstrap_train.num_scales"),
+            numRatios = get_option_value<int>(options, "bootstrap_train.num_ratios");
 
     const float
-            minScale = get_option_value<float>(options, "bootstrapTrain.min_scale"),
-            maxScale = get_option_value<float>(options, "bootstrapTrain.max_scale"),
-            minRatio = get_option_value<float>(options, "bootstrapTrain.min_ratio"),
-            maxRatio = get_option_value<float>(options, "bootstrapTrain.max_ratio");
+            minScale = get_option_value<float>(options, "bootstrap_train.min_scale"),
+            maxScale = get_option_value<float>(options, "bootstrap_train.max_scale"),
+            minRatio = get_option_value<float>(options, "bootstrap_train.min_ratio"),
+            maxRatio = get_option_value<float>(options, "bootstrap_train.max_ratio");
 
-    const bool use_less_memory = get_option_value<bool>(options, "bootstrapTrain.frugalMemoryUsage");
+    const bool use_less_memory = get_option_value<bool>(options, "bootstrap_train.frugal_memory_usage");
 
     const size_t initialIntegralImagesSize = get_num_examples();
     bootstrapping::append_result_functor_t the_functor = AppendDatumFunctor(*this);
