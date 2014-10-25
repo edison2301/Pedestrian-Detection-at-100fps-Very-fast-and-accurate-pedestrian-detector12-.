@@ -111,7 +111,7 @@ ObjectsDetectionApplication::~ObjectsDetectionApplication()
 }
 
 
-program_options::options_description ObjectsDetectionApplication::get_args_options()
+program_options::options_description ObjectsDetectionApplication::get_options_description()
 {
     program_options::options_description desc("ObjectsDetectionApplication options");
 
@@ -161,12 +161,12 @@ program_options::options_description ObjectsDetectionApplication::get_args_optio
 }
 
 
-void ObjectsDetectionApplication::get_options_description(program_options::options_description &desc)
+void ObjectsDetectionApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
     desc.add(VideoInputFactory::get_args_options());
 
     // Objects detection options --
-    desc.add(ObjectsDetectionApplication::get_args_options());
+    desc.add(ObjectsDetectionApplication::get_options_description());
     desc.add(ObjectsDetectionGui::get_args_options());
 
     desc.add(ObjectsDetectorFactory::get_args_options());

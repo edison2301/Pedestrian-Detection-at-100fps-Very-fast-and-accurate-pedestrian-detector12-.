@@ -67,10 +67,10 @@ int DetectorsComparisonTestApplication::get_current_frame_number() const
     return 0;
 }
 
-void DetectorsComparisonTestApplication::get_options_description(program_options::options_description &desc)
+void DetectorsComparisonTestApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
 
-    desc.add(BaseApplication::get_args_options(get_application_title()));
+    desc.add(BaseApplication::get_options_description(get_application_title()));
 
     desc.add(AbstractObjectsDetector::get_args_options());
     desc.add(IntegralChannelsDetector::get_args_options());

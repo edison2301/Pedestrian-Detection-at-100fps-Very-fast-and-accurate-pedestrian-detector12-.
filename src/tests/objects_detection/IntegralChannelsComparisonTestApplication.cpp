@@ -61,10 +61,10 @@ int IntegralChannelsComparisonTestApplication::get_current_frame_number() const
 }
 
 
-void IntegralChannelsComparisonTestApplication::get_options_description(program_options::options_description &desc)
+void IntegralChannelsComparisonTestApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
 
-    desc.add(BaseApplication::get_args_options(get_application_title()));
+    desc.add(BaseApplication::get_options_description(get_application_title()));
 
     //desc.add(ObjectsDetectionApplication::get_args_options());
     //desc.add(ObjectsDetectionGui::get_args_options());

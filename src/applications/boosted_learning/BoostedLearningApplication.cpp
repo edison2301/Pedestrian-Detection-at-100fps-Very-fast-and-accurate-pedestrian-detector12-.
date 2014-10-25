@@ -66,7 +66,7 @@ BoostedLearningApplication::~BoostedLearningApplication()
 
 TrainingData::point_t get_model_windowSize(const program_options::variables_map &options)
 {
-    const std::string modelWindowString= get_option_value<std::string>(options, "train.modelWindow");
+    const std::string modelWindowString= get_option_value<std::string>(options, "train.model_window");
 
     //get model window
     std::vector<std::string> modelWindowStrings;
@@ -82,8 +82,8 @@ TrainingData::point_t get_model_windowSize(const program_options::variables_map 
 TrainingData::point_t getTrainingDataOffset(const program_options::variables_map &options)
 {
     const int
-            offsetX = get_option_value<int>(options, "train.offsetX"),
-            offsetY = get_option_value<int>(options, "train.offsetY");
+            offsetX = get_option_value<int>(options, "train.offset_x"),
+            offsetY = get_option_value<int>(options, "train.offset_y");
 
     TrainingData::point_t testOffset(offsetX, offsetY);
     return testOffset;
@@ -93,8 +93,8 @@ TrainingData::point_t getTrainingDataOffset(const program_options::variables_map
 TrainingData::point_t getTestingDataOffset(const program_options::variables_map &options)
 {
     const int
-            offsetX = get_option_value<int>(options, "test.offsetX"),
-            offsetY = get_option_value<int>(options, "test.offsetY");
+            offsetX = get_option_value<int>(options, "test.offset_x"),
+            offsetY = get_option_value<int>(options, "test.offset_y");
 
     TrainingData::point_t testOffset(offsetX, offsetY);
     return testOffset;
@@ -104,7 +104,7 @@ TrainingData::point_t getTestingDataOffset(const program_options::variables_map 
 TrainingData::rectangle_t get_object_window(const program_options::variables_map &options)
 {
     //read files for training
-    const std::string objectWindowString = get_option_value<std::string>(options, "train.objectWindow");
+    const std::string objectWindowString = get_option_value<std::string>(options, "train.object_window");
 
     //get object window
     std::vector<std::string> objectWindowStrings;
@@ -435,7 +435,7 @@ void getImageFileNames(
 } // end of getImageFileNames
 
 
-program_options::options_description BoostedLearningApplication::get_args_options()
+program_options::options_description BoostedLearningApplication::get_options_description()
 {
     using namespace boost::program_options;
 
@@ -447,16 +447,12 @@ program_options::options_description BoostedLearningApplication::get_args_option
     desc.add_options()
 
             ("task,t",
-             value<std::string>()->default_value("bootstrapTrain"),
-             "the task to execute (you probably want to use bootstrapTrain)")
+             value<std::string>()->default_value("bootstrap_train"),
+             "the task to execute (you probably want to use bootstrap_train)")
 
             ("silent_mode",
              value<bool>()->default_value(false),
              "if true, no status information will be printed at run time (use this for speed benchmarking)")
-
-            ("backgroundClassLabel",
-             value<int>()->default_value(0),
-             "label for the background class")
             ;
 
     {
@@ -464,19 +460,23 @@ program_options::options_description BoostedLearningApplication::get_args_option
 
         training_options.add_options()
 
-                ("train.trainSetName",
+                ("train.training_set_name",
                  value<std::string>()->default_value("INRIAPerson"),
                  "String identifying the training set used. This for human consuption.")
 
-                ("train.trainSet",
+                ("train.training_set",
                  value<std::string>(),
                  "File containing the Training set, each line <class> <image_path>")
 
-                ("train.testSet",
+                ("train.background_class_label",
+                 value<int>()->default_value(0),
+                 "label for the background class")
+
+                ("train.test_set",
                  value<std::string>(),
                  "File containing the Testing set, each line <class> <image_path>")
 
-                ("train.extendedTrainSet",
+                ("train.extended_training_set",
                  value<std::string>()->default_value(""),
                  "File containing the a bigger training set used starting from the first "
                  "bootstrapping stage, each line <class> <image_path>")
@@ -485,53 +485,53 @@ program_options::options_description BoostedLearningApplication::get_args_option
                  value<std::string>()->default_value("/users/visics/mmathias/devel/doppia/tools/objects_detection/bestFeat.txt"),
                  "If feature type == file, then this file is used for the featurepool")
 
-                ("train.validationSet",
+                ("train.validation_set",
                  value<std::string>()->default_value(""),
                  "File containing the Testing set, each line <class> <image_path>")
 
-                ("train.modelWindow",
+                ("train.model_window",
                  value<std::string>()->default_value("64,128"),
                  "Window size of the training images (w,h)")
 
-                ("train.numIterations",
+                ("train.num_iterations",
                  value<int>(),
                  "number of iterations for training."
                  "For vanilla adaboost this defines the number of weak classifiers used in the strong classifier.")
 
-                ("train.numNegativeSamples",
+                ("train.num_negative_samples",
                  value<int>()->default_value(5000),
                  "Number of negative samples to be used for the training")
 
-                ("train.useHardNegatives",
+                ("train.use_hard_negatives",
                  value<bool>()->default_value(false),
                  "use hard negatives for training")
 
-                ("train.objectWindow",
+                ("train.object_window",
                  value<std::string>()->default_value("8,16,48,96"),
                  "bounding box of the object in (x,y,w,h)")
 
-                ("train.typeAdaboost", value<std::string>()->default_value("vanilla"),
+                ("train.offset_x",
+                 value<int>(),
+                 "offset in X direction between the training image border and the model window")
+
+                ("train.offset_y",
+                 value<int>(),
+                 "offset in y direction between the training image border and the model window")
+
+                ("train.bootstrap_learner_file",
+                 value<std::string>()->default_value(std::string()),
+                 "File with the learner used for bootstrapping")
+
+                ("train.type_adaboost", value<std::string>()->default_value("vanilla"),
                  "Type of the Adaboost used: vanilla or vanilla")
                 // FIXME this option is not really used, should add checks in the code
                 //  default, GENTLE_ADA, other=DISCRETE_ADA
 
-                ("train.decisionTreeDepth",
+                ("train.decision_tree_depth",
                  value<int>()->default_value(1),
                  "depth of the decision trees (0 equals decision stump)")
 
-                ("train.offsetX",
-                 value<int>(),
-                 "offset in X direction between the training image border and the model window")
-
-                ("train.offsetY",
-                 value<int>(),
-                 "offset in y direction between the training image border and the model window")
-
-                ("train.bootStrapLearnerFile",
-                 value<std::string>()->default_value(std::string()),
-                 "File with the learner used for bootstrapping")
-
-                ("train.cascadeType",
+                ("train.cascade_type",
                  value<std::string>()->default_value("dbp"),
                  "Type of the soft cascade: none, dbp or mip."
                  "dbp stands for Direct Backward Prunning (see C. Zang and P. Viola 2007).")
@@ -565,11 +565,11 @@ program_options::options_description BoostedLearningApplication::get_args_option
                 //("train.maxFeatureSizeRatio", value<float>(),
                 // "defines the maximal size of a feature: 0.6 means max 60% of the training image size")
 
-                ("train.featuresPoolSize",
+                ("train.features_pool_size",
                  value<int>(),
                  "Size of the set of features used to build up weak classifiers at each iteration of the boosting algorithm")
 
-                ("train.featurePoolType",
+                ("train.feature_pool_type",
                  value<std::string>()->default_value("random"),
                  "specifies the type of sampling for the feature pool. "
                  "Possible values are:\n"
@@ -584,7 +584,7 @@ program_options::options_description BoostedLearningApplication::get_args_option
                  "allRectangles; please be carefull, this option will be very memory hungry (60 Gb or more)"
                  "(ignores featuresPoolSize, min/max feature width/height/ratio)\n")
 
-                ("train.useStumpSets",
+                ("train.use_stump_sets",
                  value<bool>()->default_value(false),
                  "enables stumpset training instead of standard adaboost")
 
@@ -610,7 +610,7 @@ program_options::options_description BoostedLearningApplication::get_args_option
                  value<std::string>(),
                  "file to write the trained detector into")
 
-                ("train.channelsFolderPath",
+                ("train.channels_folder_path",
                  value<std::string>(),
                  "path to the folder containing the channel features computed for the train and test set (if any)")
 
@@ -623,19 +623,19 @@ program_options::options_description BoostedLearningApplication::get_args_option
         options_description testing_options("Testing task options");
 
         testing_options.add_options()
-                ("test.classifierName",
+                ("test.classifier_name",
                  value<std::string>(),
                  "filename of the classifier to test on")
 
-                ("test.testSet",
+                ("test.test_set",
                  value<std::string>(),
                  "File containing the Testing set, each line <class> <image_path>")
 
-                ("test.offsetX",
+                ("test.offset_x",
                  value<int>()->default_value(3), // default value fits INRIAPerson
                  "offset in X direction between the testing image border and the model window")
 
-                ("test.offsetY",
+                ("test.offset_y",
                  value<int>()->default_value(3), // default value fits INRIAPerson
                  "offset in y direction between the testing image border and the model window")
 
@@ -644,46 +644,46 @@ program_options::options_description BoostedLearningApplication::get_args_option
     }
 
     {
-        options_description boostrapping_options("bootstrapTrain task options");
+        options_description boostrapping_options("bootstrap_train task options");
 
         boostrapping_options.add_options()
-                ("bootstrapTrain.classifiersPerStage",
+                ("bootstrap_train.classifiers_per_stage",
                  value<std::vector<int> >()->multitoken(),
                  "List of number of classifiers trained per stage.")
 
-                ("bootstrapTrain.maxNumSamplesPerImage",
+                ("bootstrap_train.max_num_samples_per_image",
                  value<std::vector<int> >()->multitoken(),
                  "List of number of samples per image allowed for bootstrapping")
 
-                ("bootstrapTrain.numBootstrappingSamples",
+                ("bootstrap_train.num_bootstrapping_samples",
                  value<int>()->default_value(5000),
                  "Number of samples to be searched by bootstrapping")
 
-                ("bootstrapTrain.min_scale",
+                ("bootstrap_train.min_scale",
                  value<float>()->default_value(0.3),
                  "minimum detection window scale explored for detections")
 
-                ("bootstrapTrain.max_scale",
+                ("bootstrap_train.max_scale",
                  value<float>()->default_value(5.0),
                  "maximum detection window scale explored for detections")
 
-                ("bootstrapTrain.num_scales",
+                ("bootstrap_train.num_scales",
                  value<int>()->default_value(10),
                  "number of scales to explore. (this is combined with num_ratios)")
 
-                ("bootstrapTrain.min_ratio",
+                ("bootstrap_train.min_ratio",
                  value<float>()->default_value(1),
                  "minimum ratio (width/height) of the detection window used to explore detections")
 
-                ("bootstrapTrain.max_ratio",
+                ("bootstrap_train.max_ratio",
                  value<float>()->default_value(1),
                  "max ratio (width/height) of the detection window used to explore detections")
 
-                ("bootstrapTrain.num_ratios",
+                ("bootstrap_train.num_ratios",
                  value<int>()->default_value(1),
                  "number of ratios to explore. (this is combined with num_scales)")
 
-                ("bootstrapTrain.frugalMemoryUsage",
+                ("bootstrap_train.frugal_memory_usage",
                  value<bool>()->default_value(false),
                  "By default we use as much GPU memory as useful for speeding things up. "
                  "If frugal memory usage is enabled, we will reduce the memory usage, "
@@ -698,9 +698,9 @@ program_options::options_description BoostedLearningApplication::get_args_option
 } // end of BoostedLearningApplication::get_args_options
 
 
-void BoostedLearningApplication::get_options_description(program_options::options_description &desc)
+void BoostedLearningApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
-    desc.add(BoostedLearningApplication::get_args_options());
+    desc.add(BoostedLearningApplication::get_options_description());
     desc.add(IntegralChannelsComputerFactory::get_options_description());
     desc.add(IntegralChannelsForPedestrians::get_options_description());
     return;
@@ -785,7 +785,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
 
     /*if(task == "train")
     {
-        const std::string channels_folder_path = get_option_value<std::string>(options, "train.channelsFolderPath");
+        const std::string channels_folder_path = get_option_value<std::string>(options, "train.channels_folder_path");
         integral_channels_computer_p(new doppia::IntegralChannelsFromFiles(channels_folder_path));
     }*/
 
@@ -793,18 +793,18 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
     // setting up training parameters
 
     // used in bootstrapTrain(), bootstrapTrainResume(), read files for training
-    trainSetPath = get_option_value<std::string>(options, "train.trainSet"),
-            testSetPath = get_option_value<std::string>(options, "train.testSet"),
-            validationSetPath = get_option_value<std::string>(options, "train.validationSet");
-    extendedTrainSetPath = get_option_value<std::string>(options, "train.extendedTrainSet");
-    numIterations = get_option_value<int>(options, "train.numIterations");
-    trainNumNegativeSamples = get_option_value<int>(options, "train.numNegativeSamples");
-    initialBootstrapFileName = get_option_value<std::string>(options, "train.bootStrapLearnerFile");
-    //channels_folder_path = get_option_value<std::string>(options, "train.channelsFolderPath");
-    featuresPoolSize = get_option_value<int>(options, "train.featuresPoolSize");
-    featurePoolType = get_option_value<std::string>(options, "train.featurePoolType");
-    useStumpSets = get_option_value<bool>(options, "train.useStumpSets");
-    typeAdaboost = get_option_value<string>(options, "train.typeAdaboost");
+    trainSetPath = get_option_value<std::string>(options, "train.train_set"),
+            testSetPath = get_option_value<std::string>(options, "train.test_set"),
+            validationSetPath = get_option_value<std::string>(options, "train.validation_set");
+    extendedTrainSetPath = get_option_value<std::string>(options, "train.extended_train_set");
+    numIterations = get_option_value<int>(options, "train.num_iterations");
+    trainNumNegativeSamples = get_option_value<int>(options, "train.num_negative_samples");
+    initialBootstrapFileName = get_option_value<std::string>(options, "train.bootstrap_learner_file");
+    //channels_folder_path = get_option_value<std::string>(options, "train.channels_folder_path");
+    featuresPoolSize = get_option_value<int>(options, "train.features_pool_size");
+    featurePoolType = get_option_value<std::string>(options, "train.feature_pool_type");
+    useStumpSets = get_option_value<bool>(options, "train.use_stump_sets");
+    typeAdaboost = get_option_value<string>(options, "train.type_adaboost");
 
     // setting up bootstrapping parameters
 
@@ -813,7 +813,7 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
     classifiersPerStage = get_option_value<std::vector<int> >(options, "bootstrapTrain.classifiersPerStage");
     maxNumSamplesPerImage = get_option_value<std::vector<int> >(options, "bootstrapTrain.maxNumSamplesPerImage");
 
-    backgroundClassLabel = get_option_value<int>(options, "backgroundClassLabel");
+    backgroundClassLabel = get_option_value<int>(options, "train.background_class_label");
 
 
 
@@ -821,11 +821,11 @@ void BoostedLearningApplication::setup_problem(const program_options::variables_
     // setting up testing parameters
 
     // used in test(), getTestingDataOffset() (<-- possibly redundant, when is it called?)
-    test_offsetX = get_option_value<int>(options, "test.offsetX");
-    test_offsetY = get_option_value<int>(options, "test.offsetY");
+    test_offsetX = get_option_value<int>(options, "test.offset_x");
+    test_offsetY = get_option_value<int>(options, "test.offset_y");
 
     // used in test(), read files for training
-    //testSetPath = get_option_value<std::string>(options, "test.testSet"),
+    //testSetPath = get_option_value<std::string>(options, "test.test_set"),
     classifierName = get_option_value<std::string>(options, "test.classifierName");
 
 
@@ -1114,9 +1114,9 @@ void toSoftCascade(const bool silent_mode, const program_options::variables_map 
 
     //read files for training
     const std::string
-            trainSetPath = get_option_value<std::string>(options, "train.trainSet");
+            trainSetPath = get_option_value<std::string>(options, "train.train_set");
 
-    const int backgroundClassLabel = get_option_value<int>(options, "backgroundClassLabel");
+    const int backgroundClassLabel = get_option_value<int>(options, "train.background_class_label");
 
     ModelIO modelReader;
     modelReader.read_model(inputModelFileName);

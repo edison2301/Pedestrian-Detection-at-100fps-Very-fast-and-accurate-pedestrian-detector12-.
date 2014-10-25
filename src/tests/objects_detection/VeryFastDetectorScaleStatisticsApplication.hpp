@@ -64,7 +64,7 @@ protected:
     statistics_per_delta_scale,
     centered_statistics_per_delta_scale;
 
-    void get_options_description(program_options::options_description &desc);
+    void get_all_options_descriptions(program_options::options_description &desc);
 
     /// child classes will instanciate here the different processing modules
     void setup_problem(const boost::program_options::variables_map &options);

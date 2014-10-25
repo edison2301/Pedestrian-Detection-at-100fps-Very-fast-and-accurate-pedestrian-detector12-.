@@ -88,7 +88,7 @@ StixelWorldApplication::~StixelWorldApplication()
 }
 
 
-program_options::options_description StixelWorldApplication::get_args_options()
+program_options::options_description StixelWorldApplication::get_options_description()
 {
     program_options::options_description desc("StixelWorldApplication options");
 
@@ -125,10 +125,10 @@ program_options::options_description StixelWorldApplication::get_args_options()
     return desc;
 }
 
-void StixelWorldApplication::get_options_description(program_options::options_description &desc)
+void StixelWorldApplication::get_all_options_descriptions(program_options::options_description &desc)
 {
 
-    desc.add(StixelWorldApplication::get_args_options());
+    desc.add(StixelWorldApplication::get_options_description());
     desc.add(StixelWorldGui::get_args_options());
     desc.add(VideoInputFactory::get_args_options());
 

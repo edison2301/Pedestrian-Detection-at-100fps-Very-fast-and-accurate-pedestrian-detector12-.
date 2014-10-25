@@ -101,7 +101,7 @@ int BaseApplication::main(int argc, char *argv[])
     return return_value;
 }
 
-program_options::options_description BaseApplication::get_args_options(const std::string application_name)
+program_options::options_description BaseApplication::get_options_description(const std::string application_name)
 {
     program_options::options_description desc("BaseApplication options");
     desc.add_options()
@@ -130,7 +130,7 @@ void BaseApplication::add_args_options(program_options::options_description &des
     typedef std::vector< boost::shared_ptr<boost::program_options::option_description> > base_options_t;
 
     // needs to be static to avoid crash when using options latter
-    static program_options::options_description base_args_options = BaseApplication::get_args_options(application_name);
+    static program_options::options_description base_args_options = BaseApplication::get_options_description(application_name);
     // since static application_name is considered only during the first function call
     // not expected to be called twice anyway
 
@@ -163,7 +163,7 @@ bool BaseApplication::parse_arguments(int argc, char *argv[], program_options::v
     program_options::options_description desc("Allowed options");
     desc.add_options()("help", "produces this help message");
 
-    get_options_description(desc);
+    get_all_options_descriptions(desc);
 
     try
     {
