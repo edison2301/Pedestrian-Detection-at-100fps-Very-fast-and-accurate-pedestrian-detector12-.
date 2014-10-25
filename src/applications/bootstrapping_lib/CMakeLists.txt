@@ -181,9 +181,9 @@ add_library( bootstrapping SHARED ${SrcCpp} ${HelpersCpp} )
 
 target_link_libraries( bootstrapping
 
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
+   boost_unit_test_framework
+   boost_program_options boost_filesystem boost_system
+   boost_thread pthread gomp
    protobuf
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -202,7 +202,7 @@ add_executable(test_bootstrapping_lib "test_bootstrapping_lib.cpp")
 target_link_libraries(test_bootstrapping_lib bootstrapping)
 
 target_link_libraries(test_bootstrapping_lib
-   boost_program_options-mt boost_filesystem-mt
+   boost_program_options boost_filesystem
    gomp
 # SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
