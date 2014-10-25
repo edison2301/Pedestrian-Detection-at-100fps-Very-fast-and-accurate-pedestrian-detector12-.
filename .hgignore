@@ -21,6 +21,7 @@ applications/stixel_world_lib/test_*_lib
 applications/compute_geodesic_channels/compute_geodesic_channels
 applications/reweight_detections/reweight_detections
 
+tests/data_sequence/test_data_sequence
 tests/tracks_categorisation/test_tracks_categorisation
 tests/lines_detection/test_lines_detection
 tests/ground_plane/test_ground_plane
