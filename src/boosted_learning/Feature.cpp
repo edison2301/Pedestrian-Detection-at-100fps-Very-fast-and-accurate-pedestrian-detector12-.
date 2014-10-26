@@ -120,7 +120,7 @@ void getFeaturesConfigurations(const point_t &modelWindow,
     }
     else if (configType == "file")
     {
-        getFeatureConfigurationsFromFile(featuresConfigurations, get_option_value<std::string>(options, "train.featuresConfigurationsFile"));
+        getFeatureConfigurationsFromFile(featuresConfigurations, get_option_value<std::string>(options, "train.features_configurations_file"));
 
     }
     else if (configType == "random-squares")
@@ -206,17 +206,17 @@ void getRandomFeaturesVerticallyMirrored(const point_t &modelWindow,
             modelWidth = modelWindow.x() / shrinking_factor,
             modelHeight = modelWindow.y() / shrinking_factor;
 
-    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.maxFeatureSizeRatio");
+    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.max_feature_size_ratio");
     //maxWidth = static_cast<int>(maxFeatureSizeRatio * modelWidth),
     //maxHeight = static_cast<int>(maxFeatureSizeRatio * modelHeight);
 
     const int
-            minWidth = std::max(1, get_option_value<int>(options, "train.minFeatWidth") / shrinking_factor),
-            minHeight = std::max(1, get_option_value<int>(options, "train.minFeatHeight") / shrinking_factor);
+            minWidth = std::max(1, get_option_value<int>(options, "train.min_feature_width") / shrinking_factor),
+            minHeight = std::max(1, get_option_value<int>(options, "train.min_feature_height") / shrinking_factor);
 
     int
-            maxWidth = get_option_value<int>(options, "train.maxFeatWidth"),
-            maxHeight = get_option_value<int>(options, "train.maxFeatHeight");
+            maxWidth = get_option_value<int>(options, "train.max_feature_width"),
+            maxHeight = get_option_value<int>(options, "train.max_feature_height");
 
     if(maxWidth < 0)
     {
@@ -243,7 +243,7 @@ void getRandomFeaturesVerticallyMirrored(const point_t &modelWindow,
 
     static int call_counter=0;
     boost::uint32_t random_seed = std::time(NULL);
-    const int input_seed = get_option_value<boost::uint32_t>(options, "train.featuresPoolRandomSeed");
+    const int input_seed = get_option_value<boost::uint32_t>(options, "train.feature_pool_random_seed");
     if(input_seed > 0)
     {
         random_seed = input_seed+call_counter;
@@ -371,17 +371,17 @@ void getRandomFeaturesGradientMirrored(const point_t &modelWindow,
             modelWidth = modelWindow.x() / shrinking_factor,
             modelHeight = modelWindow.y() / shrinking_factor;
 
-    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.maxFeatureSizeRatio");
+    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.max_feature_size_ratio");
     //maxWidth = static_cast<int>(maxFeatureSizeRatio * modelWidth),
     //maxHeight = static_cast<int>(maxFeatureSizeRatio * modelHeight)
 
     const int
-            minWidth = std::max(1, get_option_value<int>(options, "train.minFeatWidth") / shrinking_factor),
-            minHeight = std::max(1, get_option_value<int>(options, "train.minFeatHeight") / shrinking_factor);
+            minWidth = std::max(1, get_option_value<int>(options, "train.min_feature_width") / shrinking_factor),
+            minHeight = std::max(1, get_option_value<int>(options, "train.min_feature_height") / shrinking_factor);
 
     int
-            maxWidth = get_option_value<int>(options, "train.maxFeatWidth"),
-            maxHeight = get_option_value<int>(options, "train.maxFeatHeight");
+            maxWidth = get_option_value<int>(options, "train.max_feature_width"),
+            maxHeight = get_option_value<int>(options, "train.max_feature_height");
 
     if(maxWidth < 0)
     {
@@ -408,7 +408,7 @@ void getRandomFeaturesGradientMirrored(const point_t &modelWindow,
 
     static int call_counter=0;
     boost::uint32_t random_seed = std::time(NULL);
-    const int input_seed = get_option_value<boost::uint32_t>(options, "train.featuresPoolRandomSeed");
+    const int input_seed = get_option_value<boost::uint32_t>(options, "train.feature_pool_random_seed");
     if(input_seed > 0)
     {
         random_seed = input_seed+call_counter;
@@ -545,17 +545,17 @@ void getRandomFeaturesGradientMirroredCopy(const point_t &modelWindow,
             modelWidth = modelWindow.x() / shrinking_factor,
             modelHeight = modelWindow.y() / shrinking_factor;
 
-    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.maxFeatureSizeRatio");
+    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.max_feature_size_ratio");
     //maxWidth = static_cast<int>(maxFeatureSizeRatio * modelWidth),
     //maxHeight = static_cast<int>(maxFeatureSizeRatio * modelHeight)
 
     const int
-            minWidth = std::max(1, get_option_value<int>(options, "train.minFeatWidth") / shrinking_factor),
-            minHeight = std::max(1, get_option_value<int>(options, "train.minFeatHeight") / shrinking_factor);
+            minWidth = std::max(1, get_option_value<int>(options, "train.min_feature_width") / shrinking_factor),
+            minHeight = std::max(1, get_option_value<int>(options, "train.min_feature_height") / shrinking_factor);
 
     int
-            maxWidth = get_option_value<int>(options, "train.maxFeatWidth"),
-            maxHeight = get_option_value<int>(options, "train.maxFeatHeight");
+            maxWidth = get_option_value<int>(options, "train.max_feature_width"),
+            maxHeight = get_option_value<int>(options, "train.max_feature_height");
 
     if(maxWidth < 0)
     {
@@ -582,7 +582,7 @@ void getRandomFeaturesGradientMirroredCopy(const point_t &modelWindow,
 
     static int call_counter=0;
     boost::uint32_t random_seed = std::time(NULL);
-    const int input_seed = get_option_value<boost::uint32_t>(options, "train.featuresPoolRandomSeed");
+    const int input_seed = get_option_value<boost::uint32_t>(options, "train.feature_pool_random_seed");
     if(input_seed > 0)
     {
         random_seed = input_seed+call_counter;
@@ -713,12 +713,12 @@ void getChannelInvariantFeatures(const point_t &modelWindow,
             modelHeight = modelWindow.y() / shrinking_factor;
 
     const int
-            minWidth = std::max(1, get_option_value<int>(options, "train.minFeatWidth") / shrinking_factor),
-            minHeight = std::max(1, get_option_value<int>(options, "train.minFeatHeight") / shrinking_factor);
+            minWidth = std::max(1, get_option_value<int>(options, "train.min_feature_width") / shrinking_factor),
+            minHeight = std::max(1, get_option_value<int>(options, "train.min_feature_height") / shrinking_factor);
 
     int
-            maxWidth = get_option_value<int>(options, "train.maxFeatWidth"),
-            maxHeight = get_option_value<int>(options, "train.maxFeatHeight");
+            maxWidth = get_option_value<int>(options, "train.max_feature_width"),
+            maxHeight = get_option_value<int>(options, "train.max_feature_height");
 
     if(maxWidth < 0)
     {
@@ -746,7 +746,7 @@ void getChannelInvariantFeatures(const point_t &modelWindow,
 
     static int call_counter=0;
     boost::uint32_t random_seed = std::time(NULL);
-    const int input_seed = get_option_value<boost::uint32_t>(options, "train.featuresPoolRandomSeed");
+    const int input_seed = get_option_value<boost::uint32_t>(options, "train.feature_pool_random_seed");
     if(input_seed > 0)
     {
         random_seed = input_seed+call_counter;
@@ -979,7 +979,7 @@ void computeRandomFeaturesConfigurations(const point_t &modelWindow,
     }
 
 
-    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.maxFeatureSizeRatio");
+    //const float maxFeatureSizeRatio = get_option_value<float>(options, "train.max_feature_size_ratio");
 
     const int
             shrinking_factor = bootstrapping::integral_channels_computer_t::get_shrinking_factor(),
@@ -987,14 +987,14 @@ void computeRandomFeaturesConfigurations(const point_t &modelWindow,
             modelHeight = modelWindow.y() / shrinking_factor;
 
     const int
-            minWidth = std::max(1, get_option_value<int>(options, "train.minFeatWidth") / shrinking_factor),
-            minHeight = std::max(1, get_option_value<int>(options, "train.minFeatHeight") / shrinking_factor);
+            minWidth = std::max(1, get_option_value<int>(options, "train.min_feature_width") / shrinking_factor),
+            minHeight = std::max(1, get_option_value<int>(options, "train.min_feature_height") / shrinking_factor);
     //maxWidth = static_cast<int>(maxFeatureSizeRatio * modelWidth),
     //maxHeight = static_cast<int>(maxFeatureSizeRatio * modelHeight);
 
     int
-            maxWidth = get_option_value<int>(options, "train.maxFeatWidth"),
-            maxHeight = get_option_value<int>(options, "train.maxFeatHeight");
+            maxWidth = get_option_value<int>(options, "train.max_feature_width"),
+            maxHeight = get_option_value<int>(options, "train.max_feature_height");
 
     if(maxWidth < 0)
     {
@@ -1021,7 +1021,7 @@ void computeRandomFeaturesConfigurations(const point_t &modelWindow,
 
     static int call_counter = 0;
     boost::uint32_t random_seed = std::time(NULL);
-    const int input_seed = get_option_value<uint32_t>(options, "train.featuresPoolRandomSeed");
+    const int input_seed = get_option_value<uint32_t>(options, "train.feature_pool_random_seed");
 
     if(input_seed > 0)
     {

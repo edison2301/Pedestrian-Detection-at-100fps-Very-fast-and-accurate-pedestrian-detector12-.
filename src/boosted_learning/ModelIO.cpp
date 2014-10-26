@@ -378,7 +378,7 @@ void ModelIO::write(const std::string file_name)
 
     if(file_name.empty())
     {
-        throw std::invalid_argument("ModelIO::write required an non empty fileName");
+        throw std::invalid_argument("ModelIO::write requires a non-empty file name");
     }
 
     fstream output(file_name.c_str(), ios::out | std::ios::binary);
