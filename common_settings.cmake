@@ -41,10 +41,12 @@ set(VISICS_MACHINES
 )
 
 set(D2_GPU_MACHINES
-  "wks-12-31" "wks-12-32" "wks-12-33" # new high end work stations
+  "wks-12-31" "wks-12-32" "wks-12-33"             # new high end work stations
+  "wks-12-44" "wks-12-45" "wks-12-46" "wks-12-47" # new high end work stations
   "wks-12-23"
   "ruegen"
   "ganymede"
+  "menorca"
 )
 
 set(D2_NO_GPU_MACHINES
@@ -52,6 +54,7 @@ set(D2_NO_GPU_MACHINES
   "triton"
   "d2kinect0"
   "infno7900"
+  "wks-12-34"
 )
 
 list(FIND VISICS_MACHINES ${HOSTNAME} HOSTED_AT_VISICS)
@@ -291,8 +294,8 @@ elseif(HOSTED_AT_D2_GPU GREATER -1)
     #set(opencv_INCLUDE_DIRS "/home/local/opencv_2.4.3/include/")
     #set(opencv_LIBRARY_DIRS "/home/mfritz/local/opencv_2.4.3/lib/")
 
-    set(opencv_INCLUDE_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.5/install/include")
-    set(opencv_LIBRARY_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.5/install/lib")
+    set(opencv_INCLUDE_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.9/install/include")
+    set(opencv_LIBRARY_DIRS "/BS/mohomran-projects/work/Software/opencv-2.4.9/install/lib")
   else()
     message("Using no gpu opencv on a GPU capable machine")
     set(opencv_INCLUDE_DIRS "/home/benenson/projects/work/local/opencv_2.4.3_no_gpu/include")
