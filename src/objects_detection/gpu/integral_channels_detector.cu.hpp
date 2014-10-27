@@ -94,7 +94,6 @@ typedef Cuda::DeviceMemoryLinear1D<gpu_stixel_t> gpu_stixels_t;
 /// in this datatype we will store detection_window_width/2, which is required for stixels usage
 typedef Cuda::DeviceMemoryLinear1D<boost::int16_t> gpu_half_window_widths_t;
 
-
 /// Small structure used to store on the GPU the detections
 struct gpu_detection_t {
     /// scale_index is synonym of search_range_index (each scale has a different search range)

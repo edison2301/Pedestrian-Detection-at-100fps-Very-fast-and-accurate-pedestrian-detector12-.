@@ -88,7 +88,7 @@ TestObjectsDetectionApplication::TestObjectsDetectionApplication()
 
 TestObjectsDetectionApplication::~TestObjectsDetectionApplication()
 {
-    // nothing to do here
+    free_object_detector();
     return;
 }
 
