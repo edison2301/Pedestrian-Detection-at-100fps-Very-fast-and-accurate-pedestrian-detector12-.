@@ -37,6 +37,11 @@ set(opencv_LIBRARIES
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
 
+find_package(Boost REQUIRED  
+   COMPONENTS 
+   unit_test_framework
+   program_options filesystem system thread
+)
 
 # ----------------------------------------------------------------------
 # Setup link and include directories
@@ -49,11 +54,6 @@ set(local_INCLUDE_DIRS
     #"/usr/local/include/eigen2"
     "/users/visics/rbenenso/no_backup/usr/local/include"
     )
-
-include_directories(
- ${local_INCLUDE_DIRS}
- "${doppia_root}/src/applications/bootstrapping_lib"
-)
 
 set(local_LIBRARY_DIRS
   "/users/visics/rbenenso/no_backup/usr/local/lib"
@@ -68,7 +68,16 @@ link_directories(
   ${libpng_LIBRARY_DIRS}
   ${OpenEXR_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
   ${local_LIBRARY_DIRS}
+)
+
+include_directories(
+ ${local_INCLUDE_DIRS}
+ "${doppia_root}/src/applications/bootstrapping_lib"
+  ${libpng_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 
 # ----------------------------------------------------------------------
@@ -150,9 +159,8 @@ file(GLOB HelpersCpp
 add_library(stixel_world SHARED ${SrcCpp} ${MonocularSrcCpp} ${StereoSrcCpp} ${HelpersCpp} )
 
 target_link_libraries(stixel_world
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -171,9 +179,8 @@ set_property(
 )
 
 target_link_libraries(stixel_world_with_ui
-   boost_unit_test_framework-mt
-   boost_program_options-mt boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -190,8 +197,8 @@ add_executable(test_stixel_world_lib
 target_link_libraries(test_stixel_world_lib stixel_world)
 
 target_link_libraries(test_stixel_world_lib
-   boost_program_options-mt boost_filesystem-mt
-   gomp
+   ${Boost_LIBRARIES}
+   gomp pthread
    ${opencv_LIBRARIES}
 #  SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
@@ -207,8 +214,8 @@ add_executable(test_stixel_world_with_ui_lib
 target_link_libraries(test_stixel_world_with_ui_lib stixel_world_with_ui)
 
 target_link_libraries(test_stixel_world_with_ui_lib
-   boost_program_options-mt boost_filesystem-mt
-   gomp
+   ${Boost_LIBRARIES}
+   gomp pthread
    ${opencv_LIBRARIES}
    SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg

@@ -32,6 +32,7 @@ include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
 # Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(OpenEXR REQUIRED OpenEXR)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
@@ -44,6 +45,10 @@ set(opencv_LIBRARIES
     #opencv_objdetect opencv_contrib
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
+
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system thread
+)
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -76,6 +81,7 @@ link_directories(
   ${libpng_LIBRARY_DIRS}
   ${OpenEXR_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
   ${local_LIBRARY_DIRS}
 )
 
@@ -85,6 +91,7 @@ include_directories(
   ${libpng_INCLUDE_DIRS}
   ${OpenEXR_INCLUDE_DIRS}
   ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS} 
   ${local_INCLUDE_DIRS}
   "${doppia_root}/libs/cudatemplates/include"
 )
@@ -242,7 +249,7 @@ target_link_libraries(objects_detection
 
    cpp_stuff_library
 
-   boost_program_options boost_filesystem boost_system boost_thread
+   ${Boost_LIBRARIES}
    protobuf pthread
    SDL X11 Xext #Xrandr
    gomp

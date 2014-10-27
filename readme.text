@@ -108,7 +108,7 @@ Requirements
   If speed is your concern, I strongly recommend to compile OpenCv on your machine using CUDA, enabled all relevant SIMD instructions and using `-ffast-math -funroll-loops -march=native` flags.
 * libjpeg, libpng.
 * libSDL 
-* CMake (and knowledge on how to use it).
+* CMake >= 2.4.3 (and knowledge on how to use it).
 
 * Fair amount of patience to get things running.
 

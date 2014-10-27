@@ -32,7 +32,8 @@ project (VideoInput)
 include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
-# Setup require libraries
+# Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 pkg_check_modules(opencv REQUIRED opencv>=2.1)
 list(APPEND opencv_LIBRARIES opencv_legacy)
@@ -44,6 +45,10 @@ set(opencv_LIBRARIES
     #opencv_objdetect opencv_contrib
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
+
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system thread
+)
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -67,9 +72,23 @@ set(local_INCLUDE_DIRS
    "/usr/local/include/eigen2"
 )
 
+link_directories(
+  ${libpng_LIBRARY_DIRS}
+  ${OpenEXR_LIBRARY_DIRS}
+  ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
+  ${local_LIBRARY_DIRS}
+)
 
-link_directories(${libpng_LIBRARY_DIRS} ${OpenEXR_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
-include_directories("${doppia_root}/libs/" "${doppia_root}/src" ${libpng_INCLUDE_DIRS} ${OpenEXR_INCLUDE_DIRS} ${opencv_INCLUDE_DIRS} ${local_INCLUDE_DIRS})
+include_directories(
+  ${doppia_root}/libs
+  ${doppia_root}/src
+  ${libpng_INCLUDE_DIRS}
+  ${OpenEXR_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${local_INCLUDE_DIRS}
+)
 #cuda_include_directories(./libs )
 
 
@@ -112,7 +131,8 @@ target_link_libraries(video_input
    ${cg_LIBRARIES}
    # linking with CgGL _after_ boost_program_options generates a segmentation fault ! boost_program_options 1.39 has a bug
 
-   boost_program_options-mt boost_filesystem-mt boost_system-mt boost_thread-mt protobuf
+   ${Boost_LIBRARIES}
+   protobuf pthread
    SDL
    gomp Xext Xrandr X11
    ${libpng_LIBRARIES}  jpeg

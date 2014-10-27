@@ -31,8 +31,10 @@ include(${doppia_root}/common_settings.cmake)
 set(USE_GPU OFF CACHE BOOL "Should the GPU be used ?" FORCE)
 
 # ----------------------------------------------------------------------
-# Setup require libraries
+# Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
+#pkg_check_modules(libjpeg REQUIRED libjpeg)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
 
 set(opencv_LIBRARIES
@@ -44,6 +46,11 @@ set(opencv_LIBRARIES
     opencv_gpu
    ) # quick hack for opencv2.4 support
 
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system thread
+)
+
+# ----------------------------------------------------------------------
 # Setup link and include directories
 
 set(local_LIBRARY_DIRS
@@ -60,13 +67,19 @@ set(local_INCLUDE_DIRS
   "${doppia_root}/libs/cudatemplates/include"
 )
 
+link_directories(
+  ${libpng_LIBRARY_DIRS}
+  ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
+  ${local_LIBRARY_DIRS}
+)
 
-link_directories(${libpng_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
 include_directories(
   ${doppia_root}/libs
   ${doppia_root}/src
   ${libpng_INCLUDE_DIRS}
   ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
   ${local_INCLUDE_DIRS}
 )
 
@@ -147,10 +160,8 @@ add_executable(stixel_world
 
 target_link_libraries(stixel_world
 
-   boost_program_options-mt
-   boost_filesystem-mt boost_system-mt
-   boost_thread-mt pthread
-   protobuf
+   ${Boost_LIBRARIES} 
+   protobuf pthread
    SDL X11 Xext #Xrandr
    gomp
    ${libpng_LIBRARIES} jpeg
@@ -159,6 +170,9 @@ target_link_libraries(stixel_world
    #csparse sparse spblas mv
    #lapack blas atlas
 
-#   ${google_perftools_LIBS}
+   #${google_perftools_LIBS}
+   # faster malloc and non intrusive profiler
+   # via http://google-perftools.googlecode.com
 )
+
 # ----------------------------------------------------------------------

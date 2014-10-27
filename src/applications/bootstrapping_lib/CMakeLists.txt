@@ -35,6 +35,12 @@ set(opencv_LIBRARIES
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
 
+find_package(Boost REQUIRED  
+   COMPONENTS 
+   unit_test_framework
+   program_options filesystem system thread
+)
+
 # ----------------------------------------------------------------------
 # Setup CUDA
 if(USE_GPU)
@@ -56,17 +62,20 @@ set(local_INCLUDE_DIRS
     "/usr/local/cuda/include"
     )
 
-include_directories(
- ${local_INCLUDE_DIRS}
- "${doppia_root}/libs/cudatemplates/include"
- "${doppia_root}/src/applications/bootstrapping_lib"
-)
-
 link_directories(
   "/usr/local/lib"
   "/users/visics/rbenenso/no_backup/usr/local/lib"
   ${libpng_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
+)
+
+include_directories(
+ ${local_INCLUDE_DIRS}
+ "${doppia_root}/libs/cudatemplates/include"
+ "${doppia_root}/src/applications/bootstrapping_lib"
+  ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 
 if(USE_GPU)
@@ -179,11 +188,9 @@ endif(USE_GPU)
 # Create the library
 add_library( bootstrapping SHARED ${SrcCpp} ${HelpersCpp} )
 
-target_link_libraries( bootstrapping
-
-   boost_unit_test_framework
-   boost_program_options boost_filesystem boost_system
-   boost_thread pthread gomp
+target_link_libraries(bootstrapping
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -202,8 +209,8 @@ add_executable(test_bootstrapping_lib "test_bootstrapping_lib.cpp")
 target_link_libraries(test_bootstrapping_lib bootstrapping)
 
 target_link_libraries(test_bootstrapping_lib
-   boost_program_options boost_filesystem
-   gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
 # SDL Xext Xrandr X11
    ${libpng_LIBRARIES} jpeg
 )

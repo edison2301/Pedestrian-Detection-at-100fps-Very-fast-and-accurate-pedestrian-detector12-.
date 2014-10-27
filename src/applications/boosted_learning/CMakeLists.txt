@@ -43,6 +43,7 @@ include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
 # Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(opencv REQUIRED opencv>=2.3)
 
@@ -53,6 +54,10 @@ set(opencv_LIBRARIES
     #opencv_objdetect opencv_contrib
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
+
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system serialization thread
+)
 
 # ----------------------------------------------------------------------
 # Setup link and include directories
@@ -77,6 +82,7 @@ set(local_INCLUDE_DIRS
 link_directories(
   ${libpng_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
   ${local_LIBRARY_DIRS}
 )
 
@@ -89,6 +95,7 @@ include_directories(
   "${doppia_root}/src/objects_detection/"
   ${libpng_INCLUDE_DIRS}
   ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS} 
   ${local_INCLUDE_DIRS}
   "${doppia_root}/libs/cudatemplates/include"
   ${doppia_root}/libs/liblinear-1.8
@@ -154,11 +161,8 @@ target_link_libraries(boosted_learning
    bootstrapping
    linear blas
 
-   boost_program_options
-   boost_filesystem boost_system
-   boost_serialization
-   boost_thread pthread
-   protobuf
+   ${Boost_LIBRARIES}
+   protobuf pthread
    SDL X11 Xext #Xrandr
    gomp
    ${libpng_LIBRARIES} jpeg
