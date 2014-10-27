@@ -28,6 +28,9 @@ project (ObjectsDetectionLib)
 # Site specific configurations
 include(${doppia_root}/common_settings.cmake)
 
+# ----------------------------------------------------------------------
+# Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(opencv REQUIRED opencv>=2.3)
 
@@ -38,6 +41,13 @@ set(opencv_LIBRARIES
     #opencv_objdetect opencv_contrib
     opencv_legacy opencv_flann
    ) # quick hack for opencv2.4 support
+
+
+find_package(Boost REQUIRED  
+   COMPONENTS 
+   unit_test_framework
+   program_options filesystem system thread
+)
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -61,17 +71,6 @@ set(local_INCLUDE_DIRS
     "/usr/local/cuda/include"
     )
 
-include_directories(
- ${local_INCLUDE_DIRS}
- "${doppia_root}/libs/cudatemplates/include"
- "${doppia_root}/src/applications/bootstrapping_lib"
-)
-
-if(USE_GPU)
-cuda_include_directories("${doppia_root}/libs/")
-endif(USE_GPU)
-
-
 set(local_LIBRARY_DIRS
   /usr/lib64
   /usr/local/lib
@@ -86,8 +85,24 @@ link_directories(
   ${libpng_LIBRARY_DIRS}
   ${OpenEXR_LIBRARY_DIRS}
   ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
   ${local_LIBRARY_DIRS}
 )
+
+
+include_directories(
+  ${local_INCLUDE_DIRS}
+ "${doppia_root}/libs/cudatemplates/include"
+ "${doppia_root}/src/applications/bootstrapping_lib"
+  ${Boost_INCLUDE_DIRS}
+  ${libpng_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+)
+
+if(USE_GPU)
+cuda_include_directories("${doppia_root}/libs/")
+endif(USE_GPU)
+
 
 # ----------------------------------------------------------------------
 # Collect source files
@@ -261,9 +276,8 @@ add_library(objects_detection SHARED
 )
 
 target_link_libraries(objects_detection
-   boost_unit_test_framework
-   boost_program_options boost_filesystem boost_system
-   boost_thread pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -286,9 +300,8 @@ set_property(
 )
 
 target_link_libraries(objects_detection_with_ui
-   boost_unit_test_framework
-   boost_program_options boost_filesystem boost_system
-   boost_thread pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -311,9 +324,8 @@ set_property(
 )
 
 target_link_libraries(monocular_objects_detection
-   boost_unit_test_framework
-   boost_program_options boost_filesystem boost_system
-   boost_thread pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -337,9 +349,8 @@ set_property(
 )
 
 target_link_libraries(monocular_objects_detection_with_ui
-   boost_unit_test_framework
-   boost_program_options boost_filesystem boost_system
-   boost_thread pthread gomp
+   ${Boost_LIBRARIES}
+   pthread gomp
    protobuf SDL
    ${opencv_LIBRARIES}
 #   SDL Xext Xrandr X11
@@ -361,7 +372,7 @@ add_executable(test_objects_detection_lib
 target_link_libraries(test_objects_detection_lib objects_detection)
 
 target_link_libraries(test_objects_detection_lib
-   boost_program_options boost_filesystem
+   ${Boost_LIBRARIES}
    gomp SDL
    ${opencv_LIBRARIES}
 # SDL Xext Xrandr X11
@@ -382,7 +393,7 @@ add_executable(test_objects_detection_with_ui_lib
 target_link_libraries(test_objects_detection_with_ui_lib objects_detection_with_ui)
 
 target_link_libraries(test_objects_detection_with_ui_lib
-   boost_program_options boost_filesystem
+   ${Boost_LIBRARIES}
    gomp SDL
    ${opencv_LIBRARIES}
    SDL Xext Xrandr X11
@@ -411,7 +422,7 @@ set_property(
 target_link_libraries(test_monocular_objects_detection_lib monocular_objects_detection)
 
 target_link_libraries(test_monocular_objects_detection_lib
-   boost_program_options boost_filesystem
+   ${Boost_LIBRARIES}
    gomp
    ${opencv_LIBRARIES}
 # SDL Xext Xrandr X11
@@ -435,7 +446,7 @@ set_property(
 target_link_libraries(test_monocular_objects_detection_with_ui_lib monocular_objects_detection_with_ui)
 
 target_link_libraries(test_monocular_objects_detection_with_ui_lib
-   boost_program_options boost_filesystem
+   ${Boost_LIBRARIES}
    gomp
    ${opencv_LIBRARIES}
    SDL Xext Xrandr X11

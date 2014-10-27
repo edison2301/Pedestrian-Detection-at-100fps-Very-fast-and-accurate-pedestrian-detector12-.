@@ -13,7 +13,7 @@
 
 cmake_minimum_required(VERSION 2.6)
 
-set(doppia_root "../../../")
+set(doppia_root "${CMAKE_CURRENT_LIST_DIR}/../../..")
 
 set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
 set(CMAKE_MODULE_PATH "./" ${doppia_root} ${CMAKE_MODULE_PATH})
@@ -31,7 +31,8 @@ project (GroundEstimation)
 include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
-# Setup require libraries
+# Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(libjpeg REQUIRED libjpeg)
 pkg_check_modules(opencv REQUIRED opencv>=2.3)
@@ -66,10 +67,22 @@ set(local_INCLUDE_DIRS
   "${doppia_root}/libs/cudatemplates/include"
 )
 
+link_directories(
+  ${libpng_LIBRARY_DIRS}
+  ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
+  ${local_LIBRARY_DIRS}
+)
 
-link_directories(${libpng_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
-include_directories("${doppia_root}/libs/" "${doppia_root}/src"
-                    ${libpng_INCLUDE_DIRS}  ${opencv_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${local_INCLUDE_DIRS})
+include_directories(
+  ${doppia_root}/libs
+  ${doppia_root}/src
+  ${libpng_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
+  ${local_INCLUDE_DIRS}
+)
+
 #cuda_include_directories(./libs )
 
 # ----------------------------------------------------------------------

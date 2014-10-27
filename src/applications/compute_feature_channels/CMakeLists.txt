@@ -28,8 +28,13 @@ include(${doppia_root}/common_settings.cmake)
 
 # ----------------------------------------------------------------------
 # Setup required libraries
+
 pkg_check_modules(libpng REQUIRED libpng)
 #pkg_check_modules(opencv REQUIRED opencv>=2.3)
+
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system thread
+)
 
 # ----------------------------------------------------------------------
 # Setup CUDA
@@ -48,12 +53,16 @@ set(local_INCLUDE_DIRS
 
 link_directories(
   ${libpng_LIBRARY_DIRS}
+  ${opencv_LIBRARY_DIRS}
+  ${Boost_LIBRARY_DIRS}
 )
 
 include_directories(
-  ${libpng_INCLUDE_DIRS}
   ${local_INCLUDE_DIRS}
   "/usr/local/cuda/include"
+  ${libpng_INCLUDE_DIRS}
+  ${opencv_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 
 if(USE_GPU)
@@ -139,10 +148,9 @@ endif(USE_GPU)
 add_executable (compute_feature_channels ${SrcCpp} )
 
 target_link_libraries (compute_feature_channels
-  boost_program_options-mt
-  boost_filesystem-mt boost_system-mt
-  boost_thread-mt pthread
-  gomp
+
+  ${Boost_LIBRARIES}
+  gomp pthread
   ${libpng_LIBRARIES} jpeg
   ${opencv_LIBRARIES}
   opencv_core opencv_imgproc
