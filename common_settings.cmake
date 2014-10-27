@@ -99,7 +99,7 @@ if(HOSTED_AT_VISICS GREATER -1)
   set(CUDA_SDK_ROOT_DIR  /users/visics/mmathias/devel/doppia/)
   #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8 --pre-include /users/visics/mmathias/devel/doppia/undef_atomics_int128.h) # black magic required on Visics machines
 
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_20) # only matar, jabbah and yildun can run current code
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_20" CACHE STRING "nvcc flags" FORCE) # only matar, jabbah and yildun can run current code
 
   # faster malloc, and a good profiler via http://google-perftools.googlecode.com
   #set(google_perftools_LIBS tcmalloc profiler)
@@ -165,7 +165,7 @@ elseif(${HOSTNAME} STREQUAL  "rodrigob-laptop")
   set(cutil_LIB "cutil")
 
   set(GCC44_DIRECTORY "/home/rodrigob/work/code/doppia_references/cuda/gcc-4.4/")
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-bindir ${GCC44_DIRECTORY})
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --compiler-bindir ${GCC44_DIRECTORY}" CACHE STRING "nvcc flags" FORCE)
 
   # faster malloc, and a good profiler via http://google-perftools.googlecode.com
   set(google_perftools_LIBS tcmalloc profiler)
@@ -184,7 +184,7 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_21)
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_21" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
@@ -208,9 +208,9 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
   set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG")
   set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG")
 
-  set(CUDA_PROPAGATE_HOST_FLAGS "OFF") # since nvcc does not handle -Ofast
-  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -DNDEBUG")
-  set(CUDA_NVCC_FLAGS_RELWITHDEBINFO "-O3 -DNDEBUG")
+  set(CUDA_PROPAGATE_HOST_FLAGS "OFF" CACHE STRING "nvcc propagte host flags" FORCE) # since nvcc does not handle -Ofast
+  set(CUDA_NVCC_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "nvcc release flags" FORCE)
+  set(CUDA_NVCC_FLAGS_RELWITHDEBINFO "-O3 -DNDEBUG" CACHE STRING "nvcc relwithdebinfo flags" FORCE)
 
   # add local compiled opencv trunk in the pkg-config paths
   #set(PKG_CONFIG_PATH ${PKG_CONFIG_PATH}:/home/mfritz/local/lib/pkgconfig)
@@ -225,7 +225,7 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_30)
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_30" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
@@ -263,7 +263,7 @@ elseif(HOSTED_AT_D2_GPU GREATER -1)
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -arch=sm_21)
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_30" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
@@ -351,14 +351,14 @@ endif ()
 
 # ----------------------------------------------------------------------
 # enable compilation for shared libraries
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -Xcompiler -fpic)
+set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Xcompiler -fpic" CACHE STRING "nvcc flags" FORCE)
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   # enable cuda debug information, to use with cuda-dbg
-  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -g -G)
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -g -G" CACHE STRING "nvcc flags" FORCE)
 else()
 # FIXME disabled only for testing
-#  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} -O3 --use_fast_math) # speed up host and device code
+#  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -O3 --use_fast_math"  CACHE STRING "nvcc flags" FORCE) # speed up host and device code
 endif()
 
 # ----------------------------------------------------------------------
