@@ -79,9 +79,10 @@ There are however some important changes:
 
 1. Some bugs regarding the feature channels computation and reading have been fixed.
 
-2. The training code is now cleaner in more in line with the style of the rest of the code.
+2. The training code is now (a bit) cleaner in more in line with the style of the rest of the code.
 
-3. We now provide configuration files to reproduce the CVPR 2013 baseline, and for a quick training (less than 20 minutes in our machine).
+3. We now provide models and configuration files to reproduce the CVPR2013/ECCVw2014 baselines, 
+   for a quick training (less than 20 minutes in our machine), and for face detection (ECCV2014).
  
 Point 1 is the most critical one. 
 Models created with v1 are still usable with v2, however the quality will be slightly lower because the channels are now slightly different.
@@ -450,6 +451,8 @@ https://bitbucket.org/aihara/colorcorrect
 
 We use the default parameters of his `colorcorrect.algorithm.automatic_color_equalization` implementation.
 As mentioned in the paper the much faster `gray world` equalization also provides good results.
+
+For convenience we include the helper script `doppia/tools/objects_detection/datasets/equalize_colors.py` which will batch process images in a folder.
 
 
 How to detect faces ?
