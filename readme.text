@@ -180,7 +180,7 @@ You can also run
     cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c cvpr2012_inria_pedestrians.config.ini --gui.disable false
 or
 
-    cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c chnftrs_over_bahnhof.config.ini --gui.disable false
+    cmake . && make -j2 && OMP_NUM_THREADS=4 ./objects_detection -c cvpr2012_chnftrs_over_bahnhof.config.ini --gui.disable false
 or
 
     cmake . && make -j2 && ./objects_detection -c eccv2014_face_detection_pascal.config.ini --gui.disable false
