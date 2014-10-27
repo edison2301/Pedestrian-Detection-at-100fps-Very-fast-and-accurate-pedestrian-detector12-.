@@ -110,6 +110,11 @@ void record_detections(const boost::filesystem::path &image_path,
 /// helper function used by the test applications and for applications that want to parse the options by themselves
 void get_options_description(boost::program_options::options_description &desc);
 
+
+/// Helper function to avoid having harmless CUDA de-allocation error at exit time.
+void free_object_detector();
+
+
 } // end namespace objects_detection
 
 #endif // OBJECTS_DETECTION_OBJECTS_DETECTION_LIB_HPP

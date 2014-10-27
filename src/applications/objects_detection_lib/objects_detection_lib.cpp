@@ -41,7 +41,6 @@ class ObjectsDetectionLibGui: public FakeObjectsDetectionLibGui
 {
 public:
 };
-
 } // end of namespace objects_detection
 #endif
 
@@ -1175,6 +1174,14 @@ void record_detections(const boost::filesystem::path &image_path,
     detections_data_sequence_p->write(detections_data);
 
     return;
+}
+
+
+/// Helper function to avoid having harmless CUDA de-allocation error at exit time.
+void free_object_detector()
+{
+    objects_detector_p.reset();
+    stixel_world_estimator_p.reset();
 }
 
 

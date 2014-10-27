@@ -263,13 +263,13 @@ Possibly the most relevant option is `objects_detector.method`. We provide CPU a
 * Benenson et al. 2012 Pedestrian detection at 100 frames per second   
 
 These techniques are then re-used in other papers.
-Please notice that the CPU versions are **not** identical to the GPU versions. 
+Please notice that the CPU versions are **not** identical to the GPU versions.   
 The features computation provide slightly different results, which in turn create different performances.
 Currently, the GPU version is the only to have fine tunned features computation.  
-Also we use more the GPU versions than the CPU versions, so there is more chances than the CPU version are buggy. 
+Also we use more the GPU versions than the CPU versions, so there is more chances than the CPU version are buggy.   
 Importantly only the GPU version has been tunned for speed, 
 the CPU version is provided (and used) only for clarity and debugging purposes. 
-The CPU version will run *hundred of times* slower than the GPU version. 
+The CPU version will run *hundred of times* slower than the GPU version.    
 On principle a fast (1~10 Hz) CPU version is possible, but we have not created it since our focus was on the (faster) GPU version.
 
 When `objects_detector.method = cpu_channels` or `objects_detector.method = gpu_channels` the actual method used depends on the input model.  
