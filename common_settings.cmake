@@ -97,9 +97,11 @@ if(HOSTED_AT_VISICS GREATER -1)
   set(CUDA_NVCC_EXECUTABLE  /usr/local/cuda-5.5/bin/nvcc )
   #set(CUDA_SDK_ROOT_DIR  /users/visics/rbenenso/code/references/cuda_sdk_4.0.17/C)
   set(CUDA_SDK_ROOT_DIR  /users/visics/mmathias/devel/doppia/)
+
+  set(CUDA_NVCC_FLAGS "-arch=sm_20" CACHE STRING "nvcc flags" FORCE) # only matar, jabbah and yildun can run current code
+
   #set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} --compiler-options -D__USE_XOPEN2K8 --pre-include /users/visics/mmathias/devel/doppia/undef_atomics_int128.h) # black magic required on Visics machines
 
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_20" CACHE STRING "nvcc flags" FORCE) # only matar, jabbah and yildun can run current code
 
   # faster malloc, and a good profiler via http://google-perftools.googlecode.com
   #set(google_perftools_LIBS tcmalloc profiler)
@@ -184,7 +186,7 @@ elseif(${HOSTNAME} STREQUAL  "visics-gt680r")
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_21" CACHE STRING "nvcc flags" FORCE)
+  set(CUDA_NVCC_FLAGS "-arch=sm_21" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
@@ -225,7 +227,7 @@ elseif(${HOSTNAME} STREQUAL  "lap-12-31")
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_30" CACHE STRING "nvcc flags" FORCE)
+  set(CUDA_NVCC_FLAGS "-arch=sm_30" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
@@ -263,7 +265,7 @@ elseif(HOSTED_AT_D2_GPU GREATER -1)
 
   # work around to use gcc-4.4 instead of 4.5
   #set(CUDA_NVCC_EXECUTABLE "/home/rodrigob/code/references/cuda/gcc-4.4/nvcc-4.4.sh")
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -arch=sm_30" CACHE STRING "nvcc flags" FORCE)
+  set(CUDA_NVCC_FLAGS "-arch=sm_30" CACHE STRING "nvcc flags" FORCE)
 
   set(local_CUDA_CUT_INCLUDE_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/common/inc")
   set(local_CUDA_CUT_LIBRARY_DIRS "/home/rodrigob/code/references/cuda/cuda_sdk/C/lib")
