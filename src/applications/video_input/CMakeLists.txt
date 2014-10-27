@@ -110,7 +110,8 @@ file(GLOB HelpersCpp
   #"${doppia_src}/helpers/*.cpp"
   "${doppia_src}/helpers/any_to_string.cpp"
   "${doppia_src}/helpers/get_section_options.cpp"
-  "${doppia_src}/helpers/Log.cpp"
+  "${doppia_src}/helpers/Log.cpp"  
+  "${doppia_src}/helpers/ModuleLog.cpp"
   "${doppia_src}/helpers/loggers.cpp"
 )
 
