@@ -7,7 +7,7 @@
 
 #include "helpers/objects_detection/create_json_for_mustache.hpp"
 #include "helpers/get_option_value.hpp"
-#include "helpers/Log.hpp"
+#include "helpers/ModuleLog.hpp"
 
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/round.hpp>
@@ -17,27 +17,9 @@
 #include <cstdio>
 
 
-namespace
-{
-
-std::ostream & log_info()
-{
-    return  logging::log(logging::InfoMessage, "BaseVeryFastIntegralChannelsDetector");
-}
-
-std::ostream & log_debug()
-{
-    return  logging::log(logging::DebugMessage, "BaseVeryFastIntegralChannelsDetector");
-}
-
-std::ostream & log_error()
-{
-    return  logging::log(logging::ErrorMessage, "BaseVeryFastIntegralChannelsDetector");
-}
-
-} // end of anonymous namespace
-
 namespace doppia {
+
+MODULE_LOG_MACRO("BaseVeryFastIntegralChannelsDetector")
 
 typedef AbstractObjectsDetector::detection_window_size_t detection_window_size_t;
 
@@ -229,12 +211,12 @@ void BaseVeryFastIntegralChannelsDetector::compute_scaled_detection_cascades()
         size_t nearest_detector_scale_index = 0;
         float min_abs_log_scale = std::numeric_limits<float>::max();
 
-        const float search_range_log_scale = log(search_range_data.detection_window_scale);
+        const float search_range_log_scale = std::log(search_range_data.detection_window_scale);
         size_t detector_index = 0;
         BOOST_FOREACH(const detector_t &detector, detector_model_p->get_detectors())
         {
             const float
-                    log_detector_scale = log(detector.get_scale()),
+                    log_detector_scale = std::log(detector.get_scale()),
                     abs_log_scale = std::abs<float>(search_range_log_scale - log_detector_scale);
 
             if(abs_log_scale < min_abs_log_scale)
@@ -380,7 +362,7 @@ void BaseVeryFastIntegralChannelsDetector::compute_extra_data_per_scale(
                                     std::max<stride_t::coordinate_t>(1, iround(y_stride*stride_scaling)));
             if(first_call)
             {
-                log_debug()
+                log.debug()
                         << boost::str(
                                boost::format(
                                    "Detection window scale %.3f has strides (x,y) == (%.3f, %.3f) [image pixels] =>\t(%i, %i) [channel pixels]\n")
@@ -428,6 +410,8 @@ void BaseVeryFastIntegralChannelsDetector::compute_extra_data_per_scale(
 
 DetectorSearchRange BaseVeryFastIntegralChannelsDetector::compute_scaled_search_range(const size_t scale_index) const
 {
+    static bool first_call = true;
+
     const DetectorSearchRangeMetaData &search_data = search_ranges_data[scale_index];
 
     const int
@@ -457,8 +441,12 @@ DetectorSearchRange BaseVeryFastIntegralChannelsDetector::compute_scaled_search_
     compute_cascade_window_size_visitor visitor;
     const detection_window_size_t shrunk_detection_window_size = boost::apply_visitor(visitor, cascade);
 
-    printf("Scale %zu shrunk detection window size (x,y) == (%i, %i)\n",
-           scale_index, shrunk_detection_window_size.x(), shrunk_detection_window_size.y());
+    if(first_call)
+    {
+        log.debug() << boost::format("Scale %u shrunk detection window size (x,y) == (%i, %i)")
+                       % scale_index % shrunk_detection_window_size.x() % shrunk_detection_window_size.y()
+                    << std::endl;
+    }
 
     // flooring/ceiling/rounding is important to avoid being "off by one pixel" in the search range
     const int
@@ -505,7 +493,7 @@ DetectorSearchRange BaseVeryFastIntegralChannelsDetector::compute_scaled_search_
 
     if((scaled_range.max_x == 0) or (scaled_range.max_y == 0))
     {
-        log_info()
+        log.info()
                 << boost::str(
                        boost::format(
                            "Scale %i (scale %.3f, occlusion %.3f '%s') has an empty search range\n")
@@ -515,6 +503,7 @@ DetectorSearchRange BaseVeryFastIntegralChannelsDetector::compute_scaled_search_
                        % get_occlusion_type_name(scaled_range.detector_occlusion_type));
     }
 
+    first_call = false;
     return scaled_range;
 }
 

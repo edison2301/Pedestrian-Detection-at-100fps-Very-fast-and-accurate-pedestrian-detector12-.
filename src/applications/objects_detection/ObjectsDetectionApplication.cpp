@@ -86,7 +86,7 @@ typedef AbstractStixelWorldEstimator::ground_plane_corridor_t ground_plane_corri
 std::string ObjectsDetectionApplication::get_application_title()
 {
     return "Stereo objects detection on a flat world. "
-	 	    "Rodrigo Benenson, Markus Mathias, Mohamed Omran @ KULeuven & MPI-Inf. 2011-2014.";
+            "Rodrigo Benenson, Markus Mathias, Mohamed Omran @ KULeuven & MPI-Inf. 2011-2014.";
 }
 
 
@@ -344,7 +344,8 @@ void stixel_world_compute_thread(shared_ptr<AbstractStixelWorldEstimator> stixel
 void ObjectsDetectionApplication::main_loop()
 {
 
-    const bool should_print = not silent_mode;
+    //const bool should_print_speed = not silent_mode;
+    const bool should_print_speed = true;
     if(silent_mode)
     {
         printf("The application is running in silent mode. "
@@ -497,21 +498,21 @@ void ObjectsDetectionApplication::main_loop()
         num_iterations += 1;
         stixels_period_counter += 1;
 
-        if(should_print and ((num_iterations % num_iterations_for_timing) == 0))
+        if(should_print_speed and ((num_iterations % num_iterations_for_timing) == 0))
         {
             printf("Average iteration speed  %.4lf [Hz] (in the last %i iterations)\n",
                    num_iterations_for_timing / (omp_get_wtime() - start_wall_time) , num_iterations_for_timing );
             start_wall_time = omp_get_wtime(); // we reset timer
         }
 
-        if(should_print and ((num_iterations % num_iterations_for_processing_timing) == 0))
+        if(should_print_speed and ((num_iterations % num_iterations_for_processing_timing) == 0))
         {
             printf("Average total objects detection speed per iteration %.2lf [Hz] "
                    "(in the last %i iterations) (not including stixels/ground plane estimation)\n",
                    num_iterations / cumulated_processing_time , num_iterations );
         }
 
-        if(should_print and ((num_iterations % num_iterations_for_processing_timing) == 0))
+        if(should_print_speed and ((num_iterations % num_iterations_for_processing_timing) == 0))
         {
             printf("Average objects detection compute only speed per iteration %.2lf [Hz] (in the last %i iterations)\n",
                    num_iterations / cumulated_objects_detector_compute_time , num_iterations );
