@@ -45,6 +45,10 @@ set(opencv_LIBRARIES
     opencv_gpu
    ) # quick hack for opencv2.4 support
 
+find_package(Boost REQUIRED  
+   COMPONENTS program_options filesystem system thread
+)
+
 # ----------------------------------------------------------------------
 # Setup link and include directories
 
@@ -63,9 +67,9 @@ set(local_INCLUDE_DIRS
 )
 
 
-link_directories(${libpng_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
+link_directories(${libpng_LIBRARY_DIRS} ${opencv_LIBRARY_DIRS} ${Boost_LIBRARY_DIRS} ${local_LIBRARY_DIRS})
 include_directories("${doppia_root}/libs/" "${doppia_root}/src"
-                    ${libpng_INCLUDE_DIRS}  ${opencv_INCLUDE_DIRS} ${local_INCLUDE_DIRS})
+                    ${libpng_INCLUDE_DIRS}  ${opencv_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${local_INCLUDE_DIRS})
 #cuda_include_directories(./libs )
 
 # ----------------------------------------------------------------------
@@ -134,7 +138,7 @@ target_link_libraries(ground_estimation
    ${cg_LIBRARIES}
    # linking with CgGL _after_ boost_program_options generates a segmentation fault ! boost_program_options 1.39 has a bug
 
-   boost_program_options boost_filesystem boost_system boost_thread
+   ${Boost_LIBRARIES}
    protobuf pthread
    SDL
    gomp Xext Xrandr X11
