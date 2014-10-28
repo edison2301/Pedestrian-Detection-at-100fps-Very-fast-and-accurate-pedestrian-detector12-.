@@ -31,7 +31,9 @@
 
 #include <omp.h>
 
+#if defined(USE_GPU)
 #include <cuda_runtime_api.h>
+#endif
 
 namespace objects_detection {
 
@@ -223,6 +225,7 @@ program_options::variables_map TestObjectsDetectionApplication::parse_arguments(
 }
 
 
+#if defined(USE_GPU)
 
 /// copy paste from CudaSDK shared/shrUtils.h
 inline int ConvertSMVer2Cores(const int major, const int minor)
@@ -291,6 +294,16 @@ void print_gpu_information()
     printf("----\n\n");
     return;
 }
+
+#else
+
+void print_gpu_information()
+{
+    // no gpu more, nothing to print
+    return;
+}
+
+#endif
 
 void TestObjectsDetectionApplication::setup_problem(const program_options::variables_map &options)
 {
