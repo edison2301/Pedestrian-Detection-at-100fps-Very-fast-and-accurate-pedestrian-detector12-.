@@ -91,12 +91,12 @@ link_directories(
 
 
 include_directories(
-  ${local_INCLUDE_DIRS}
  "${doppia_root}/libs/cudatemplates/include"
  "${doppia_root}/src/applications/bootstrapping_lib"
   ${Boost_INCLUDE_DIRS}
   ${libpng_INCLUDE_DIRS}
   ${opencv_INCLUDE_DIRS}
+  ${local_INCLUDE_DIRS}
 )
 
 if(USE_GPU)
@@ -138,7 +138,8 @@ file(GLOB MonocularSrcCpp
   "${doppia_src}/objects_detection/Detection*.c*"
   "${doppia_src}/objects_detection/*Model.c*"
   "${doppia_src}/objects_detection/*Stage.c*"
-  "${doppia_src}/objects_detection/*Integral*.c*"
+  "${doppia_src}/objects_detection/Integral*.c*"
+  "${doppia_src}/objects_detection/VeryFastIntegral*.c*"
   "${doppia_src}/objects_detection/SearchRange*.c*"
   "${doppia_src}/objects_detection/MultiscalesIntegral*.c*"
   "${doppia_src}/objects_detection/FastestPedestrian*.c*"
