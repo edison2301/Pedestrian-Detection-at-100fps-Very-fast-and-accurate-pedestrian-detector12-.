@@ -1,0 +1,7 @@
+
+These are models used in "Face detection without bells and whistles", ECCV 2014, M. Mathias et al.
+
+Please consult the "How to detect faces ?" section of `doppia/readme.text` for usage instructions.
+
+For more information about the models, 
+see http://markusmathias.bitbucket.org/2014_eccv_face_detection

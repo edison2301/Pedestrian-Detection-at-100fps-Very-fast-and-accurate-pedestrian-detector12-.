@@ -1,0 +1,18 @@
+// This file describes the header used in all DataSequence files
+// see http://code.google.com/p/protobuf/ for more details
+
+package doppia_protobuf;
+
+message DataSequenceAttribute
+{
+  required string name = 1;
+  required string value = 2;
+}
+
+
+message DataSequenceHeader
+{
+
+ repeated DataSequenceAttribute attributes = 3;
+}
+
